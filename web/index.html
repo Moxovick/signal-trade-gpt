@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal Trade GPT — AI торговые сигналы для Pocket Option</title>
+<meta name="description" content="AI-сигналы для бинарных опционов Pocket Option. Точность 87%+. Сигналы каждые 5-15 минут прямо в Telegram.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- BACKGROUND CANVAS -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- SCROLL PROGRESS -->
+<div id="progress"></div>
+
+<!-- CURSOR -->
+<div id="cur"></div>
+<div id="cur-r"></div>
+
+<!-- PRELOADER -->
+<div id="preloader">
+  <div class="pre-logo">SIGNAL <b>TRADE</b> GPT</div>
+  <div class="pre-track"><div class="pre-fill" id="pre-fill"></div></div>
+  <div class="pre-num" id="pre-num">0%</div>
+</div>
+
+<!-- ══════════════ NAV ══════════════ -->
+<nav id="nav">
+  <a href="#" class="nav-logo">SIGNAL <b>TRADE</b> GPT</a>
+  <ul class="nav-links">
+    <li><a href="#signals">Сигналы</a></li>
+    <li><a href="#how">Как работает</a></li>
+    <li><a href="#pricing">Тарифы</a></li>
+    <li><a href="#faq">FAQ</a></li>
+  </ul>
+  <a href="https://t.me/traitsignaltsest_bot" class="nav-cta">Подключить бота →</a>
+</nav>
+
+<!-- ══════════════ HERO ══════════════ -->
+<section id="hero">
+  <div class="hero-l">
+    <div class="pill"><div class="pill-dot"></div>AI анализирует рынок 24/7 · 87% точность</div>
+
+    <h1 class="hero-h">
+      ТОРГУЙ<br>
+      <span class="line-red">КАК ПРОФИ</span><br>
+      <span class="line-ghost">С НУЛЯ</span>
+    </h1>
+
+    <p class="hero-sub">
+      Signal Trade GPT отправляет точные сигналы CALL/PUT для Pocket Option
+      прямо в Telegram — каждые 5–15 минут, без опыта и сложных стратегий.
+    </p>
+
+    <div class="hero-btns">
+      <a href="https://t.me/traitsignaltsest_bot" class="btn-primary">🚀 Подключить бота</a>
+      <a href="#signals" class="btn-ghost">📊 Смотреть сигналы</a>
+    </div>
+
+    <div class="hero-trust">
+      <div class="trust-avatars">
+        <div class="trust-av">АК</div>
+        <div class="trust-av">МР</div>
+        <div class="trust-av">СП</div>
+        <div class="trust-av">ДВ</div>
+        <div class="trust-av">+</div>
+      </div>
+      <div class="trust-text">
+        <strong>4 200+</strong> трейдеров уже используют сигналы<br>
+        <span style="color:var(--green)">★★★★★</span> 4.9 средняя оценка
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART -->
+  <div class="hero-r">
+    <div class="chart-card">
+      <div class="cc-top">
+        <span class="cc-pair">EUR/USD · 1M</span>
+        <div class="cc-right">
+          <span class="cc-price" id="cc-price">1.0842</span>
+          <span class="cc-chg" id="cc-chg">+0.34%</span>
+        </div>
+      </div>
+      <div class="cc-tabs">
+        <div class="cc-tab active">Confidence: 87%</div>
+        <div class="cc-tab">Exp: 1 мин</div>
+        <div class="cc-tab">AI Neural</div>
+      </div>
+      <canvas id="chart"></canvas>
+      <div class="cc-sig">
+        <div class="sig-tag buy"><div class="sig-dot"></div>СИГНАЛ: CALL ⬆</div>
+        <div class="sig-tag sell"><div class="sig-dot"></div>PUT ⬇</div>
+      </div>
+      <div class="cc-meta">
+        <div class="cc-meta-item"><div class="cc-meta-l">ПАРА</div><div class="cc-meta-v">EUR/USD</div></div>
+        <div class="cc-meta-item"><div class="cc-meta-l">ТОЧНОСТЬ</div><div class="cc-meta-v g">87.3%</div></div>
+        <div class="cc-meta-item"><div class="cc-meta-l">ЭКСПИРАЦИЯ</div><div class="cc-meta-v">1 мин</div></div>
+        <div class="cc-meta-item"><div class="cc-meta-l">СТАТУС</div><div class="cc-meta-v g">LIVE</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker" style="position:relative;z-index:2">
+  <div class="ticker-track" id="ticker-t"></div>
+</div>
+
+<!-- ══════════════ SIGNALS ══════════════ -->
+<section id="signals" class="sec sec-bg-solid">
+  <div class="max-w">
+    <div class="sig-grid">
+      <div class="rv">
+        <div class="chip">Live сигналы</div>
+        <h2 class="sec-title">СИГНАЛЫ<br><em>В РЕАЛЬНОМ</em><br>ВРЕМЕНИ</h2>
+        <p class="sec-sub">Каждый сигнал — CALL или PUT с чёткой экспирацией и уровнем AI Confidence. Ничего лишнего — только вход и направление.</p>
+        <div class="sig-feats">
+          <div class="sf-row"><div class="sf-icon">📡</div>Сигнал за секунды до истечения экспирации</div>
+          <div class="sf-row"><div class="sf-icon">🎯</div>CALL/PUT + экспирация + AI Confidence в каждом сигнале</div>
+          <div class="sf-row"><div class="sf-icon">🔔</div>Мгновенные push-уведомления в Telegram</div>
+          <div class="sf-row"><div class="sf-icon">📈</div>12 валютных пар: EUR/USD, GBP/USD, USD/JPY и другие</div>
+        </div>
+        <div style="margin-top:36px">
+          <a href="https://t.me/traitsignaltsest_bot" class="btn-primary">Получать сигналы →</a>
+        </div>
+      </div>
+
+      <!-- PHONE SVG -->
+      <div class="phone-outer rv" style="transition-delay:.2s">
+        <div class="phone-aura"></div>
+        <svg viewBox="0 0 300 610" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:280px;height:auto;filter:drop-shadow(0 40px 80px rgba(0,0,0,.75)) drop-shadow(0 0 40px rgba(245,197,24,.08))">
+          <defs>
+            <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#12121e"/>
+              <stop offset="100%" stop-color="#0a0a14"/>
+            </linearGradient>
+          </defs>
+          <!-- Body -->
+          <rect x="2" y="2" width="296" height="606" rx="44" fill="url(#pg)" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>
+          <rect x="8" y="8" width="284" height="594" rx="40" fill="#0d0d1a"/>
+          <!-- Island -->
+          <rect x="100" y="16" width="100" height="24" rx="12" fill="#080812" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+          <circle cx="150" cy="28" r="5" fill="#111120"/>
+          <circle cx="150" cy="28" r="3" fill="#1a1a2e"/>
+          <!-- Screen -->
+          <rect x="16" y="52" width="268" height="496" rx="6" fill="#09090f"/>
+          <!-- Header bar -->
+          <rect x="16" y="52" width="268" height="42" rx="0" fill="#0d0d1b"/>
+          <rect x="16" y="52" width="268" height="2" fill="#f5c518" opacity="0.7"/>
+          <text x="28" y="77" fill="white" font-size="11" font-weight="600" font-family="monospace" letter-spacing="1">SIGNAL TRADE GPT</text>
+          <!-- Live dot -->
+          <circle cx="262" cy="73" r="4.5" fill="#00e5a0" opacity="0.9"/>
+          <circle cx="262" cy="73" r="4.5" fill="#00e5a0" opacity="0.3">
+            <animate attributeName="r" values="4.5;9;4.5" dur="1.8s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.3;0;0.3" dur="1.8s" repeatCount="indefinite"/>
+          </circle>
+          <text x="272" y="77" fill="#00e5a0" font-size="8" font-family="monospace">LIVE</text>
+
+          <!-- Signal: CALL -->
+          <rect x="24" y="104" width="252" height="46" rx="8" fill="#111120" stroke="rgba(0,229,160,0.2)" stroke-width="1"/>
+          <rect x="32" y="117" width="36" height="16" rx="4" fill="rgba(0,229,160,0.15)"/>
+          <text x="50" y="128" fill="#00e5a0" font-size="8" font-weight="700" font-family="monospace" text-anchor="middle">CALL ⬆</text>
+          <text x="78" y="122" fill="white" font-size="11" font-weight="600" font-family="monospace">EUR/USD</text>
+          <text x="78" y="136" fill="#8888a8" font-size="9" font-family="monospace">Exp: 1 мин</text>
+          <text x="264" y="125" fill="#00e5a0" font-size="11" font-weight="700" font-family="monospace" text-anchor="end">AI 87%</text>
+          <text x="264" y="138" fill="#4a4a6a" font-size="9" font-family="monospace" text-anchor="end">0с</text>
+          <circle cx="270" cy="127" r="2.5" fill="#00e5a0"><animate attributeName="opacity" values="1;0.2;1" dur="1s" repeatCount="indefinite"/></circle>
+
+          <!-- Signal: PUT -->
+          <rect x="24" y="158" width="252" height="46" rx="8" fill="#111120" stroke="rgba(245,197,24,0.15)" stroke-width="1"/>
+          <rect x="32" y="171" width="36" height="16" rx="4" fill="rgba(245,197,24,0.15)"/>
+          <text x="50" y="182" fill="#f0a500" font-size="8" font-weight="700" font-family="monospace" text-anchor="middle">PUT ⬇</text>
+          <text x="78" y="176" fill="white" font-size="11" font-weight="600" font-family="monospace">GBP/USD</text>
+          <text x="78" y="190" fill="#8888a8" font-size="9" font-family="monospace">Exp: 2 мин</text>
+          <text x="264" y="179" fill="#f0a500" font-size="11" font-weight="700" font-family="monospace" text-anchor="end">AI 82%</text>
+          <text x="264" y="192" fill="#4a4a6a" font-size="9" font-family="monospace" text-anchor="end">12с</text>
+
+          <!-- Signal: CALL -->
+          <rect x="24" y="212" width="252" height="46" rx="8" fill="#111120" stroke="rgba(0,229,160,0.12)" stroke-width="1"/>
+          <rect x="32" y="225" width="36" height="16" rx="4" fill="rgba(0,229,160,0.12)"/>
+          <text x="50" y="236" fill="#00e5a0" font-size="8" font-weight="700" font-family="monospace" text-anchor="middle">CALL ⬆</text>
+          <text x="78" y="230" fill="white" font-size="11" font-weight="600" font-family="monospace">USD/JPY</text>
+          <text x="78" y="244" fill="#8888a8" font-size="9" font-family="monospace">Exp: 5 мин</text>
+          <text x="264" y="233" fill="#00e5a0" font-size="11" font-weight="700" font-family="monospace" text-anchor="end">AI 91%</text>
+          <text x="264" y="246" fill="#4a4a6a" font-size="9" font-family="monospace" text-anchor="end">34с</text>
+
+          <!-- Signal: PUT -->
+          <rect x="24" y="266" width="252" height="46" rx="8" fill="#111120" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+          <rect x="32" y="279" width="36" height="16" rx="4" fill="rgba(245,197,24,0.1)"/>
+          <text x="50" y="290" fill="#f0a500" font-size="8" font-weight="700" font-family="monospace" text-anchor="middle">PUT ⬇</text>
+          <text x="78" y="284" fill="white" font-size="11" font-weight="600" font-family="monospace">AUD/USD</text>
+          <text x="78" y="298" fill="#8888a8" font-size="9" font-family="monospace">Exp: 30 сек</text>
+          <text x="264" y="287" fill="#f0a500" font-size="11" font-weight="700" font-family="monospace" text-anchor="end">AI 79%</text>
+          <text x="264" y="300" fill="#4a4a6a" font-size="9" font-family="monospace" text-anchor="end">1м</text>
+
+          <!-- Mini chart -->
+          <rect x="24" y="324" width="252" height="96" rx="8" fill="#0d0d1a"/>
+          <text x="32" y="342" fill="#4a4a6a" font-size="9" font-family="monospace" letter-spacing="0.5">EUR/USD · CHART · 1M</text>
+          <polyline points="32,402 56,392 80,398 104,380 128,386 152,368 176,374 200,356 224,363 248,344 264,350 272,336" fill="none" stroke="#00e5a0" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <polyline points="32,402 56,392 80,398 104,380 128,386 152,368 176,374 200,356 224,363 248,344 264,350 272,336 272,414 32,414" fill="rgba(0,229,160,0.05)"/>
+          <circle cx="272" cy="336" r="3.5" fill="#00e5a0"/>
+          <circle cx="272" cy="336" r="3.5" fill="#00e5a0" opacity="0.3">
+            <animate attributeName="r" values="3.5;7;3.5" dur="2s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite"/>
+          </circle>
+
+          <!-- Stats bar -->
+          <rect x="24" y="430" width="252" height="54" rx="8" fill="#0d0d1a"/>
+          <text x="36" y="450" fill="#4a4a6a" font-size="9" font-family="monospace" letter-spacing="0.5">ТОЧНОСТЬ СЕГОДНЯ</text>
+          <text x="36" y="468" fill="white" font-size="15" font-weight="700" font-family="monospace">87.3%</text>
+          <rect x="36" y="472" width="120" height="3" rx="1.5" fill="rgba(255,255,255,0.07)"/>
+          <rect x="36" y="472" width="105" height="3" rx="1.5" fill="#00e5a0"/>
+          <text x="168" y="450" fill="#4a4a6a" font-size="9" font-family="monospace" letter-spacing="0.5">СИГНАЛОВ</text>
+          <text x="168" y="468" fill="white" font-size="15" font-weight="700" font-family="monospace">14,288</text>
+
+          <!-- Home bar -->
+          <rect x="110" y="566" width="80" height="4" rx="2" fill="rgba(255,255,255,0.18)"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ STATS ══════════════ -->
+<section id="stats" class="sec-bg-alt" style="position:relative;z-index:2">
+  <div class="stats-row max-w" style="max-width:1200px;margin:0 auto">
+    <div class="stat-box rv">
+      <div class="stat-num"><b id="s1">0</b>K+</div>
+      <div class="stat-lbl">Активных трейдеров</div>
+      <div class="stat-sub">На платформе прямо сейчас</div>
+    </div>
+    <div class="stat-box rv" style="transition-delay:.1s">
+      <div class="stat-num"><b id="s2">0</b>K+</div>
+      <div class="stat-lbl">Сигналов отправлено</div>
+      <div class="stat-sub">С момента запуска платформы</div>
+    </div>
+    <div class="stat-box rv" style="transition-delay:.2s">
+      <div class="stat-num"><b id="s3">0</b>%</div>
+      <div class="stat-lbl">Точность за 30 дней</div>
+      <div class="stat-sub">Верифицированный результат</div>
+    </div>
+    <div class="stat-box rv" style="transition-delay:.3s">
+      <div class="stat-num"><b id="s4">0</b>/7</div>
+      <div class="stat-lbl">Режим работы</div>
+      <div class="stat-sub">08:00 — 22:00 UTC каждый день</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ HOW ══════════════ -->
+<section id="how" class="sec sec-bg-solid">
+  <div class="max-w">
+    <div class="rv">
+      <div class="chip">Как это работает</div>
+      <h2 class="sec-title" style="max-width:560px">4 ШАГА ДО<br><em>ПЕРВОГО СИГНАЛА</em></h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-icon">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect x="4" y="3" width="14" height="20" rx="3" stroke="#f5c518" stroke-width="1.5"/><line x1="7" y1="8" x2="15" y2="8" stroke="#f5c518" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="12" x2="15" y2="12" stroke="#f5c518" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="16" x2="11" y2="16" stroke="#f5c518" stroke-width="1.5" stroke-linecap="round"/><circle cx="20" cy="20" r="4" stroke="#f5c518" stroke-width="1.5"/><path d="M18.5 20h3M20 18.5v3" stroke="#f5c518" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="step-t">ПОДКЛЮЧИ БОТА</div>
+        <div class="step-d">Нажми /start в Telegram-боте. Регистрация за 10 секунд — никаких документов и паролей.</div>
+      </div>
+      <div class="step" style="transition-delay:.12s">
+        <div class="step-num">02</div>
+        <div class="step-icon">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="9" stroke="#f5c518" stroke-width="1.5"/><path d="M9 13l3 3 5-6" stroke="#f5c518" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="step-t">AI АНАЛИЗ</div>
+        <div class="step-d">Нейросеть непрерывно сканирует 12 валютных пар, находит паттерны и генерирует точные сигналы.</div>
+      </div>
+      <div class="step" style="transition-delay:.24s">
+        <div class="step-num">03</div>
+        <div class="step-icon">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect x="3" y="5" width="16" height="14" rx="2" stroke="#f5c518" stroke-width="1.5"/><path d="M19 9l3 2-3 2" stroke="#f5c518" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="7" y1="9" x2="13" y2="9" stroke="#f5c518" stroke-width="1.5" stroke-linecap="round"/><line x1="7" y1="12" x2="11" y2="12" stroke="#f5c518" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="step-t">ПОЛУЧИ СИГНАЛ</div>
+        <div class="step-d">Пуш в Telegram: пара, направление CALL/PUT, экспирация и AI Confidence. Всё что нужно для входа.</div>
+      </div>
+      <div class="step" style="transition-delay:.36s">
+        <div class="step-num">04</div>
+        <div class="step-icon">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><polyline points="3,20 9,12 14,16 20,7 23,10" stroke="#f5c518" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="23" cy="9" r="2.5" fill="#f5c518"/></svg>
+        </div>
+        <div class="step-t">ТОРГУЙ</div>
+        <div class="step-d">Открывай сделку в Pocket Option. Рекомендованный объём — 1-3% депозита. Фиксируй результат.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ PRICING ══════════════ -->
+<section id="pricing" class="sec sec-bg-alt">
+  <div class="max-w">
+    <div class="rv" style="text-align:center;margin-bottom:0">
+      <div class="chip" style="justify-content:center">Тарифы</div>
+      <h2 class="sec-title" style="text-align:center">ВЫБЕРИ СВОЙ ПЛАН</h2>
+      <p class="sec-sub" style="margin:16px auto 0;text-align:center">Начни бесплатно. Масштабируйся по мере роста.</p>
+    </div>
+    <div class="pr-grid">
+
+      <!-- FREE -->
+      <div class="pr-card spotlight-host" data-tilt>
+        <div class="pr-name">FREE</div>
+        <div class="pr-desc">Для знакомства с платформой</div>
+        <div class="pr-price-row"><span class="pr-cur">$</span><span class="pr-amt">0</span><span class="pr-per">/мес</span></div>
+        <div class="pr-old">&nbsp;</div>
+        <div class="pr-div"></div>
+        <div class="pr-feats">
+          <div class="pr-feat"><span class="y">✓</span>3–5 сигналов в день</div>
+          <div class="pr-feat"><span class="y">✓</span>4 основных пары (EUR/USD, GBP/USD, USD/JPY, AUD/USD)</div>
+          <div class="pr-feat"><span class="y">✓</span>Экспирация 1–5 мин</div>
+          <div class="pr-feat"><span class="y">✓</span>Telegram уведомления</div>
+          <div class="pr-feat"><span class="y">✓</span>Реферальная программа 10%</div>
+          <div class="pr-feat"><span class="n">✗</span><span style="opacity:.35">Все торговые пары</span></div>
+          <div class="pr-feat"><span class="n">✗</span><span style="opacity:.35">Поддержка 24/7</span></div>
+        </div>
+        <a href="https://t.me/traitsignaltsest_bot" class="pr-btn pr-btn-ghost">Начать бесплатно</a>
+      </div>
+
+      <!-- PREMIUM -->
+      <div class="pr-card featured spotlight-host" data-tilt>
+        <div class="pr-badge">⚡ ПОПУЛЯРНЫЙ</div>
+        <div class="pr-name">PREMIUM</div>
+        <div class="pr-desc">Для серьёзных трейдеров</div>
+        <div class="pr-price-row"><span class="pr-cur">$</span><span class="pr-amt">29</span><span class="pr-per">/мес</span></div>
+        <div class="pr-old">&nbsp;</div>
+        <div class="pr-div"></div>
+        <div class="pr-feats">
+          <div class="pr-feat"><span class="y">✓</span>15–25 сигналов в день</div>
+          <div class="pr-feat"><span class="y">✓</span>Все 12 валютных пар</div>
+          <div class="pr-feat"><span class="y">✓</span>Экспирация 30 сек – 15 мин</div>
+          <div class="pr-feat"><span class="y">✓</span>Расширенный AI Confidence</div>
+          <div class="pr-feat"><span class="y">✓</span>Реферальная программа 15%</div>
+          <div class="pr-feat"><span class="y">✓</span>Email поддержка</div>
+          <div class="pr-feat"><span class="n">✗</span><span style="opacity:.35">Приоритет 24/7</span></div>
+        </div>
+        <a href="https://t.me/traitsignaltsest_bot" class="pr-btn pr-btn-red">Подключить Premium →</a>
+      </div>
+
+      <!-- VIP -->
+      <div class="pr-card spotlight-host" data-tilt>
+        <div class="pr-name">VIP</div>
+        <div class="pr-desc">Максимум возможностей</div>
+        <div class="pr-price-row"><span class="pr-cur">$</span><span class="pr-amt">79</span><span class="pr-per">/мес</span></div>
+        <div class="pr-old">&nbsp;</div>
+        <div class="pr-div"></div>
+        <div class="pr-feats">
+          <div class="pr-feat"><span class="y">✓</span>Безлимитные сигналы</div>
+          <div class="pr-feat"><span class="y">✓</span>Все пары + экзотика</div>
+          <div class="pr-feat"><span class="y">✓</span>Все варианты экспирации</div>
+          <div class="pr-feat"><span class="y">✓</span>Полная AI аналитика</div>
+          <div class="pr-feat"><span class="y">✓</span>Реферальная программа 20%</div>
+          <div class="pr-feat"><span class="y">✓</span>Приоритет 24/7 поддержка</div>
+          <div class="pr-feat"><span class="y">✓</span>Персональный менеджер</div>
+        </div>
+        <a href="https://t.me/traitsignaltsest_bot" class="pr-btn pr-btn-ghost">Подключить VIP →</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ TESTIMONIALS ══════════════ -->
+<section id="testimonials" class="sec sec-bg-solid" style="padding-left:0;padding-right:0">
+  <div class="rv" style="padding:0 clamp(20px,5vw,64px);margin-bottom:50px">
+    <div class="chip">Отзывы</div>
+    <h2 class="sec-title">ЧТО ГОВОРЯТ<br><em>ТРЕЙДЕРЫ</em></h2>
+  </div>
+  <div class="test-rows">
+    <div class="test-row"><div class="test-track r1" id="tr1"></div></div>
+    <div class="test-row"><div class="test-track r2" id="tr2"></div></div>
+  </div>
+</section>
+
+<!-- ══════════════ FAQ ══════════════ -->
+<section id="faq" class="sec sec-bg-alt">
+  <div class="max-w">
+    <div class="rv" style="text-align:center">
+      <div class="chip" style="justify-content:center">Вопросы</div>
+      <h2 class="sec-title" style="text-align:center">ЧАСТО<br><em>ЗАДАЮТ</em></h2>
+    </div>
+    <div class="faq-wrap" id="faq-list"></div>
+  </div>
+</section>
+
+<!-- ══════════════ CTA ══════════════ -->
+<section id="cta">
+  <div class="cta-bg-ring"></div>
+  <div class="cta-bg-ring"></div>
+  <div class="cta-bg-ring"></div>
+  <div class="cta-glow"></div>
+  <div class="cta-in rv">
+    <h2 class="cta-h">НАЧНИ<br><em>ТОРГОВАТЬ</em><br>СЕГОДНЯ</h2>
+    <p class="cta-sub">Подключись к 4 200+ трейдеров. Первые сигналы — бесплатно, без привязки карты.</p>
+    <div class="cta-btns">
+      <a href="https://t.me/traitsignaltsest_bot" class="btn-primary">🚀 Подключить бота</a>
+      <a href="#signals" class="btn-ghost">Смотреть сигналы →</a>
+    </div>
+    <div class="cta-note">✓ Без привязки карты &ensp;·&ensp; ✓ Отмена в 1 клик &ensp;·&ensp; ✓ Поддержка 24/7</div>
+  </div>
+</section>
+
+<!-- ══════════════ FOOTER ══════════════ -->
+<footer>
+  <div class="ft-grid">
+    <div>
+      <div class="ft-logo">SIGNAL <b>TRADE</b> GPT</div>
+      <div class="ft-desc">AI-платформа для генерации торговых сигналов для Pocket Option. Быстро. Точно. В Telegram.</div>
+    </div>
+    <div class="ft-col">
+      <h5>Продукт</h5>
+      <div class="ft-links">
+        <a href="#signals">Сигналы</a>
+        <a href="#how">Как работает</a>
+        <a href="#pricing">Тарифы</a>
+        <a href="#faq">FAQ</a>
+      </div>
+    </div>
+    <div class="ft-col">
+      <h5>Поддержка</h5>
+      <div class="ft-links">
+        <a href="https://t.me/traitsignaltsest_bot">Telegram-бот</a>
+        <a href="#">Email</a>
+        <a href="#">Политика конфиденциальности</a>
+        <a href="#">Условия использования</a>
+      </div>
+    </div>
+    <div class="ft-col">
+      <h5>Партнёры</h5>
+      <div class="ft-links">
+        <a href="https://pocketoption.com">Pocket Option</a>
+        <a href="#">Реферальная программа</a>
+        <a href="#">Партнёрство</a>
+      </div>
+    </div>
+  </div>
+  <div class="ft-bot">
+    <div>
+      <div class="ft-copy">© 2026 Signal Trade GPT. Все права защищены.</div>
+      <div class="ft-disclaimer" style="margin-top:8px">
+        Signal Trade GPT не является финансовым советником. Все сигналы предоставляются в информационных целях.
+        Торговля бинарными опционами сопряжена с высоким риском потери средств. Прошлые результаты не гарантируют будущей доходности.
+      </div>
+    </div>
+    <div class="ft-soc">
+      <a href="https://t.me/traitsignaltsest_bot" class="soc-btn" title="Telegram">✈</a>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

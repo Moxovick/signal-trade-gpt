@@ -1,0 +1,211 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  user
+  admin
+}
+
+enum UserStatus {
+  active
+  banned
+  pending
+}
+
+enum SubscriptionPlan {
+  free
+  premium
+  vip
+}
+
+enum SignalDirection {
+  CALL
+  PUT
+}
+
+enum SignalType {
+  ai
+  expert
+}
+
+enum SignalResult {
+  win
+  loss
+  pending
+}
+
+enum PaymentStatus {
+  pending
+  ok
+  fail
+}
+
+enum RewardStatus {
+  pending
+  paid
+}
+
+enum ReviewStatus {
+  published
+  hidden
+}
+
+model User {
+  id                    String           @id @default(cuid())
+  email                 String           @unique
+  passwordHash          String
+  telegramId            BigInt?          @unique
+  username              String?
+  firstName             String?
+  role                  Role             @default(user)
+  status                UserStatus       @default(active)
+  subscriptionPlan      SubscriptionPlan @default(free)
+  subscriptionExpiresAt DateTime?
+  referralCode          String           @unique
+  referredById          String?
+  referredBy            User?            @relation("Referrals", fields: [referredById], references: [id])
+  referrals             User[]           @relation("Referrals")
+  notificationSettings  Json             @default("{}")
+  createdAt             DateTime         @default(now())
+  lastLogin             DateTime?
+
+  subscriptions      Subscription[]
+  payments           Payment[]
+  referralsSent      Referral[]       @relation("Referrer")
+  referralsReceived  Referral[]       @relation("Referred")
+  reviews            Review[]
+  leaderboardEntries LeaderboardEntry[]
+  signalsCreated     Signal[]
+  adminLogs          AdminLog[]
+
+  @@map("users")
+}
+
+model Signal {
+  id          String         @id @default(cuid())
+  pair        String
+  direction   SignalDirection
+  expiration  String
+  confidence  Int
+  type        SignalType     @default(ai)
+  entryPrice  Decimal?
+  result      SignalResult   @default(pending)
+  isPremium   Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  closedAt    DateTime?
+  createdById String?
+  createdBy   User?          @relation(fields: [createdById], references: [id])
+
+  @@map("signals")
+}
+
+model Subscription {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  plan      SubscriptionPlan
+  startDate DateTime         @default(now())
+  endDate   DateTime
+  paymentId String?
+  payment   Payment?         @relation(fields: [paymentId], references: [id])
+
+  @@map("subscriptions")
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  amount        Decimal
+  currency      String
+  status        PaymentStatus @default(pending)
+  txHash        String?
+  provider      String
+  createdAt     DateTime      @default(now())
+  confirmedAt   DateTime?
+
+  subscriptions Subscription[]
+
+  @@map("payments")
+}
+
+model Referral {
+  id           String       @id @default(cuid())
+  referrerId   String
+  referrer     User         @relation("Referrer", fields: [referrerId], references: [id])
+  referredId   String
+  referred     User         @relation("Referred", fields: [referredId], references: [id])
+  createdAt    DateTime     @default(now())
+  rewardAmount Decimal      @default(0)
+  rewardStatus RewardStatus @default(pending)
+
+  @@map("referrals")
+}
+
+model Review {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  text      String
+  rating    Int
+  status    ReviewStatus @default(hidden)
+  createdAt DateTime     @default(now())
+
+  @@map("reviews")
+}
+
+model Faq {
+  id       String  @id @default(cuid())
+  question String
+  answer   String
+  category String  @default("general")
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  @@map("faqs")
+}
+
+model LeaderboardEntry {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  period       String
+  signalsCount Int      @default(0)
+  successRate  Decimal  @default(0)
+  profit       Decimal  @default(0)
+  rank         Int
+  calculatedAt DateTime @default(now())
+
+  @@map("leaderboard_entries")
+}
+
+model ContentBlock {
+  id       String  @id @default(cuid())
+  type     String
+  title    String
+  body     Json    @default("{}")
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  @@map("content_blocks")
+}
+
+model AdminLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  admin      User     @relation(fields: [adminId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  details    Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@map("admin_logs")
+}
+

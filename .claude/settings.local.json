@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pip install -r requirements.txt)",
+      "Bash(pip install *)",
+      "Bash(python -c ' *)",
+      "Bash(python -c \"from config import settings; print\\('BOT_TOKEN OK:', settings.bot_token[:20]+'...'\\); print\\('CHANNEL_ID:', settings.channel_id\\)\")",
+      "Bash(python main.py)",
+      "Bash(taskkill /F /IM python.exe)",
+      "Bash(Get-Process python *)",
+      "Bash(Stop-Process -Force)",
+      "Bash(pkill -f \"python main.py\")",
+      "Bash(npm --version)",
+      "Bash(npx create-next-app@latest web-platform --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-turbopack)",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(npx shadcn@latest init --yes --base-color slate)",
+      "Bash(npx shadcn@latest init --yes)",
+      "Bash(npx shadcn@latest add button input label card badge tabs dialog dropdown-menu --yes)",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)"
+    ]
+  }
+}
