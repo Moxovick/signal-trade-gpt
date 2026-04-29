@@ -1,15 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #07070d;
+  --background: #08081a;
   --foreground: #e8e8f0;
   --accent: #f5c518;
   --accent-dim: rgba(245, 197, 24, 0.12);
   --accent-glow: rgba(245, 197, 24, 0.45);
   --green: #00e5a0;
+  --red: #ef4444;
   --muted: #3a3a50;
-  --card-bg: #0d0d18;
-  --border: rgba(255, 255, 255, 0.08);
+  --card-bg: #0e0e22;
+  --card-bg-hover: #121230;
+  --border: rgba(245, 197, 24, 0.08);
+  --border-bright: rgba(245, 197, 24, 0.2);
+  --surface: #0b0b1e;
 }
 
 @theme inline {
@@ -28,15 +32,130 @@ body {
   color: var(--foreground);
   font-family: var(--font-manrope, "Manrope", system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(245, 197, 24, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(245, 197, 24, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(0, 229, 160, 0.02) 0%, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* Grid pattern overlay */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    linear-gradient(rgba(245, 197, 24, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 197, 24, 0.015) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #0d0d18; }
-::-webkit-scrollbar-thumb { background: #2a2a40; border-radius: 3px; }
+::-webkit-scrollbar-track { background: #0b0b1e; }
+::-webkit-scrollbar-thumb { background: rgba(245, 197, 24, 0.25); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
+/* Animations */
 @keyframes scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
+
+@keyframes pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 197, 24, 0.4); }
+  50% { box-shadow: 0 0 20px 4px rgba(245, 197, 24, 0.15); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-pulse-gold {
+  animation: pulse-gold 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Premium card style */
+.card-premium {
+  background: linear-gradient(135deg, var(--card-bg) 0%, rgba(245, 197, 24, 0.04) 100%);
+  border: 1px solid var(--border-bright);
+  border-radius: 1rem;
+  backdrop-filter: blur(8px);
+}
+
+.card-premium:hover {
+  border-color: rgba(245, 197, 24, 0.35);
+  box-shadow: 0 0 30px rgba(245, 197, 24, 0.06);
+}
+
+/* Glass effect */
+.glass {
+  background: rgba(14, 14, 34, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(245, 197, 24, 0.1);
+}
+
+/* Gold text gradient */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #f5c518 0%, #ffd700 50%, #f0a500 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Shimmer loading */
+.shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(245, 197, 24, 0.08) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Signal card styles */
+.signal-card-call {
+  border-left: 3px solid var(--green);
+}
+
+.signal-card-put {
+  border-left: 3px solid var(--accent);
+}
+
+.signal-card-elite {
+  border: 1px solid rgba(245, 197, 24, 0.3);
+  background: linear-gradient(135deg, rgba(245, 197, 24, 0.05) 0%, var(--card-bg) 100%);
+}
+
+/* Logo animation */
+@keyframes logo-glow {
+  0%, 100% { text-shadow: 0 0 10px rgba(245, 197, 24, 0.3); }
+  50% { text-shadow: 0 0 20px rgba(245, 197, 24, 0.6), 0 0 40px rgba(245, 197, 24, 0.2); }
+}
+
+.logo-glow {
+  animation: logo-glow 3s ease-in-out infinite;
+}
+
+/* Tier badges */
+.tier-otc { background: rgba(136, 136, 255, 0.15); color: #8888ff; }
+.tier-exchange { background: rgba(0, 229, 160, 0.15); color: #00e5a0; }
+.tier-elite { background: rgba(245, 197, 24, 0.15); color: #f5c518; }
