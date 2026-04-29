@@ -1,149 +1,75 @@
-"use client";
-
-import { Suspense, useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+/**
+ * /login — v2.
+ *
+ * Primary path: Telegram Login Widget (works only when
+ * NEXT_PUBLIC_TELEGRAM_LOGIN_BOT is set + @BotFather domain is registered).
+ *
+ * Fallback: legacy email/password for v1 users that haven't migrated yet.
+ */
 import Link from "next/link";
+import { Suspense } from "react";
+import { ArrowLeft } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
+import { Card } from "@/components/ui/Card";
+import { TelegramLoginButton } from "@/components/auth/TelegramLoginButton";
+import { LegacyEmailLoginForm } from "./_components/LegacyEmailLoginForm";
 
-function LoginForm() {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(
-    params.get("error") ? "Неверный email или пароль" : null
-  );
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    setLoading(false);
-    if (res?.error) {
-      setError("Неверный email или пароль");
-    } else {
-      router.push("/dashboard");
-    }
-  }
+export default function LoginPage() {
+  const botUsername = process.env["NEXT_PUBLIC_TELEGRAM_LOGIN_BOT"];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#07070d] px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <h1
-            className="text-4xl font-black tracking-wider mb-2"
-            style={{ fontFamily: "var(--font-bebas)", color: "#f5c518" }}
-          >
-            SIGNAL TRADE GPT
-          </h1>
-          <p className="text-[#888] text-sm">Войдите в личный кабинет</p>
+        <div className="flex justify-center mb-8">
+          <Logo size="lg" />
         </div>
 
-        {/* Card */}
-        <div
-          className="rounded-2xl p-8 border"
-          style={{ background: "#0d0d18", borderColor: "rgba(255,255,255,0.08)" }}
-        >
-          <h2 className="text-xl font-semibold mb-6">Вход</h2>
+        <Card padding="lg">
+          <h1 className="text-2xl font-bold mb-2">Войти</h1>
+          <p className="text-sm text-[var(--t-2)] mb-6">
+            Используй Telegram — это быстрее и безопаснее, чем пароль.
+          </p>
 
-          {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-950/50 border border-red-800/50 text-red-400 text-sm">
-              {error}
-            </div>
-          )}
+          <div className="flex justify-center py-2">
+            {botUsername ? (
+              <Suspense>
+                <TelegramLoginButton botUsername={botUsername} />
+              </Suspense>
+            ) : (
+              <div className="text-xs text-[var(--t-3)] text-center px-4 py-3 rounded-xl border border-dashed border-[var(--b-soft)]">
+                Telegram Login пока не настроен (нужен <code>NEXT_PUBLIC_TELEGRAM_LOGIN_BOT</code>).
+                Используй email/пароль ниже.
+              </div>
+            )}
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm text-[#888] mb-1.5">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="your@email.com"
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-colors"
-                style={{
-                  background: "#111120",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  color: "#e8e8f0",
-                }}
-                onFocus={(e) =>
-                  (e.target.style.borderColor = "rgba(245,197,24,0.5)")
-                }
-                onBlur={(e) =>
-                  (e.target.style.borderColor = "rgba(255,255,255,0.08)")
-                }
-              />
-            </div>
+          <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-widest text-[var(--t-3)]">
+            <span className="flex-1 h-px bg-[var(--b-soft)]" />
+            или email
+            <span className="flex-1 h-px bg-[var(--b-soft)]" />
+          </div>
 
-            <div>
-              <label className="block text-sm text-[#888] mb-1.5">Пароль</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-colors"
-                style={{
-                  background: "#111120",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  color: "#e8e8f0",
-                }}
-                onFocus={(e) =>
-                  (e.target.style.borderColor = "rgba(245,197,24,0.5)")
-                }
-                onBlur={(e) =>
-                  (e.target.style.borderColor = "rgba(255,255,255,0.08)")
-                }
-              />
-            </div>
+          <Suspense>
+            <LegacyEmailLoginForm />
+          </Suspense>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-xl font-semibold text-sm transition-all mt-2"
-              style={{
-                background: loading ? "#8a7010" : "#f5c518",
-                color: "#07070d",
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
-            >
-              {loading ? "Входим..." : "Войти"}
-            </button>
-          </form>
-
-          <p className="text-center text-sm text-[#666] mt-6">
+          <p className="text-center text-sm text-[var(--t-3)] mt-6">
             Нет аккаунта?{" "}
-            <Link href="/register" className="text-[#f5c518] hover:underline">
+            <Link href="/register" className="text-[var(--brand-gold)] hover:underline">
               Зарегистрироваться
             </Link>
           </p>
-        </div>
+        </Card>
 
         <p className="text-center mt-6">
-          <Link href="/" className="text-sm text-[#555] hover:text-[#888]">
-            ← На главную
+          <Link
+            href="/"
+            className="text-sm text-[var(--t-3)] hover:text-[var(--t-1)] inline-flex items-center gap-1.5"
+          >
+            <ArrowLeft size={14} /> На главную
           </Link>
         </p>
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
   );
 }

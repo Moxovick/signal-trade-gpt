@@ -1,429 +1,350 @@
+/**
+ * Landing — v2
+ *
+ * Public-facing entry. Pitches the partnership flow:
+ *   1. Открой PocketOption по нашей ссылке
+ *   2. Внеси депозит — открой tier
+ *   3. Получай сигналы в Telegram-боте
+ *
+ * No subscription pricing. No emojis in headings. CTA: Telegram bot deep-link.
+ */
 import Link from "next/link";
-import { Logo } from "@/components/shared/Logo";
+import {
+  ArrowRight,
+  Sparkles,
+  Layers,
+  TrendingUp,
+  ShieldCheck,
+  Users,
+  CircleDollarSign,
+  Bot,
+  ChevronRight,
+} from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
+import { ButtonLink } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { TierBadge } from "@/components/ui/TierBadge";
+import { Stat } from "@/components/ui/Stat";
 
-const BOT_URL = process.env.NEXT_PUBLIC_BOT_URL ?? "https://t.me/traitsignaltsest_bot";
-
-const PAIRS = [
-  "EUR/USD +0.34%", "GBP/USD -0.12%", "USD/JPY +0.08%", "AUD/USD +0.22%",
-  "EUR/GBP -0.05%", "GBP/JPY +0.41%", "USD/CHF -0.18%", "NZD/USD +0.15%",
-  "EUR/JPY +0.28%", "AUD/JPY -0.09%", "USD/CAD +0.11%", "EUR/AUD -0.20%",
-];
+const BOT_URL =
+  process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/traitsignaltsest_bot";
 
 const TIERS = [
   {
-    id: "otc",
-    name: "OTC Угоди",
-    badge: "ДОСТУПНО",
-    desc: "Сигналы для OTC-рынка. Торгуйте когда биржи закрыты — 24/7 без ограничений.",
-    signals: [
-      { pair: "EUR/USD OTC", dir: "CALL", conf: 84, exp: "1 мин" },
-      { pair: "GBP/USD OTC", dir: "PUT", conf: 79, exp: "2 мин" },
-    ],
-    color: "#8888ff",
-    plan: "Free+",
+    tier: 0,
+    deposit: "$0",
+    name: "Демо",
+    perks: ["2 демо-сигнала за всё время", "Просмотр интерфейса бота"],
   },
   {
-    id: "exchange",
-    name: "Біржеві Угоди",
-    badge: "PREMIUM",
-    desc: "Реальные биржевые сигналы. Расширенный AI-анализ по 12 парам с повышенной точностью.",
-    signals: [
-      { pair: "EUR/USD", dir: "CALL", conf: 91, exp: "5 мин" },
-      { pair: "USD/JPY", dir: "PUT", conf: 88, exp: "2 мин" },
-    ],
-    color: "#00e5a0",
-    plan: "Premium",
+    tier: 1,
+    deposit: "$100",
+    name: "Starter",
+    perks: ["5 OTC-сигналов в день", "4 базовые пары", "Реферальная программа"],
   },
   {
-    id: "elite",
-    name: "Еліт Угоди",
-    badge: "ELITE",
-    desc: "Максимальный анализ. AI + экспертная аналитика. Персональный менеджер. Депозит от $500.",
-    signals: [
-      { pair: "EUR/USD", dir: "CALL", conf: 96, exp: "30 сек" },
-      { pair: "GBP/JPY", dir: "CALL", conf: 94, exp: "1 мин" },
-    ],
-    color: "#f5c518",
-    plan: "Elite ($500+)",
+    tier: 2,
+    deposit: "$500",
+    name: "Active",
+    perks: ["15 сигналов в день", "OTC + биржевые", "Все 12 пар"],
+  },
+  {
+    tier: 3,
+    deposit: "$2 000",
+    name: "Pro",
+    perks: ["25 сигналов в день", "Elite-уровень с confidence ≥90%", "Расширенная аналитика"],
+  },
+  {
+    tier: 4,
+    deposit: "$10 000",
+    name: "VIP",
+    perks: ["Безлимит сигналов", "Ранний доступ −60 сек", "Персональный менеджер"],
   },
 ];
 
 const STEPS = [
-  { num: "01", title: "ПОДКЛЮЧИ БОТА", desc: "Нажми /start в Telegram-боте. Регистрация за 10 секунд.", icon: "📱" },
-  { num: "02", title: "ВЫБЕРИ ТАРИФ", desc: "Free, Premium, VIP или Elite — каждый тариф раскрывает новые возможности.", icon: "💎" },
-  { num: "03", title: "ПОЛУЧИ СИГНАЛ", desc: "AI анализирует рынок и присылает CALL/PUT с AI Confidence в Telegram.", icon: "📊" },
-  { num: "04", title: "ТОРГУЙ И ЗАРАБАТЫВАЙ", desc: "Открывай сделку в Pocket Option. 1-3% депозита на сделку.", icon: "📈" },
-];
-
-const PLANS = [
   {
-    name: "FREE", desc: "Знакомство", price: "0", badge: null,
-    features: [
-      { text: "3–5 OTC сигналов в день", ok: true },
-      { text: "4 основных пары", ok: true },
-      { text: "Telegram уведомления", ok: true },
-      { text: "Реферальная 10%", ok: true },
-      { text: "Биржевые сигналы", ok: false },
-      { text: "Elite анализ", ok: false },
-    ],
-    featured: false, btnText: "Начать бесплатно",
+    n: "01",
+    title: "Открой счёт PocketOption",
+    desc: "По нашей реферальной ссылке. Бесплатно, 60 секунд.",
+    icon: ChevronRight,
   },
   {
-    name: "PREMIUM", desc: "Серьёзный трейдинг", price: "29", badge: "ПОПУЛЯРНЫЙ",
-    features: [
-      { text: "15–25 сигналов OTC + Биржа", ok: true },
-      { text: "Все 12 валютных пар", ok: true },
-      { text: "Расширенный AI Confidence", ok: true },
-      { text: "Email поддержка", ok: true },
-      { text: "Реферальная 15%", ok: true },
-      { text: "Elite анализ", ok: false },
-    ],
-    featured: true, btnText: "Подключить Premium →",
+    n: "02",
+    title: "Внеси депозит",
+    desc: "Чем выше депозит — тем сильнее перки. От $100 — Starter, от $500 — Active.",
+    icon: CircleDollarSign,
   },
   {
-    name: "VIP", desc: "Полный доступ", price: "79", badge: null,
-    features: [
-      { text: "Безлимит OTC + Биржа", ok: true },
-      { text: "Все пары + экзотика", ok: true },
-      { text: "Полная AI аналитика", ok: true },
-      { text: "Приоритет 24/7", ok: true },
-      { text: "Реферальная 20%", ok: true },
-      { text: "Elite (при депозите $500+)", ok: true },
-    ],
-    featured: false, btnText: "Подключить VIP →",
+    n: "03",
+    title: "Открой Telegram-бота",
+    desc: "Авторизация через Telegram. Бот сам подтянет твой счёт через PocketOption API.",
+    icon: Bot,
+  },
+  {
+    n: "04",
+    title: "Получай сигналы",
+    desc: "AI-анализ + реальные данные с PO. Открывай сделки прямо в один клик.",
+    icon: TrendingUp,
   },
 ];
 
-const REVIEWS = [
-  { name: "Алексей К.", plan: "VIP", text: "За 2 месяца вышел в стабильный плюс. AI confidence реально работает — на 90%+ практически всегда в деньгах.", rating: 5 },
-  { name: "Марина Р.", plan: "Premium", text: "С Signal Trade GPT наконец-то начала зарабатывать. Бот удобный, всё понятно с первого сигнала.", rating: 5 },
-  { name: "Дмитрий В.", plan: "Elite", text: "Elite сигналы — другой уровень. Анализ детальный, confidence 94%+. Окупил депозит за неделю.", rating: 5 },
-  { name: "Сергей П.", plan: "VIP", text: "Лучший бот для бинарных опционов. Реферальная программа тоже приносит доход. Спасибо команде!", rating: 5 },
-  { name: "Елена М.", plan: "Premium", text: "Удобный формат — сигнал пришёл, открыла сделку, заработала. AI делает всё за тебя.", rating: 4 },
-  { name: "Игорь Т.", plan: "Free", text: "Даже на бесплатном тарифе OTC-сигналы дают результат. Планирую брать Premium.", rating: 5 },
+const FEATURES = [
+  {
+    icon: Sparkles,
+    title: "AI Confidence на сигналах",
+    desc: "Каждый сигнал помечен уверенностью 73–96%. T3+ видят только ≥90%.",
+  },
+  {
+    icon: Layers,
+    title: "Tier по депозиту",
+    desc: "Никаких подписок. Внёс на свой счёт PO — открыл новый тир в боте.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Прозрачно и автоматически",
+    desc: "PocketOption присылает нам Postback — мы видим твой депозит и сразу прокачиваем доступ.",
+  },
+  {
+    icon: Users,
+    title: "Реферальная 5%",
+    desc: "Приглашай друзей по своей ссылке — получай 5% от их депозитов вторым уровнем.",
+  },
 ];
 
 const FAQS = [
-  { q: "Чем отличаются OTC, Биржевые и Elite сигналы?", a: "OTC — сигналы для внебиржевого рынка, доступны 24/7. Биржевые — для реального рынка в торговые часы. Elite — максимальный анализ AI + экспертов, доступен при депозите от $500." },
-  { q: "Как получить доступ к Elite сигналам?", a: "Оформите VIP или Elite подписку и внесите депозит от $500 на Pocket Option через нашу партнёрскую ссылку. После верификации депозита Elite-сигналы активируются автоматически." },
-  { q: "Какая точность сигналов?", a: "OTC: 82-85%, Биржевые: 85-89%, Elite: 90-96%. Средняя точность за 30 дней — 87.3% по всем тарифам." },
-  { q: "Есть промо-код для бесплатного доступа?", a: "Да! При регистрации введите промо-код — получите неделю бесплатных Premium-сигналов. Следите за нашим Telegram-каналом." },
-  { q: "Как работает реферальная программа?", a: "Поделитесь ссылкой — получайте 10% (Free), 15% (Premium), 20% (VIP/Elite) от каждого платежа приглашённых пользователей." },
+  {
+    q: "Я плачу подписку?",
+    a: "Нет. У нас нет подписок. Доступ к боту открывается автоматически по сумме твоего депозита на PocketOption.",
+  },
+  {
+    q: "Что если у меня уже есть аккаунт PocketOption?",
+    a: "Можно привязать существующий ID в личном кабинете — мы свяжемся с PocketOption и проверим. Но бонусы тира откроются только после нового депозита через нашу ссылку.",
+  },
+  {
+    q: "Откуда такие сигналы?",
+    a: "AI-сигналы — генерируются на основе технического анализа и исторических данных. Это не финансовая рекомендация. Торговля бинарными опционами сопряжена с риском.",
+  },
+  {
+    q: "Как считается тир?",
+    a: "По общей сумме депозита: $100 — Starter, $500 — Active, $2 000 — Pro, $10 000 — VIP. Пороги настраивает админ.",
+  },
 ];
 
-export default function HomePage() {
+export default function LandingPage() {
   return (
-    <main className="min-h-screen relative z-10">
-      {/* ═══ NAV ═══ */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-3 glass">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/">
-            <Logo size="md" glow />
-          </Link>
-          <div className="hidden md:flex items-center gap-6 text-sm text-[#888]">
-            <a href="#signals" className="hover:text-[#f5c518] transition-colors">Сигналы</a>
-            <a href="#how" className="hover:text-[#f5c518] transition-colors">Как работает</a>
-            <a href="#pricing" className="hover:text-[#f5c518] transition-colors">Тарифы</a>
-            <Link href="/faq" className="hover:text-[#f5c518] transition-colors">FAQ</Link>
-            <Link href="/login" className="hover:text-[#f5c518] transition-colors">Войти</Link>
+    <>
+      {/* Header */}
+      <header className="sticky top-0 z-40 backdrop-blur-md border-b border-[var(--b-soft)] bg-[rgba(8,6,10,0.75)]">
+        <nav className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Logo size="md" />
+          <div className="hidden md:flex items-center gap-8 text-sm text-[var(--t-2)]">
+            <Link href="#how" className="hover:text-[var(--t-1)] transition-colors">
+              Как работает
+            </Link>
+            <Link href="#tiers" className="hover:text-[var(--t-1)] transition-colors">
+              Тиры
+            </Link>
+            <Link href="#faq" className="hover:text-[var(--t-1)] transition-colors">
+              FAQ
+            </Link>
+            <Link href="/login" className="hover:text-[var(--t-1)] transition-colors">
+              Войти
+            </Link>
           </div>
-          <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:scale-105 animate-pulse-gold" style={{ background: "#f5c518", color: "#08081a" }}>
-            Подключить бота →
-          </a>
-        </div>
-      </nav>
+          <ButtonLink href={BOT_URL} external size="sm" iconRight={<ArrowRight size={16} />}>
+            В Telegram
+          </ButtonLink>
+        </nav>
+      </header>
 
-      {/* ═══ HERO ═══ */}
-      <section className="pt-28 md:pt-36 pb-16 px-4 flex flex-col items-center text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-8 card-premium">
-          <span className="w-2 h-2 rounded-full bg-[#00e5a0] animate-pulse" />
-          <span className="text-gold-gradient">AI анализирует рынок 24/7</span>
-          <span className="text-[#666]">·</span>
-          <span style={{ color: "#00e5a0" }}>87% точность</span>
-        </div>
-
-        <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-wider mb-6 leading-none" style={{ fontFamily: "var(--font-bebas)" }}>
-          <span className="text-[#e8e8f0]">ТОРГУЙ</span>
-          <br />
-          <span className="text-gold-gradient">КАК ПРОФИ</span>
-          <br />
-          <span className="text-[#2a2a40]">С НУЛЯ</span>
-        </h1>
-
-        <p className="text-base md:text-lg text-[#888] max-w-xl mb-8 leading-relaxed">
-          Signal Trade GPT отправляет точные сигналы CALL/PUT для Pocket Option
-          прямо в Telegram. <span style={{ color: "#f5c518" }}>OTC · Биржевые · Elite</span> — выбирай свой уровень.
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-3 mb-8">
-          <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="px-8 py-4 rounded-2xl font-bold text-base transition-all hover:scale-105" style={{ background: "linear-gradient(135deg, #f5c518 0%, #f0a500 100%)", color: "#08081a" }}>
-            🚀 Подключить бота
-          </a>
-          <Link href="/register" className="px-8 py-4 rounded-2xl font-bold text-base card-premium hover:border-[#f5c518]/40 transition-all" style={{ color: "#f5c518" }}>
-            Создать аккаунт →
-          </Link>
-        </div>
-
-        {/* Trust block */}
-        <div className="flex items-center gap-4">
-          <div className="flex -space-x-2">
-            {["АК", "МР", "СП", "ДВ", "+"].map((av) => (
-              <div key={av} className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 border-[#08081a]" style={{ background: "#1a1a35", color: "#f5c518" }}>{av}</div>
-            ))}
+      <main className="relative">
+        {/* Hero */}
+        <section className="relative max-w-6xl mx-auto px-6 pt-20 pb-28 text-center">
+          <div className="inline-flex items-center gap-2 px-3 h-8 rounded-full text-xs uppercase tracking-widest border border-[var(--b-soft)] text-[var(--brand-gold)] bg-[var(--bg-1)]">
+            <Sparkles size={12} />
+            <span>RevShare partnership · PocketOption</span>
           </div>
-          <div className="text-left text-sm">
-            <span className="text-[#e8e8f0] font-semibold">4 200+</span>{" "}
-            <span className="text-[#555]">трейдеров</span>
+          <h1 className="mt-8 text-5xl md:text-7xl font-bold leading-[1.05] text-shimmer">
+            Сигналы, открытые
             <br />
-            <span style={{ color: "#f5c518" }}>★★★★★</span>{" "}
-            <span className="text-[#555]">4.9 оценка</span>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ TICKER ═══ */}
-      <div className="overflow-hidden py-3 glass">
-        <div className="flex gap-8 animate-[scroll_30s_linear_infinite] whitespace-nowrap">
-          {[...PAIRS, ...PAIRS].map((p, i) => (
-            <span key={i} className="text-xs font-mono shrink-0" style={{ color: p.includes("+") ? "#00e5a0" : "#f5c518" }}>{p}</span>
-          ))}
-        </div>
-      </div>
-
-      {/* ═══ 3 SIGNAL TIERS ═══ */}
-      <section id="signals" className="py-16 md:py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-semibold mb-4 tier-elite">Типы сигналов</span>
-            <h2 className="text-4xl md:text-5xl font-black tracking-wider" style={{ fontFamily: "var(--font-bebas)" }}>
-              ТРОЙНАЯ СИСТЕМА <span className="text-gold-gradient">СИГНАЛОВ</span>
-            </h2>
-            <p className="text-[#888] mt-3 max-w-lg mx-auto">OTC угоди, Біржеві угоди и Еліт угоди — каждый тип для своего стиля торговли</p>
+            твоим депозитом
+          </h1>
+          <p className="mt-6 max-w-xl mx-auto text-lg text-[var(--t-2)]">
+            Никаких подписок. Открой счёт PocketOption по нашей ссылке —
+            и автоматически получай AI-сигналы в Telegram. Чем выше депозит — тем сильнее перки.
+          </p>
+          <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center items-center">
+            <ButtonLink
+              href={BOT_URL}
+              external
+              size="lg"
+              iconRight={<ArrowRight size={18} />}
+            >
+              Перейти в Telegram-бота
+            </ButtonLink>
+            <ButtonLink href="#tiers" variant="secondary" size="lg">
+              Посмотреть тиры
+            </ButtonLink>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {TIERS.map((tier) => (
-              <div key={tier.id} className="rounded-2xl p-6 border relative overflow-hidden group" style={{ background: "var(--card-bg)", borderColor: `${tier.color}22` }}>
-                <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: tier.color }} />
-                <div className="flex items-center gap-2 mb-4">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold tier-${tier.id}`}>{tier.badge}</span>
-                  <span className="text-xs text-[#555]">{tier.plan}</span>
-                </div>
-                <h3 className="text-lg font-bold mb-2" style={{ color: tier.color, fontFamily: "var(--font-bebas)", letterSpacing: "0.05em" }}>{tier.name}</h3>
-                <p className="text-xs text-[#888] mb-4 leading-relaxed">{tier.desc}</p>
-                <div className="space-y-2">
-                  {tier.signals.map((s) => (
-                    <div key={s.pair} className="rounded-lg p-3 flex items-center gap-3" style={{ background: "rgba(255,255,255,0.03)", borderLeft: `2px solid ${s.dir === "CALL" ? "#00e5a0" : "#f5c518"}` }}>
-                      <div className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: `${s.dir === "CALL" ? "#00e5a0" : "#f5c518"}15`, color: s.dir === "CALL" ? "#00e5a0" : "#f5c518" }}>
-                        {s.dir} {s.dir === "CALL" ? "⬆" : "⬇"}
-                      </div>
-                      <span className="text-sm font-mono font-semibold flex-1">{s.pair}</span>
-                      <div className="text-right">
-                        <div className="text-sm font-bold" style={{ color: "#f5c518" }}>{s.conf}%</div>
-                        <div className="text-[10px] text-[#555]">{s.exp}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+          {/* Stats */}
+          <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
+            <Stat value="87.3%" label="средняя точность" delta={{ value: "+1.2% за неделю" }} />
+            <Stat value="12 800+" label="трейдеров в боте" />
+            <Stat value="24/7" label="OTC-сигналы" />
+            <Stat value="5%" label="реферальный доход" />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ═══ STATS ═══ */}
-      <section className="py-12 px-4" style={{ background: "var(--surface)" }}>
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { value: "4.2K+", label: "Трейдеров", sub: "Активных прямо сейчас" },
-            { value: "14K+", label: "Сигналов", sub: "С момента запуска" },
-            { value: "87.3%", label: "Точность", sub: "За 30 дней" },
-            { value: "24/7", label: "OTC режим", sub: "Биржа: 08-22 UTC" },
-          ].map(({ value, label, sub }) => (
-            <div key={label} className="text-center p-5 card-premium rounded-2xl">
-              <div className="text-2xl md:text-3xl font-bold mb-1 text-gold-gradient" style={{ fontFamily: "var(--font-jetbrains)" }}>{value}</div>
-              <div className="text-sm font-medium text-[#ccc]">{label}</div>
-              <div className="text-xs text-[#555] mt-0.5">{sub}</div>
+        {/* How it works */}
+        <section id="how" className="max-w-6xl mx-auto px-6 py-24">
+          <div className="text-center mb-16">
+            <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
+              Процесс
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ═══ HOW IT WORKS ═══ */}
-      <section id="how" className="py-16 md:py-20 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-semibold mb-4 tier-exchange">Как это работает</span>
-            <h2 className="text-4xl md:text-5xl font-black tracking-wider" style={{ fontFamily: "var(--font-bebas)" }}>
-              4 ШАГА ДО <span className="text-gold-gradient">ПРОФИТА</span>
-            </h2>
+            <h2 className="text-4xl md:text-5xl font-bold">Как это работает</h2>
           </div>
-          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
-            {STEPS.map((step) => (
-              <div key={step.num} className="card-premium rounded-2xl p-5 text-center hover:scale-[1.02] transition-transform">
-                <div className="text-3xl mb-3">{step.icon}</div>
-                <div className="text-xs font-mono mb-2 text-gold-gradient">{step.num}</div>
-                <h3 className="font-bold text-sm mb-2" style={{ fontFamily: "var(--font-bebas)", letterSpacing: "0.05em" }}>{step.title}</h3>
-                <p className="text-xs text-[#888] leading-relaxed">{step.desc}</p>
-              </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {STEPS.map((s) => (
+              <Card key={s.n} hover padding="md">
+                <div
+                  className="text-xs font-mono text-[var(--t-3)] mb-4"
+                  style={{ fontFamily: "var(--font-jetbrains)" }}
+                >
+                  {s.n}
+                </div>
+                <s.icon size={28} className="text-[var(--brand-gold)] mb-4" />
+                <h3 className="text-lg font-semibold mb-2">{s.title}</h3>
+                <p className="text-sm text-[var(--t-2)] leading-relaxed">{s.desc}</p>
+              </Card>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ═══ PRICING ═══ */}
-      <section id="pricing" className="py-16 md:py-20 px-4" style={{ background: "var(--surface)" }}>
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-semibold mb-4 tier-elite">Тарифы</span>
-            <h2 className="text-4xl md:text-5xl font-black tracking-wider" style={{ fontFamily: "var(--font-bebas)" }}>ВЫБЕРИ СВОЙ <span className="text-gold-gradient">ПЛАН</span></h2>
-            <p className="text-[#888] mt-3">Начни бесплатно. Масштабируйся до Elite.</p>
+        {/* Tiers */}
+        <section id="tiers" className="max-w-6xl mx-auto px-6 py-24">
+          <div className="text-center mb-16">
+            <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
+              Перки по депозиту
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold">5 тиров доступа</h2>
+            <p className="mt-4 text-[var(--t-2)] max-w-xl mx-auto">
+              Каждый тир открывает новые возможности бота. Тиры и пороги — гибкие, админ может их менять.
+            </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {PLANS.map((plan) => (
-              <div key={plan.name} className={`relative rounded-2xl p-6 border flex flex-col ${plan.featured ? "signal-card-elite" : ""}`} style={{ background: plan.featured ? "linear-gradient(180deg, rgba(245,197,24,0.06) 0%, var(--card-bg) 100%)" : "var(--card-bg)", borderColor: plan.featured ? "rgba(245,197,24,0.3)" : "var(--border)" }}>
-                {plan.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-bold" style={{ background: "linear-gradient(135deg, #f5c518, #f0a500)", color: "#08081a" }}>⚡ {plan.badge}</div>
-                )}
-                <h3 className="text-xl font-black tracking-wider mt-2" style={{ fontFamily: "var(--font-bebas)", color: plan.featured ? "#f5c518" : "#e8e8f0" }}>{plan.name}</h3>
-                <p className="text-xs text-[#666] mb-4">{plan.desc}</p>
-                <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-sm text-[#888]">$</span>
-                  <span className="text-5xl font-bold text-gold-gradient" style={{ fontFamily: "var(--font-jetbrains)" }}>{plan.price}</span>
-                  <span className="text-sm text-[#666]">/мес</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            {TIERS.map((t) => (
+              <Card
+                key={t.tier}
+                variant={t.tier === 4 ? "highlight" : "default"}
+                hover
+                padding="md"
+                className="flex flex-col"
+              >
+                <TierBadge tier={t.tier} size="sm" />
+                <div
+                  className="mt-4 text-3xl font-bold"
+                  style={{ fontFamily: "var(--font-jetbrains)" }}
+                >
+                  {t.deposit}
                 </div>
-                <div className="space-y-2 flex-1 mb-6">
-                  {plan.features.map(({ text, ok }) => (
-                    <div key={text} className="flex items-start gap-2 text-sm">
-                      <span style={{ color: ok ? "#00e5a0" : "#333" }}>{ok ? "✓" : "✗"}</span>
-                      <span style={{ color: ok ? "#ccc" : "#333" }}>{text}</span>
-                    </div>
+                <div className="mt-1 text-xs uppercase tracking-wider text-[var(--t-3)]">
+                  Депозит
+                </div>
+                <ul className="mt-5 space-y-2 text-sm flex-1">
+                  {t.perks.map((p) => (
+                    <li key={p} className="flex gap-2 text-[var(--t-2)]">
+                      <span className="text-[var(--brand-gold)] mt-0.5">•</span>
+                      {p}
+                    </li>
                   ))}
-                </div>
-                <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="block text-center py-3 rounded-xl font-semibold text-sm transition-all hover:scale-[1.02]" style={{ background: plan.featured ? "linear-gradient(135deg, #f5c518, #f0a500)" : "transparent", color: plan.featured ? "#08081a" : "#f5c518", border: plan.featured ? "none" : "1px solid rgba(245,197,24,0.2)" }}>{plan.btnText}</a>
-              </div>
+                </ul>
+              </Card>
             ))}
           </div>
-          <div className="text-center mt-6">
-            <Link href="/pricing" className="text-sm text-[#f5c518] hover:underline">Полное сравнение тарифов →</Link>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ═══ REVIEWS ═══ */}
-      <section className="py-16 md:py-20 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-10">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-semibold mb-4 tier-exchange">Отзывы</span>
-            <h2 className="text-4xl md:text-5xl font-black tracking-wider" style={{ fontFamily: "var(--font-bebas)" }}>
-              ЧТО ГОВОРЯТ <span className="text-gold-gradient">ТРЕЙДЕРЫ</span>
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-4">
-            {REVIEWS.map((r) => (
-              <div key={r.name} className="card-premium rounded-2xl p-5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "linear-gradient(135deg, #f5c518, #f0a500)", color: "#08081a" }}>{r.name[0]}</div>
+        {/* Features */}
+        <section className="max-w-6xl mx-auto px-6 py-24">
+          <div className="grid md:grid-cols-2 gap-5">
+            {FEATURES.map((f) => (
+              <Card key={f.title} padding="lg" hover>
+                <div className="flex items-start gap-4">
+                  <div
+                    className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0"
+                    style={{
+                      background: "rgba(212, 160, 23, 0.08)",
+                      border: "1px solid var(--b-soft)",
+                    }}
+                  >
+                    <f.icon size={22} className="text-[var(--brand-gold)]" />
+                  </div>
                   <div>
-                    <p className="text-sm font-medium">{r.name}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold tier-${r.plan.toLowerCase()}`}>{r.plan}</span>
+                    <h3 className="text-xl font-semibold mb-1">{f.title}</h3>
+                    <p className="text-[var(--t-2)] leading-relaxed">{f.desc}</p>
                   </div>
                 </div>
-                <div className="mb-2 text-sm" style={{ color: "#f5c518" }}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</div>
-                <p className="text-sm text-[#999] leading-relaxed">{r.text}</p>
-              </div>
+              </Card>
             ))}
           </div>
-          <div className="text-center mt-6">
-            <Link href="/reviews" className="text-sm text-[#f5c518] hover:underline">Все отзывы →</Link>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ═══ FAQ ═══ */}
-      <section id="faq" className="py-16 md:py-20 px-4" style={{ background: "var(--surface)" }}>
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-10">
-            <span className="inline-block px-4 py-1 rounded-full text-xs font-semibold mb-4 tier-otc">FAQ</span>
-            <h2 className="text-4xl md:text-5xl font-black tracking-wider" style={{ fontFamily: "var(--font-bebas)" }}>ЧАСТО <span className="text-gold-gradient">ЗАДАЮТ</span></h2>
+        {/* FAQ */}
+        <section id="faq" className="max-w-3xl mx-auto px-6 py-24">
+          <div className="text-center mb-12">
+            <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
+              FAQ
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold">Частые вопросы</h2>
           </div>
           <div className="space-y-3">
-            {FAQS.map((faq) => (
-              <details key={faq.q} className="group card-premium rounded-2xl overflow-hidden">
-                <summary className="flex items-center justify-between p-5 cursor-pointer text-sm font-medium hover:text-[#f5c518] transition-colors list-none">
-                  {faq.q}
-                  <span className="text-[#555] group-open:rotate-45 transition-transform text-lg shrink-0 ml-4">+</span>
+            {FAQS.map((f) => (
+              <details
+                key={f.q}
+                className="group rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] open:border-[var(--b-hard)] transition-colors"
+              >
+                <summary className="cursor-pointer list-none px-6 py-5 flex items-center justify-between gap-4 text-[var(--t-1)] font-medium">
+                  <span>{f.q}</span>
+                  <ChevronRight
+                    size={18}
+                    className="shrink-0 text-[var(--brand-gold)] transition-transform group-open:rotate-90"
+                  />
                 </summary>
-                <div className="px-5 pb-5 text-sm text-[#888] leading-relaxed">{faq.a}</div>
+                <div className="px-6 pb-6 text-[var(--t-2)] leading-relaxed">{f.a}</div>
               </details>
             ))}
           </div>
-          <div className="text-center mt-6">
-            <Link href="/faq" className="text-sm text-[#f5c518] hover:underline">Все вопросы →</Link>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ═══ CTA ═══ */}
-      <section className="py-16 md:py-20 px-4 text-center relative overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-[500px] h-[500px] rounded-full opacity-15" style={{ background: "radial-gradient(circle, #f5c518 0%, transparent 60%)" }} />
-        </div>
-        <div className="relative z-10">
-          <h2 className="text-5xl md:text-7xl font-black tracking-wider mb-6" style={{ fontFamily: "var(--font-bebas)" }}>
-            НАЧНИ <span className="text-gold-gradient">ТОРГОВАТЬ</span> СЕГОДНЯ
-          </h2>
-          <p className="text-[#888] max-w-lg mx-auto mb-8">
-            4 200+ трейдеров уже получают сигналы. OTC, Биржевые, Elite — выбери свой уровень.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-            <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="px-8 py-4 rounded-2xl font-bold text-base transition-all hover:scale-105" style={{ background: "linear-gradient(135deg, #f5c518, #f0a500)", color: "#08081a" }}>🚀 Подключить бота</a>
-            <Link href="/register" className="px-8 py-4 rounded-2xl font-bold text-base card-premium transition-all" style={{ color: "#f5c518" }}>Создать аккаунт →</Link>
-          </div>
-          <p className="text-xs text-[#555]">✓ Промо-код при регистрации &ensp;·&ensp; ✓ Без привязки карты &ensp;·&ensp; ✓ Поддержка 24/7</p>
-        </div>
-      </section>
+        {/* CTA */}
+        <section className="max-w-4xl mx-auto px-6 py-20 text-center">
+          <Card variant="highlight" padding="lg">
+            <h2 className="text-3xl md:text-4xl font-bold">Готов начать?</h2>
+            <p className="mt-4 text-[var(--t-2)]">
+              Открой счёт PocketOption и сразу получишь демо-сигналы в боте.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+              <ButtonLink href={BOT_URL} external size="lg" iconRight={<ArrowRight size={18} />}>
+                Перейти в Telegram
+              </ButtonLink>
+              <ButtonLink href="/register" variant="secondary" size="lg">
+                Регистрация на сайте
+              </ButtonLink>
+            </div>
+          </Card>
+        </section>
 
-      {/* ═══ FOOTER ═══ */}
-      <footer className="px-4 py-12 glass">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div className="col-span-2 md:col-span-1">
+        {/* Footer */}
+        <footer className="border-t border-[var(--b-soft)] mt-24">
+          <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
             <Logo size="sm" />
-            <p className="text-xs text-[#555] leading-relaxed mt-3">AI-платформа для генерации торговых сигналов для Pocket Option. OTC · Биржевые · Elite.</p>
+            <p className="text-xs text-[var(--t-3)] max-w-md leading-relaxed">
+              Signal Trade GPT не является финансовым советником. Сигналы предоставляются в информационных целях. Торговля бинарными опционами сопряжена с высоким риском потери средств.
+            </p>
           </div>
-          <div>
-            <h5 className="text-sm font-semibold mb-3 text-[#888]">Продукт</h5>
-            <div className="space-y-2">
-              <a href="#signals" className="block text-xs text-[#555] hover:text-[#f5c518]">Сигналы</a>
-              <Link href="/how-it-works" className="block text-xs text-[#555] hover:text-[#f5c518]">Как работает</Link>
-              <Link href="/pricing" className="block text-xs text-[#555] hover:text-[#f5c518]">Тарифы</Link>
-              <Link href="/faq" className="block text-xs text-[#555] hover:text-[#f5c518]">FAQ</Link>
-            </div>
-          </div>
-          <div>
-            <h5 className="text-sm font-semibold mb-3 text-[#888]">Поддержка</h5>
-            <div className="space-y-2">
-              <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="block text-xs text-[#555] hover:text-[#f5c518]">Telegram-бот</a>
-              <Link href="/reviews" className="block text-xs text-[#555] hover:text-[#f5c518]">Отзывы</Link>
-              <Link href="/register" className="block text-xs text-[#555] hover:text-[#f5c518]">Регистрация</Link>
-            </div>
-          </div>
-          <div>
-            <h5 className="text-sm font-semibold mb-3 text-[#888]">Партнёры</h5>
-            <div className="space-y-2">
-              <a href="https://pocketoption.com" target="_blank" rel="noopener noreferrer" className="block text-xs text-[#555] hover:text-[#f5c518]">Pocket Option</a>
-              <Link href="/dashboard/referrals" className="block text-xs text-[#555] hover:text-[#f5c518]">Реферальная программа</Link>
-            </div>
-          </div>
-        </div>
-        <div className="max-w-5xl mx-auto mt-8 pt-6 border-t flex flex-col md:flex-row items-center justify-between gap-4" style={{ borderColor: "rgba(245,197,24,0.08)" }}>
-          <div>
-            <p className="text-xs text-[#555]">© 2026 Signal Trade GPT. Все права защищены.</p>
-            <p className="text-[10px] text-[#333] mt-1 max-w-lg">Signal Trade GPT не является финансовым советником. Торговля сопряжена с высоким риском потери средств.</p>
-          </div>
-          <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full flex items-center justify-center text-sm card-premium hover:border-[#f5c518] transition-colors">✈</a>
-        </div>
-      </footer>
-    </main>
+        </footer>
+      </main>
+    </>
   );
 }
