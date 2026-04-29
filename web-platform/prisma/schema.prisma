@@ -7,6 +7,10 @@ datasource db {
   provider = "postgresql"
 }
 
+// ═══════════════════════════════════════
+// ENUMS
+// ═══════════════════════════════════════
+
 enum Role {
   user
   admin
@@ -22,6 +26,7 @@ enum SubscriptionPlan {
   free
   premium
   vip
+  elite
 }
 
 enum SignalDirection {
@@ -32,6 +37,13 @@ enum SignalDirection {
 enum SignalType {
   ai
   expert
+  manual
+}
+
+enum SignalTier {
+  otc
+  exchange
+  elite
 }
 
 enum SignalResult {
@@ -44,17 +56,36 @@ enum PaymentStatus {
   pending
   ok
   fail
+  refunded
 }
 
 enum RewardStatus {
   pending
   paid
+  cancelled
 }
 
 enum ReviewStatus {
   published
   hidden
+  moderation
 }
+
+enum DepositStatus {
+  pending
+  confirmed
+  rejected
+}
+
+enum PromoType {
+  trial
+  discount
+  bonus
+}
+
+// ═══════════════════════════════════════
+// MODELS
+// ═══════════════════════════════════════
 
 model User {
   id                    String           @id @default(cuid())
@@ -63,45 +94,72 @@ model User {
   telegramId            BigInt?          @unique
   username              String?
   firstName             String?
+  lastName              String?
+  phone                 String?
+  avatar                String?
   role                  Role             @default(user)
   status                UserStatus       @default(active)
   subscriptionPlan      SubscriptionPlan @default(free)
   subscriptionExpiresAt DateTime?
+  trialExpiresAt        DateTime?
   referralCode          String           @unique
   referredById          String?
   referredBy            User?            @relation("Referrals", fields: [referredById], references: [id])
   referrals             User[]           @relation("Referrals")
+  promoCodeUsedId       String?
+  promoCodeUsed         PromoCode?       @relation("PromoUsedBy", fields: [promoCodeUsedId], references: [id])
   notificationSettings  Json             @default("{}")
+  depositTotal          Decimal          @default(0)
+  signalsReceived       Int              @default(0)
+  eliteUnlocked         Boolean          @default(false)
+  lastSignalAt          DateTime?
   createdAt             DateTime         @default(now())
   lastLogin             DateTime?
+  utmSource             String?
+  utmMedium             String?
+  utmCampaign           String?
 
   subscriptions      Subscription[]
   payments           Payment[]
-  referralsSent      Referral[]       @relation("Referrer")
-  referralsReceived  Referral[]       @relation("Referred")
+  deposits           Deposit[]
+  referralsSent      Referral[]         @relation("Referrer")
+  referralsReceived  Referral[]         @relation("Referred")
   reviews            Review[]
   leaderboardEntries LeaderboardEntry[]
   signalsCreated     Signal[]
   adminLogs          AdminLog[]
+  activityLogs       ActivityLog[]
+  botMessages        BotMessage[]
 
+  @@index([subscriptionPlan])
+  @@index([createdAt])
+  @@index([referralCode])
   @@map("users")
 }
 
 model Signal {
-  id          String         @id @default(cuid())
+  id          String          @id @default(cuid())
   pair        String
   direction   SignalDirection
   expiration  String
   confidence  Int
-  type        SignalType     @default(ai)
+  type        SignalType      @default(ai)
+  tier        SignalTier      @default(otc)
   entryPrice  Decimal?
-  result      SignalResult   @default(pending)
-  isPremium   Boolean        @default(false)
-  createdAt   DateTime       @default(now())
+  exitPrice   Decimal?
+  result      SignalResult    @default(pending)
+  analysis    String?
+  reasoning   String?
+  chartData   Json?
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
   closedAt    DateTime?
   createdById String?
-  createdBy   User?          @relation(fields: [createdById], references: [id])
+  createdBy   User?           @relation(fields: [createdById], references: [id])
 
+  @@index([tier])
+  @@index([createdAt])
+  @@index([result])
   @@map("signals")
 }
 
@@ -112,9 +170,11 @@ model Subscription {
   plan      SubscriptionPlan
   startDate DateTime         @default(now())
   endDate   DateTime
+  isActive  Boolean          @default(true)
   paymentId String?
   payment   Payment?         @relation(fields: [paymentId], references: [id])
 
+  @@index([userId, isActive])
   @@map("subscriptions")
 }
 
@@ -123,16 +183,38 @@ model Payment {
   userId        String
   user          User          @relation(fields: [userId], references: [id])
   amount        Decimal
-  currency      String
+  currency      String        @default("USD")
   status        PaymentStatus @default(pending)
   txHash        String?
   provider      String
+  description   String?
+  metadata      Json          @default("{}")
   createdAt     DateTime      @default(now())
   confirmedAt   DateTime?
 
   subscriptions Subscription[]
 
+  @@index([userId])
+  @@index([status])
   @@map("payments")
+}
+
+model Deposit {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  amount       Decimal
+  currency     String        @default("USD")
+  platform     String        @default("pocket_option")
+  status       DepositStatus @default(pending)
+  proofUrl     String?
+  txHash       String?
+  confirmedAt  DateTime?
+  createdAt    DateTime      @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@map("deposits")
 }
 
 model Referral {
@@ -144,8 +226,28 @@ model Referral {
   createdAt    DateTime     @default(now())
   rewardAmount Decimal      @default(0)
   rewardStatus RewardStatus @default(pending)
+  level        Int          @default(1)
 
+  @@index([referrerId])
   @@map("referrals")
+}
+
+model PromoCode {
+  id             String    @id @default(cuid())
+  code           String    @unique
+  type           PromoType @default(trial)
+  description    String?
+  trialDays      Int       @default(7)
+  discountPercent Int?
+  maxUses        Int?
+  currentUses    Int       @default(0)
+  isActive       Boolean   @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  usedBy         User[]    @relation("PromoUsedBy")
+
+  @@map("promo_codes")
 }
 
 model Review {
@@ -154,9 +256,11 @@ model Review {
   user      User         @relation(fields: [userId], references: [id])
   text      String
   rating    Int
-  status    ReviewStatus @default(hidden)
+  status    ReviewStatus @default(moderation)
+  adminNote String?
   createdAt DateTime     @default(now())
 
+  @@index([status])
   @@map("reviews")
 }
 
@@ -182,18 +286,62 @@ model LeaderboardEntry {
   rank         Int
   calculatedAt DateTime @default(now())
 
+  @@index([period, rank])
   @@map("leaderboard_entries")
 }
 
 model ContentBlock {
   id       String  @id @default(cuid())
   type     String
+  slug     String  @unique
   title    String
   body     Json    @default("{}")
   order    Int     @default(0)
   isActive Boolean @default(true)
 
   @@map("content_blocks")
+}
+
+model BotTemplate {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  tier      SignalTier?
+  plan      SubscriptionPlan?
+  subject   String
+  body      String
+  variables Json     @default("[]")
+  isActive  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@map("bot_templates")
+}
+
+model BotMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  content   String
+  sentAt    DateTime @default(now())
+  delivered Boolean  @default(false)
+
+  @@index([userId, sentAt])
+  @@map("bot_messages")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  details   Json     @default("{}")
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("activity_logs")
 }
 
 model AdminLog {
@@ -206,6 +354,15 @@ model AdminLog {
   details    Json     @default("{}")
   createdAt  DateTime @default(now())
 
+  @@index([adminId, createdAt])
   @@map("admin_logs")
 }
 
+model SiteSettings {
+  id    String @id @default(cuid())
+  key   String @unique
+  value Json
+  label String?
+
+  @@map("site_settings")
+}
