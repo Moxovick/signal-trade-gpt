@@ -11,6 +11,8 @@ class User:
     referral_code: str
     referred_by: Optional[int] = None
     is_premium: bool = False
+    subscription_plan: str = "free"
+    promo_code_used: Optional[str] = None
     signals_received: int = 0
     joined_at: datetime = field(default_factory=datetime.utcnow)
 
@@ -22,6 +24,8 @@ class Signal:
     expiration: str
     confidence: int
     signal_type: str = "ai"
+    tier: str = "otc"  # otc | exchange | elite
+    analysis: Optional[str] = None
     result: Optional[str] = None  # win | loss | pending
     created_at: datetime = field(default_factory=datetime.utcnow)
     id: Optional[int] = None
@@ -36,6 +40,8 @@ CREATE TABLE IF NOT EXISTS users (
     referral_code TEXT UNIQUE NOT NULL,
     referred_by INTEGER REFERENCES users(telegram_id),
     is_premium BOOLEAN DEFAULT FALSE,
+    subscription_plan TEXT DEFAULT 'free',
+    promo_code_used TEXT,
     signals_received INTEGER DEFAULT 0
 );
 """
@@ -48,7 +54,22 @@ CREATE TABLE IF NOT EXISTS signals (
     expiration TEXT NOT NULL,
     confidence INTEGER NOT NULL,
     signal_type TEXT DEFAULT 'ai',
+    tier TEXT DEFAULT 'otc' CHECK(tier IN ('otc', 'exchange', 'elite')),
+    analysis TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     result TEXT CHECK(result IN ('win', 'loss', 'pending'))
+);
+"""
+
+CREATE_PROMO_TABLE = """
+CREATE TABLE IF NOT EXISTS promo_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT UNIQUE NOT NULL,
+    type TEXT DEFAULT 'trial',
+    trial_days INTEGER DEFAULT 7,
+    max_uses INTEGER,
+    current_uses INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 """
