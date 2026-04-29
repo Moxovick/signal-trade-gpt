@@ -1,16 +1,4 @@
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-
 export default async function LeaderboardPage() {
-  const session = await auth();
-
-  // Generate mock leaderboard from real users + fill with fictional entries
-  const realUsers = await prisma.user.findMany({
-    select: { id: true, email: true, firstName: true, subscriptionPlan: true },
-    take: 10,
-    orderBy: { createdAt: "asc" },
-  });
-
   const mockEntries = [
     { name: "Alex_Trade", plan: "vip", score: 94.2, signals: 847, rank: 1 },
     { name: "ProTrader_RU", plan: "vip", score: 91.8, signals: 763, rank: 2 },

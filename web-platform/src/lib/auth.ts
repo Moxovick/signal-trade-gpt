@@ -20,11 +20,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: { email: credentials.email as string },
         });
 
-        if (!user || user.status === "banned") return null;
+        if (!user || user.status === "banned" || !user.passwordHash) return null;
 
         const valid = await bcrypt.compare(
           credentials.password as string,
-          user.passwordHash
+          user.passwordHash,
         );
         if (!valid) return null;
 
@@ -33,12 +33,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           data: { lastLogin: new Date() },
         });
 
+        // Legacy v1 plans (free/premium/vip) coexist with v2 'elite'; the
+        // session type only carries v1 plans. v2 access is controlled by `tier`.
+        const legacyPlan =
+          user.subscriptionPlan === "free" ||
+          user.subscriptionPlan === "premium" ||
+          user.subscriptionPlan === "vip"
+            ? user.subscriptionPlan
+            : undefined;
+
         return {
           id: user.id,
-          email: user.email,
-          name: user.firstName ?? user.username ?? user.email,
+          email: user.email ?? "",
+          name: user.firstName ?? user.username ?? user.email ?? "user",
           role: user.role,
-          subscriptionPlan: user.subscriptionPlan,
+          subscriptionPlan: legacyPlan,
+          tier: user.tier,
         };
       },
     }),

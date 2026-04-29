@@ -18,8 +18,8 @@ export async function GET(req: NextRequest) {
   const limit = Number(searchParams.get("limit") ?? 20);
   const tierFilter = searchParams.get("tier");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userPlan = ((session.user as any).subscriptionPlan as string) ?? "free";
+   
+  const userPlan = (session.user.subscriptionPlan as string) ?? "free";
   const allowedTiers = TIER_ACCESS[userPlan] ?? ["otc"];
 
   const where = {
@@ -60,8 +60,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!session || (session.user as any).role !== "admin") {
+   
+  if (!session || session.user.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

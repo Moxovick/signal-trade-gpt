@@ -4,8 +4,8 @@ import { auth } from "@/lib/auth";
 
 async function isAdmin() {
   const session = await auth();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return session?.user && (session.user as any).role === "admin";
+   
+  return session?.user && session.user.role === "admin";
 }
 
 export async function GET(req: Request) {

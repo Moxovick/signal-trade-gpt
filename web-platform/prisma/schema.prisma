@@ -83,14 +83,29 @@ enum PromoType {
   bonus
 }
 
+enum POAccountStatus {
+  pending
+  verified
+  rejected
+}
+
+enum PostbackEvent {
+  registration
+  email_confirm
+  ftd
+  redeposit
+  commission
+}
+
 // ═══════════════════════════════════════
 // MODELS
 // ═══════════════════════════════════════
 
 model User {
   id                    String           @id @default(cuid())
-  email                 String           @unique
-  passwordHash          String
+  email                 String?          @unique
+  /// DEPRECATED v2: registration is now Telegram OAuth only.
+  passwordHash          String?
   telegramId            BigInt?          @unique
   username              String?
   firstName             String?
@@ -99,13 +114,19 @@ model User {
   avatar                String?
   role                  Role             @default(user)
   status                UserStatus       @default(active)
+  /// DEPRECATED v2: monetization moved to PocketOption RevShare; see User.tier.
   subscriptionPlan      SubscriptionPlan @default(free)
+  /// DEPRECATED v2.
   subscriptionExpiresAt DateTime?
+  /// DEPRECATED v2.
   trialExpiresAt        DateTime?
+  /// Current tier 0..4, recomputed on every PocketOption postback.
+  tier                  Int              @default(0)
   referralCode          String           @unique
   referredById          String?
   referredBy            User?            @relation("Referrals", fields: [referredById], references: [id])
   referrals             User[]           @relation("Referrals")
+  /// DEPRECATED v2.
   promoCodeUsedId       String?
   promoCodeUsed         PromoCode?       @relation("PromoUsedBy", fields: [promoCodeUsedId], references: [id])
   notificationSettings  Json             @default("{}")
@@ -119,11 +140,12 @@ model User {
   utmMedium             String?
   utmCampaign           String?
 
+  poAccount          PocketOptionAccount?
   subscriptions      Subscription[]
   payments           Payment[]
   deposits           Deposit[]
-  referralsSent      Referral[]         @relation("Referrer")
-  referralsReceived  Referral[]         @relation("Referred")
+  referralsSent      Referral[]           @relation("Referrer")
+  referralsReceived  Referral[]           @relation("Referred")
   reviews            Review[]
   leaderboardEntries LeaderboardEntry[]
   signalsCreated     Signal[]
@@ -131,6 +153,7 @@ model User {
   activityLogs       ActivityLog[]
   botMessages        BotMessage[]
 
+  @@index([tier])
   @@index([subscriptionPlan])
   @@index([createdAt])
   @@index([referralCode])
@@ -179,18 +202,18 @@ model Subscription {
 }
 
 model Payment {
-  id            String        @id @default(cuid())
-  userId        String
-  user          User          @relation(fields: [userId], references: [id])
-  amount        Decimal
-  currency      String        @default("USD")
-  status        PaymentStatus @default(pending)
-  txHash        String?
-  provider      String
-  description   String?
-  metadata      Json          @default("{}")
-  createdAt     DateTime      @default(now())
-  confirmedAt   DateTime?
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  amount      Decimal
+  currency    String        @default("USD")
+  status      PaymentStatus @default(pending)
+  txHash      String?
+  provider    String
+  description String?
+  metadata    Json          @default("{}")
+  createdAt   DateTime      @default(now())
+  confirmedAt DateTime?
 
   subscriptions Subscription[]
 
@@ -200,17 +223,22 @@ model Payment {
 }
 
 model Deposit {
-  id           String        @id @default(cuid())
-  userId       String
-  user         User          @relation(fields: [userId], references: [id])
-  amount       Decimal
-  currency     String        @default("USD")
-  platform     String        @default("pocket_option")
-  status       DepositStatus @default(pending)
-  proofUrl     String?
-  txHash       String?
-  confirmedAt  DateTime?
-  createdAt    DateTime      @default(now())
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  amount      Decimal
+  currency    String        @default("USD")
+  platform    String        @default("pocket_option")
+  status      DepositStatus @default(pending)
+  /// DEPRECATED v2: verification is automated via PocketOption postbacks.
+  proofUrl    String?
+  txHash      String?
+  /// Linked postback (for FTD / redeposit events). Null for legacy/manual rows.
+  postbackId  String?       @unique
+  postback    Postback?     @relation(fields: [postbackId], references: [id])
+  isFirst     Boolean       @default(false)
+  confirmedAt DateTime?
+  createdAt   DateTime      @default(now())
 
   @@index([userId])
   @@index([status])
@@ -233,19 +261,19 @@ model Referral {
 }
 
 model PromoCode {
-  id             String    @id @default(cuid())
-  code           String    @unique
-  type           PromoType @default(trial)
-  description    String?
-  trialDays      Int       @default(7)
+  id              String    @id @default(cuid())
+  code            String    @unique
+  type            PromoType @default(trial)
+  description     String?
+  trialDays       Int       @default(7)
   discountPercent Int?
-  maxUses        Int?
-  currentUses    Int       @default(0)
-  isActive       Boolean   @default(true)
-  expiresAt      DateTime?
-  createdAt      DateTime  @default(now())
+  maxUses         Int?
+  currentUses     Int       @default(0)
+  isActive        Boolean   @default(true)
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
 
-  usedBy         User[]    @relation("PromoUsedBy")
+  usedBy User[] @relation("PromoUsedBy")
 
   @@map("promo_codes")
 }
@@ -303,16 +331,16 @@ model ContentBlock {
 }
 
 model BotTemplate {
-  id        String   @id @default(cuid())
-  name      String   @unique
+  id        String            @id @default(cuid())
+  name      String            @unique
   tier      SignalTier?
   plan      SubscriptionPlan?
   subject   String
   body      String
-  variables Json     @default("[]")
-  isActive  Boolean  @default(true)
-  updatedAt DateTime @updatedAt
-  createdAt DateTime @default(now())
+  variables Json              @default("[]")
+  isActive  Boolean           @default(true)
+  updatedAt DateTime          @updatedAt
+  createdAt DateTime          @default(now())
 
   @@map("bot_templates")
 }
@@ -359,10 +387,89 @@ model AdminLog {
 }
 
 model SiteSettings {
-  id    String @id @default(cuid())
-  key   String @unique
+  id    String  @id @default(cuid())
+  key   String  @unique
   value Json
   label String?
 
   @@map("site_settings")
+}
+
+// ═══════════════════════════════════════
+// V2 — POCKET OPTION INTEGRATION & TIER PERKS
+// ═══════════════════════════════════════
+
+model PocketOptionAccount {
+  id               String          @id @default(cuid())
+  userId           String          @unique
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poTraderId       String          @unique
+  status           POAccountStatus @default(pending)
+  /// "postback" (auto-verified) | "manual" (user submitted, pending) | "admin" (admin-attached)
+  source           String          @default("postback")
+  /// Sub-affiliate level: 1 = direct referral, 2 = sub-affiliate (5% line).
+  affiliateLevel   Int             @default(1)
+  registeredAt     DateTime?
+  emailConfirmedAt DateTime?
+  ftdAt            DateTime?
+  ftdAmount        Decimal?
+  totalDeposit     Decimal         @default(0)
+  totalRevShare    Decimal         @default(0)
+  lastPostbackAt   DateTime?
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  postbacks Postback[]
+
+  @@index([poTraderId])
+  @@index([status])
+  @@map("po_accounts")
+}
+
+model Postback {
+  id          String               @id @default(cuid())
+  poAccountId String?
+  poAccount   PocketOptionAccount? @relation(fields: [poAccountId], references: [id], onDelete: SetNull)
+  eventType   PostbackEvent
+  rawPayload  Json
+  /// click_id passed in our referral link == User.id of the lead.
+  clickId     String?
+  poTraderId  String?
+  amount      Decimal?
+  currency    String?
+  receivedAt  DateTime             @default(now())
+  /// Optional HMAC signature, if PocketOption provides one.
+  signature   String?
+  /// Idempotency key to deduplicate replays: hash(eventType + traderId + amount + receivedAt-rounded).
+  dedupeKey   String               @unique
+
+  deposit Deposit?
+
+  @@index([poTraderId])
+  @@index([receivedAt])
+  @@index([eventType])
+  @@map("postbacks")
+}
+
+/// Atomic perk that gets unlocked at a given tier. CRUD-able from the admin
+/// without a release. The `code` is the stable identifier the bot/UI checks.
+model BotPerk {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String
+  minTier     Int      @default(1)
+  /// JSON config consumed by callers. Examples:
+  ///   {"daily": 5}                 — daily limit
+  ///   {"lead_seconds": 60}         — early access window
+  ///   {"per_ftd": 5}               — referral bonus
+  ///   {"confidence_min": 90}       — signal filter
+  config      Json     @default("{}")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([minTier, isActive])
+  @@map("bot_perks")
 }

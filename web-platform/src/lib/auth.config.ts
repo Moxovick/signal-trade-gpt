@@ -15,18 +15,22 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.role = (user as Record<string, unknown>).role;
-        token.subscriptionPlan = (user as Record<string, unknown>).subscriptionPlan;
+        token.id = user.id ?? "";
+        token.role = user.role ?? "user";
+        token.subscriptionPlan = user.subscriptionPlan;
+        token.tier = user.tier;
       }
       return token;
     },
     session({ session, token }) {
-      session.user.id = token.id as string;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (session.user as any).role = token.role;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (session.user as any).subscriptionPlan = token.subscriptionPlan;
+      session.user.id = String(token.id ?? "");
+      session.user.role = (token.role as "user" | "admin") ?? "user";
+      session.user.subscriptionPlan = token.subscriptionPlan as
+        | "free"
+        | "premium"
+        | "vip"
+        | undefined;
+      session.user.tier = (token.tier as number | undefined) ?? 0;
       return session;
     },
     authorized({ auth, request: { nextUrl } }) {

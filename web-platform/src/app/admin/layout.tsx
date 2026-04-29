@@ -17,8 +17,8 @@ const adminNav = [
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!session || (session.user as any).role !== "admin") {
+   
+  if (!session || session.user.role !== "admin") {
     redirect("/dashboard");
   }
 
