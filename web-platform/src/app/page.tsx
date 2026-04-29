@@ -25,6 +25,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { Stat } from "@/components/ui/Stat";
+import { LiveChart } from "@/components/market/LiveChart";
 
 const BOT_URL =
   process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/traitsignaltsest_bot";
@@ -195,6 +196,11 @@ export default function LandingPage() {
             <Stat value="24/7" label="OTC-сигналы" />
             <Stat value="5%" label="реферальный доход" />
           </div>
+        </section>
+
+        {/* Live chart */}
+        <section id="live" className="max-w-6xl mx-auto px-6 -mt-6">
+          <LiveChart />
         </section>
 
         {/* How it works */}
