@@ -20,13 +20,13 @@ def _main_keyboard(pocket_option_url: str) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🚀 Открыть Pocket Option",
+                    text="Открыть PocketOption",
                     url=pocket_option_url,
                 )
             ],
             [
-                InlineKeyboardButton(text="👤 Мой профиль", callback_data="profile"),
-                InlineKeyboardButton(text="📊 Статистика", callback_data="stats"),
+                InlineKeyboardButton(text="Мой tier", callback_data="tier"),
+                InlineKeyboardButton(text="Привязать ID", callback_data="link"),
             ],
         ]
     )
@@ -38,11 +38,11 @@ async def cmd_start(message: Message) -> None:
     first_name = message.from_user.first_name or "Трейдер"
     username = message.from_user.username
 
-    # Extract referral code from /start payload
+    # Extract referral code from /start payload (e.g. /start ref_XXX or /start XXX).
     referred_by: int | None = None
     args = message.text.split(maxsplit=1)
     if len(args) > 1:
-        ref_code = args[1]
+        ref_code = args[1].removeprefix("ref_")
         referrer = await get_user_by_referral_code(ref_code)
         if referrer and referrer.telegram_id != user_id:
             referred_by = referrer.telegram_id
@@ -75,12 +75,14 @@ async def cmd_start(message: Message) -> None:
 @router.message(Command("help"))
 async def cmd_help(message: Message) -> None:
     await message.answer(
-        "📖 <b>Команды Signal Trade GPT</b>\n"
+        "<b>Команды Signal Trade GPT</b>\n"
         "\n"
-        "/start — Начать работу с ботом\n"
-        "/stats — Общая статистика платформы\n"
-        "/mystats — Моя личная статистика\n"
-        "/referral — Моя реферальная ссылка\n"
-        "/help — Это сообщение\n",
+        "/start — начать работу с ботом\n"
+        "/tier — твой текущий tier и лимиты\n"
+        "/link — привязать аккаунт PocketOption\n"
+        "/signal — получить демо-сигнал (T0)\n"
+        "/stats — общая статистика платформы\n"
+        "/ref — реферальная ссылка\n"
+        "/help — это сообщение\n",
         parse_mode=ParseMode.HTML,
     )

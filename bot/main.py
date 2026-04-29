@@ -10,7 +10,7 @@ from aiogram.enums import ParseMode
 
 from config import settings
 from database.db import init_db
-from handlers import start, stats, signals
+from handlers import start, stats, signals, link
 from services.scheduler import signal_loop
 
 logging.basicConfig(
@@ -58,6 +58,7 @@ async def main() -> None:
     dp.include_router(start.router)
     dp.include_router(stats.router)
     dp.include_router(signals.router)
+    dp.include_router(link.router)
 
     # Start signal loop in background
     loop_task = asyncio.create_task(signal_loop(bot))

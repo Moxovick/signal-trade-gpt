@@ -4,11 +4,24 @@ from typing import Optional
 
 import aiosqlite
 
-from database.models import CREATE_USERS_TABLE, CREATE_SIGNALS_TABLE, User, Signal
+from database.models import (
+    CREATE_USERS_TABLE,
+    CREATE_SIGNALS_TABLE,
+    User,
+    Signal,
+)
 
 logger = logging.getLogger(__name__)
 
 DB_PATH = Path("data/bot.db")
+
+
+async def _ensure_column(db: aiosqlite.Connection, table: str, column: str, ddl: str) -> None:
+    """Idempotent ALTER TABLE — SQLite has no IF NOT EXISTS for columns."""
+    async with db.execute(f"PRAGMA table_info({table})") as cur:
+        cols = [r[1] for r in await cur.fetchall()]
+    if column not in cols:
+        await db.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
 
 
 async def init_db() -> None:
@@ -16,8 +29,25 @@ async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(CREATE_USERS_TABLE)
         await db.execute(CREATE_SIGNALS_TABLE)
+        # v2 migrations on existing dbs.
+        await _ensure_column(db, "users", "tier", "tier INTEGER DEFAULT 0")
+        await _ensure_column(db, "users", "po_trader_id", "po_trader_id TEXT")
         await db.commit()
     logger.info("Database initialized at %s", DB_PATH)
+
+
+def _row_to_user(row: aiosqlite.Row) -> User:
+    return User(
+        telegram_id=row["telegram_id"],
+        username=row["username"],
+        first_name=row["first_name"],
+        referral_code=row["referral_code"],
+        referred_by=row["referred_by"],
+        tier=row["tier"] if "tier" in row.keys() else 0,
+        po_trader_id=row["po_trader_id"] if "po_trader_id" in row.keys() else None,
+        is_premium=bool(row["is_premium"]),
+        signals_received=row["signals_received"],
+    )
 
 
 async def get_user(telegram_id: int) -> Optional[User]:
@@ -27,17 +57,7 @@ async def get_user(telegram_id: int) -> Optional[User]:
             "SELECT * FROM users WHERE telegram_id = ?", (telegram_id,)
         ) as cursor:
             row = await cursor.fetchone()
-            if row is None:
-                return None
-            return User(
-                telegram_id=row["telegram_id"],
-                username=row["username"],
-                first_name=row["first_name"],
-                referral_code=row["referral_code"],
-                referred_by=row["referred_by"],
-                is_premium=bool(row["is_premium"]),
-                signals_received=row["signals_received"],
-            )
+            return _row_to_user(row) if row else None
 
 
 async def create_user(user: User) -> None:
@@ -45,8 +65,9 @@ async def create_user(user: User) -> None:
         await db.execute(
             """
             INSERT OR IGNORE INTO users
-                (telegram_id, username, first_name, referral_code, referred_by, is_premium, signals_received)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (telegram_id, username, first_name, referral_code, referred_by,
+                 is_premium, signals_received, tier, po_trader_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user.telegram_id,
@@ -56,7 +77,27 @@ async def create_user(user: User) -> None:
                 user.referred_by,
                 user.is_premium,
                 user.signals_received,
+                user.tier,
+                user.po_trader_id,
             ),
+        )
+        await db.commit()
+
+
+async def set_po_trader_id(telegram_id: int, po_trader_id: str) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET po_trader_id = ? WHERE telegram_id = ?",
+            (po_trader_id, telegram_id),
+        )
+        await db.commit()
+
+
+async def set_tier(telegram_id: int, tier: int) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET tier = ? WHERE telegram_id = ?",
+            (tier, telegram_id),
         )
         await db.commit()
 
@@ -74,8 +115,8 @@ async def save_signal(signal: Signal) -> int:
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
             """
-            INSERT INTO signals (pair, direction, expiration, confidence, signal_type, result)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO signals (pair, direction, expiration, confidence, signal_type, tier, result)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 signal.pair,
@@ -83,6 +124,7 @@ async def save_signal(signal: Signal) -> int:
                 signal.expiration,
                 signal.confidence,
                 signal.signal_type,
+                signal.tier,
                 signal.result or "pending",
             ),
         ) as cursor:
@@ -112,14 +154,4 @@ async def get_user_by_referral_code(code: str) -> Optional[User]:
             "SELECT * FROM users WHERE referral_code = ?", (code,)
         ) as cursor:
             row = await cursor.fetchone()
-            if row is None:
-                return None
-            return User(
-                telegram_id=row["telegram_id"],
-                username=row["username"],
-                first_name=row["first_name"],
-                referral_code=row["referral_code"],
-                referred_by=row["referred_by"],
-                is_premium=bool(row["is_premium"]),
-                signals_received=row["signals_received"],
-            )
+            return _row_to_user(row) if row else None
