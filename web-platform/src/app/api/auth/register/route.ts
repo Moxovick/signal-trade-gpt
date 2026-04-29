@@ -5,7 +5,7 @@ import { generateReferralCode } from "@/lib/utils";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, referralCode } = await req.json();
+    const { email, password, referralCode, promoCode } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email и пароль обязательны" }, { status: 400 });
@@ -25,6 +25,36 @@ export async function POST(req: NextRequest) {
       if (referrer) referredById = referrer.id;
     }
 
+    let promoCodeId: string | null = null;
+    let trialExpiresAt: Date | null = null;
+    let subscriptionPlan: "free" | "premium" = "free";
+
+    if (promoCode) {
+      const promo = await prisma.promoCode.findUnique({
+        where: { code: promoCode.toUpperCase().trim() },
+      });
+
+      if (promo && promo.isActive) {
+        const notExpired = !promo.expiresAt || promo.expiresAt > new Date();
+        const hasUses = !promo.maxUses || promo.currentUses < promo.maxUses;
+
+        if (notExpired && hasUses) {
+          promoCodeId = promo.id;
+
+          if (promo.type === "trial") {
+            trialExpiresAt = new Date();
+            trialExpiresAt.setDate(trialExpiresAt.getDate() + promo.trialDays);
+            subscriptionPlan = "premium";
+          }
+
+          await prisma.promoCode.update({
+            where: { id: promo.id },
+            data: { currentUses: { increment: 1 } },
+          });
+        }
+      }
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
     const code = generateReferralCode();
 
@@ -34,8 +64,12 @@ export async function POST(req: NextRequest) {
         passwordHash,
         referralCode: code,
         referredById,
+        promoCodeUsedId: promoCodeId,
+        subscriptionPlan,
+        trialExpiresAt,
+        subscriptionExpiresAt: trialExpiresAt,
       },
-      select: { id: true, email: true, referralCode: true },
+      select: { id: true, email: true, referralCode: true, subscriptionPlan: true, trialExpiresAt: true },
     });
 
     if (referredById) {
