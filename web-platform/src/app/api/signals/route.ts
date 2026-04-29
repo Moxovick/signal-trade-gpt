@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+const TIER_ACCESS: Record<string, string[]> = {
+  free: ["otc"],
+  premium: ["otc", "exchange"],
+  vip: ["otc", "exchange"],
+  elite: ["otc", "exchange", "elite"],
+};
+
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -9,9 +16,18 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const page = Number(searchParams.get("page") ?? 1);
   const limit = Number(searchParams.get("limit") ?? 20);
-  const isPremium = ((session.user as Record<string, unknown>).subscriptionPlan as string) !== "free";
+  const tierFilter = searchParams.get("tier");
 
-  const where = isPremium ? {} : { isPremium: false };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userPlan = ((session.user as any).subscriptionPlan as string) ?? "free";
+  const allowedTiers = TIER_ACCESS[userPlan] ?? ["otc"];
+
+  const where = {
+    tier: tierFilter
+      ? { equals: tierFilter as "otc" | "exchange" | "elite" }
+      : { in: allowedTiers as ("otc" | "exchange" | "elite")[] },
+    isActive: true,
+  };
 
   const [signals, total] = await Promise.all([
     prisma.signal.findMany({
@@ -19,15 +35,32 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
+      select: {
+        id: true,
+        pair: true,
+        direction: true,
+        expiration: true,
+        confidence: true,
+        type: true,
+        tier: true,
+        entryPrice: true,
+        exitPrice: true,
+        result: true,
+        analysis: true,
+        reasoning: true,
+        createdAt: true,
+        closedAt: true,
+      },
     }),
     prisma.signal.count({ where }),
   ]);
 
-  return NextResponse.json({ signals, total, page, limit });
+  return NextResponse.json({ signals, total, page, limit, allowedTiers });
 }
 
 export async function POST(req: NextRequest) {
   const session = await auth();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (!session || (session.user as any).role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -40,7 +73,9 @@ export async function POST(req: NextRequest) {
       expiration: body.expiration,
       confidence: body.confidence,
       type: body.type ?? "ai",
-      isPremium: body.isPremium ?? false,
+      tier: body.tier ?? "otc",
+      analysis: body.analysis ?? null,
+      reasoning: body.reasoning ?? null,
       createdById: (session.user as { id: string }).id,
     },
   });

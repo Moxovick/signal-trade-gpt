@@ -21,7 +21,7 @@ export default async function DashboardPage() {
     prisma.signal.count({
       where: {
         createdAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
-        isPremium: false,
+        tier: "otc",
       },
     }),
     prisma.signal.count(),
