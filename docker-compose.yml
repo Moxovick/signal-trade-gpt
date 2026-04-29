@@ -1,4 +1,23 @@
 services:
+  db:
+    image: postgres:16
+    container_name: stg-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: signal_trade_gpt
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   bot:
     build: ./bot
     container_name: signal-trade-bot
@@ -7,12 +26,16 @@ services:
       - ./bot/.env
     volumes:
       - bot-data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import os; open('data/bot.pid').read()"]
+      test: ["CMD", "python", "-c", "open('data/bot.pid').read()"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
 
 volumes:
+  pg-data:
   bot-data:

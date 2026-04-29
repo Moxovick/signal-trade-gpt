@@ -1,89 +1,121 @@
-# Signal Trade GPT
+# Signal Trade GPT — v2
 
-Premium platform for AI-powered trading signals delivery via Telegram bot and landing website.
+Платформа AI-сигналов для PocketOption. Монетизация — RevShare через
+партнёрку PocketOption (доступ открывается депозитом, не подпиской).
 
-## Project Structure
+## Структура
 
 ```
 signal-trade-gpt/
-├── CLAUDE.md              # Instructions for Claude Code
 ├── docs/
-│   ├── PRD.md             # Full Product Requirements Document
-│   └── reference-landing.html  # Design reference (original HTML)
-├── bot/                   # Telegram bot (Python + aiogram 3)
-│   ├── main.py            # Entry point
-│   ├── config.py          # Configuration from .env
-│   ├── handlers/          # Command handlers
-│   ├── services/          # Business logic
-│   ├── database/          # SQLite models and connection
-│   ├── requirements.txt   # Python dependencies
-│   ├── Dockerfile
-│   └── .env.example       # Required environment variables
-├── web/                   # Landing website (static HTML/CSS/JS)
-│   ├── index.html
-│   ├── css/style.css
-│   ├── js/main.js
-│   └── assets/
+│   ├── PRD-v2.md              # PRD текущей итерации
+│   └── AGENT-BRIEF-v2.md      # Брифинг агента-исполнителя
+├── bot/                        # Telegram-бот (Python + aiogram 3)
+│   ├── handlers/
+│   │   ├── start.py           # /start, /help
+│   │   ├── stats.py           # /stats, /tier, /ref
+│   │   ├── signals.py         # /signal (T0 demo cap)
+│   │   └── link.py            # /link  — FSM для привязки PO Trader ID
+│   ├── services/
+│   ├── database/              # SQLite + миграции колонок tier, po_trader_id
+│   ├── requirements.txt
+│   └── .env.example
+├── web-platform/              # Next.js 16 (App Router)
+│   ├── prisma/
+│   │   ├── schema.prisma      # User, PocketOptionAccount, Postback, BotPerk, …
+│   │   └── seed.ts            # 7 BotPerk + редактируемые SiteSettings
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── page.tsx       # Лендинг (5 tier-ов, FAQ, CTA в Telegram)
+│   │   │   ├── dashboard/     # Личный кабинет
+│   │   │   ├── admin/         # Админка (po-accounts, postbacks, perks, settings)
+│   │   │   ├── login/         # Telegram Login Widget + email fallback
+│   │   │   └── api/
+│   │   │       ├── po/postback/   # S2S postback от PocketOption
+│   │   │       ├── po/submit-id/  # ручная привязка PO trader id
+│   │   │       ├── po/ref-link/   # JSON URL
+│   │   │       └── admin/settings/# bulk-upsert SiteSettings
+│   │   ├── components/
+│   │   │   ├── effects/       # AnimatedBackground, CustomCursor, Preloader
+│   │   │   ├── ui/            # Button, Card, Stat, TierBadge, Logo, …
+│   │   │   └── auth/          # TelegramLoginButton
+│   │   └── lib/
+│   │       ├── tier.ts        # tier-engine (computeTier, distanceToNextTier)
+│   │       ├── access.ts      # access-engine (T0 demo cap, T1..T4 daily limits)
+│   │       ├── pocketoption.ts# parse + HMAC verify + applyPostback (idempotent)
+│   │       ├── telegram.ts    # Telegram Login HMAC verification
+│   │       └── auth.ts        # NextAuth (Telegram + legacy credentials)
+│   └── .env.example
 ├── docker-compose.yml
-└── .gitignore
+└── README.md (этот файл)
 ```
 
-## Quick Start
+## Quick start
 
-### Prerequisites
-- Python 3.11+
-- Telegram bot token (create via [@BotFather](https://t.me/BotFather))
+### 1. Postgres
 
-### Bot Setup
+```bash
+docker compose up -d db
+```
+
+### 2. Web-платформа
+
+```bash
+cd web-platform
+cp .env.example .env
+# AUTH_SECRET — выпиши `openssl rand -base64 32`
+# TELEGRAM_LOGIN_BOT_TOKEN, NEXT_PUBLIC_TELEGRAM_LOGIN_BOT — твой бот для Login Widget
+# POCKETOPTION_POSTBACK_SECRET — секрет, общий с PocketOption Partner
+
+npm install
+npx prisma migrate deploy
+npx prisma db seed
+npm run dev
+```
+
+### 3. Бот
 
 ```bash
 cd bot
-python -m venv .venv
-source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
-# Configure
 cp .env.example .env
-# Edit .env — add your BOT_TOKEN and CHANNEL_ID
-
-# Run
+# BOT_TOKEN — токен из @BotFather (не из репозитория!).
+# CHANNEL_ID — id канала, куда бот шлёт сигналы.
 python main.py
 ```
 
-### Website
+Через `@BotFather`:
 
-```bash
-# Just open in browser
-open web/index.html
+* `/setdomain` → твой домен (для Telegram Login Widget).
+* `/setjoingroups`, `/setprivacy` — по необходимости.
 
-# Or serve locally
-cd web && python -m http.server 8080
-```
+## PocketOption Partner
 
-### Docker
+В кабинете PocketOption Partner:
 
-```bash
-docker-compose up -d
-```
+1. Создай токен и подвяжи его в `POCKETOPTION_POSTBACK_SECRET`.
+2. URL для постбэков: `https://<your-host>/api/po/postback`.
+3. В шаблон реф-ссылки добавь плейсхолдер `{click_id}` —
+   именно он будет user.id из нашей платформы.
 
-## Development Phases
+Шаблон редактируется в админке: `/admin/settings → po_referral_link_template`.
 
-- **Phase 1 (MVP):** Telegram bot with random signals + static landing page
-- **Phase 2:** Full web platform (Next.js) with auth, dashboard, admin panel
-- **Phase 3:** Crypto payments, advanced analytics, scaling
+## Модель доступа (tier)
 
-See `docs/PRD.md` for full details.
+| Tier | Депозит на PO | Лимит сигналов / день  | Перки                                   |
+|-----:|---------------|------------------------|-----------------------------------------|
+|  T0  | $0 / нет PO   | 2 demo за всё время    | пример формата                          |
+|  T1  | $100          | 5                      | OTC                                     |
+|  T2  | $500          | 15                     | OTC + биржа                             |
+|  T3  | $2000         | 25                     | + расширенная аналитика                 |
+|  T4  | $10000        | безлимит               | + ранний доступ за 60с, элитные пары    |
 
-## Tech Stack (MVP)
+Пороги редактируются в админке (`/admin/settings → tier_thresholds`).
 
-| Component | Technology |
-|-----------|-----------|
-| Bot | Python 3.11 + aiogram 3.x |
-| Database | SQLite |
-| Scheduler | APScheduler |
-| Website | HTML/CSS/JS (vanilla) |
-| Hosting | VPS / Docker |
+## Дисклеймер
 
-## License
-
-Private — All rights reserved.
+> Signal Trade GPT не является финансовым советником. Все сигналы
+> предоставляются в информационных целях. Торговля бинарными опционами
+> сопряжена с высоким риском потери средств. Прошлые результаты не
+> гарантируют будущей доходности.
