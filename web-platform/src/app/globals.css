@@ -1,72 +1,154 @@
 @import "tailwindcss";
 
+/* ════════════════════════════════════════════════════════════════════
+   Signal Trade GPT v2 — design tokens
+
+   Palette: matte gold + warm dark.
+   Reference docs: docs/PRD-v2.md §6.2
+   ════════════════════════════════════════════════════════════════════ */
 :root {
-  --background: #08081a;
-  --foreground: #e8e8f0;
-  --accent: #f5c518;
-  --accent-dim: rgba(245, 197, 24, 0.12);
-  --accent-glow: rgba(245, 197, 24, 0.45);
-  --green: #00e5a0;
-  --red: #ef4444;
-  --muted: #3a3a50;
-  --card-bg: #0e0e22;
-  --card-bg-hover: #121230;
-  --border: rgba(245, 197, 24, 0.08);
-  --border-bright: rgba(245, 197, 24, 0.2);
-  --surface: #0b0b1e;
+  /* Brand — matte gold (sun-baked, not casino) */
+  --brand-gold: #d4a017;
+  --brand-gold-bright: #e6b840;
+  --brand-gold-deep: #8a6500;
+  --brand-cream: #f5e8c0;
+
+  /* Background system — warm dark, not blue-black */
+  --bg-0: #08060a;
+  --bg-1: #100c10;
+  --bg-2: #181218;
+  --bg-3: #221820;
+  --bg-glass: rgba(212, 160, 23, 0.04);
+
+  /* Foreground / text */
+  --t-1: #f5ecd9;
+  --t-2: #b6a586;
+  --t-3: #6e604c;
+
+  /* Status — warm-tinted to harmonise with gold */
+  --green: #8ee06b;
+  --red: #ff6b3d;
+
+  /* Borders */
+  --b-soft: rgba(212, 160, 23, 0.08);
+  --b-hard: rgba(212, 160, 23, 0.30);
+  --b-glow: rgba(212, 160, 23, 0.55);
+
+  /* Shadows / glow */
+  --glow-gold: 0 0 32px rgba(212, 160, 23, 0.35);
+  --glow-gold-soft: 0 0 18px rgba(212, 160, 23, 0.18);
+
+  /* Aliases for backwards compatibility with v1 components */
+  --background: var(--bg-0);
+  --foreground: var(--t-1);
+  --accent: var(--brand-gold);
+  --accent-dim: rgba(212, 160, 23, 0.12);
+  --accent-glow: var(--b-glow);
+  --muted: var(--t-3);
+  --card-bg: var(--bg-1);
+  --card-bg-hover: var(--bg-2);
+  --border: var(--b-soft);
+  --border-bright: var(--b-hard);
+  --surface: var(--bg-1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--bg-0);
+  --color-foreground: var(--t-1);
+  --color-accent: var(--brand-gold);
+  --color-accent-bright: var(--brand-gold-bright);
+  --color-accent-deep: var(--brand-gold-deep);
+  --color-cream: var(--brand-cream);
+  --color-bg-0: var(--bg-0);
+  --color-bg-1: var(--bg-1);
+  --color-bg-2: var(--bg-2);
+  --color-bg-3: var(--bg-3);
+  --color-t-1: var(--t-1);
+  --color-t-2: var(--t-2);
+  --color-t-3: var(--t-3);
+  --color-green: var(--green);
+  --color-red: var(--red);
   --font-sans: var(--font-manrope);
   --font-mono: var(--font-jetbrains);
+  --font-display: var(--font-bebas);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg-0);
+  color: var(--t-1);
   font-family: var(--font-manrope, "Manrope", system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(245, 197, 24, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(245, 197, 24, 0.03) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(0, 229, 160, 0.02) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(212, 160, 23, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 50%, rgba(212, 160, 23, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(255, 107, 61, 0.015) 0%, transparent 50%);
   background-attachment: fixed;
+  overflow-x: hidden;
 }
 
-/* Grid pattern overlay */
+/* Static grid overlay (kept on top of canvas background) */
 body::before {
   content: '';
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
   background-image:
-    linear-gradient(rgba(245, 197, 24, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(245, 197, 24, 0.015) 1px, transparent 1px);
-  background-size: 60px 60px;
+    linear-gradient(rgba(212, 160, 23, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212, 160, 23, 0.025) 1px, transparent 1px);
+  background-size: 64px 64px;
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
+}
+
+/* Subtle film-grain to fight banding */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/></svg>");
+}
+
+/* Hide on tablet/mobile to save battery */
+@media (max-width: 768px) {
+  body::after { display: none; }
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #0b0b1e; }
-::-webkit-scrollbar-thumb { background: rgba(245, 197, 24, 0.25); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+::-webkit-scrollbar-track { background: var(--bg-1); }
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 160, 23, 0.25);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--brand-gold); }
 
-/* Animations */
+/* Selection */
+::selection {
+  background: rgba(212, 160, 23, 0.3);
+  color: var(--t-1);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Animations
+   ════════════════════════════════════════════════════════════════════ */
 @keyframes scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
 
 @keyframes pulse-gold {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 197, 24, 0.4); }
-  50% { box-shadow: 0 0 20px 4px rgba(245, 197, 24, 0.15); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(212, 160, 23, 0.4); }
+  50% { box-shadow: 0 0 20px 4px rgba(212, 160, 23, 0.15); }
 }
 
 @keyframes float {
@@ -84,78 +166,153 @@ body::before {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in-up {
-  animation: fade-in-up 0.6s ease-out forwards;
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
-.animate-pulse-gold {
-  animation: pulse-gold 2s ease-in-out infinite;
+@keyframes shimmer-text {
+  to { background-position: 200% center; }
 }
 
-.animate-float {
-  animation: float 4s ease-in-out infinite;
+@keyframes pulse-aura {
+  from { opacity: 0.5; transform: scale(1); }
+  to { opacity: 1; transform: scale(1.06); }
 }
 
-/* Premium card style */
+@keyframes rotate-border {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ticker {
+  to { transform: translateX(-50%); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; visibility: hidden; }
+}
+
+.animate-fade-in-up { animation: fade-in-up 0.6s ease-out forwards; }
+.animate-fade-in { animation: fade-in 0.4s ease-out forwards; }
+.animate-pulse-gold { animation: pulse-gold 2s ease-in-out infinite; }
+.animate-float { animation: float 4s ease-in-out infinite; }
+.animate-blink { animation: blink 1.4s ease-in-out infinite; }
+.animate-pulse-aura { animation: pulse-aura 2.8s ease-in-out infinite alternate; }
+.animate-rotate-slow { animation: rotate-border 12s linear infinite; }
+
+/* ════════════════════════════════════════════════════════════════════
+   Reusable utility classes
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Premium card */
 .card-premium {
-  background: linear-gradient(135deg, var(--card-bg) 0%, rgba(245, 197, 24, 0.04) 100%);
-  border: 1px solid var(--border-bright);
+  background: linear-gradient(135deg, var(--bg-1) 0%, rgba(212, 160, 23, 0.04) 100%);
+  border: 1px solid var(--b-soft);
   border-radius: 1rem;
   backdrop-filter: blur(8px);
+  transition: border-color .25s ease, box-shadow .25s ease, transform .25s ease;
+  position: relative;
+  z-index: 3;
 }
-
 .card-premium:hover {
-  border-color: rgba(245, 197, 24, 0.35);
-  box-shadow: 0 0 30px rgba(245, 197, 24, 0.06);
+  border-color: var(--b-hard);
+  box-shadow: var(--glow-gold-soft);
 }
 
-/* Glass effect */
+/* Glass surface */
 .glass {
-  background: rgba(14, 14, 34, 0.7);
+  background: rgba(16, 12, 16, 0.72);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(245, 197, 24, 0.1);
+  border: 1px solid var(--b-soft);
 }
 
 /* Gold text gradient */
 .text-gold-gradient {
-  background: linear-gradient(135deg, #f5c518 0%, #ffd700 50%, #f0a500 100%);
+  background: linear-gradient(135deg, #d4a017 0%, #e6b840 50%, #b78700 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Shimmer loading */
-.shimmer {
-  background: linear-gradient(90deg, transparent 0%, rgba(245, 197, 24, 0.08) 50%, transparent 100%);
+/* Shimmering text (used on hero headline) */
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--brand-gold) 0%,
+    var(--brand-cream) 25%,
+    var(--brand-gold-bright) 50%,
+    var(--brand-cream) 75%,
+    var(--brand-gold) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer-text 4s linear infinite;
+}
+
+/* Loading shimmer block */
+.shimmer-block {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(212, 160, 23, 0.08) 50%,
+    transparent 100%
+  );
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
 
-/* Signal card styles */
-.signal-card-call {
-  border-left: 3px solid var(--green);
-}
-
-.signal-card-put {
-  border-left: 3px solid var(--accent);
-}
-
-.signal-card-elite {
-  border: 1px solid rgba(245, 197, 24, 0.3);
-  background: linear-gradient(135deg, rgba(245, 197, 24, 0.05) 0%, var(--card-bg) 100%);
-}
-
-/* Logo animation */
-@keyframes logo-glow {
-  0%, 100% { text-shadow: 0 0 10px rgba(245, 197, 24, 0.3); }
-  50% { text-shadow: 0 0 20px rgba(245, 197, 24, 0.6), 0 0 40px rgba(245, 197, 24, 0.2); }
-}
-
+/* Logo glow */
 .logo-glow {
   animation: logo-glow 3s ease-in-out infinite;
 }
+@keyframes logo-glow {
+  0%, 100% { text-shadow: 0 0 10px rgba(212, 160, 23, 0.3); }
+  50% { text-shadow: 0 0 20px rgba(212, 160, 23, 0.6), 0 0 40px rgba(212, 160, 23, 0.2); }
+}
 
-/* Tier badges */
+/* Signal card variants */
+.signal-card-call { border-left: 3px solid var(--green); }
+.signal-card-put { border-left: 3px solid var(--red); }
+.signal-card-elite {
+  border: 1px solid var(--b-hard);
+  background: linear-gradient(135deg, rgba(212, 160, 23, 0.06) 0%, var(--bg-1) 100%);
+}
+
+/* Tier badges (legacy classes kept; TierBadge component is the canonical API) */
 .tier-otc { background: rgba(136, 136, 255, 0.15); color: #8888ff; }
-.tier-exchange { background: rgba(0, 229, 160, 0.15); color: #00e5a0; }
-.tier-elite { background: rgba(245, 197, 24, 0.15); color: #f5c518; }
+.tier-exchange { background: rgba(142, 224, 107, 0.15); color: var(--green); }
+.tier-elite { background: rgba(212, 160, 23, 0.15); color: var(--brand-gold); }
+
+/* ════════════════════════════════════════════════════════════════════
+   Cursor — desktop only
+   The custom cursor in <CustomCursor /> hides the native one via this rule.
+   ════════════════════════════════════════════════════════════════════ */
+@media (hover: hover) and (pointer: fine) {
+  body.has-custom-cursor,
+  body.has-custom-cursor * {
+    cursor: none !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Reduced motion: kill heavy effects
+   ════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  body::after { display: none; }
+}
+
+/* Make sure interactive content sits above the fixed grid/grain pseudo-elements */
+header, main, footer, [data-z="content"] { position: relative; z-index: 3; }

@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Manrope, JetBrains_Mono, Bebas_Neue } from "next/font/google";
 import "./globals.css";
+import { AnimatedBackground } from "@/components/effects/AnimatedBackground";
+import { CustomCursor } from "@/components/effects/CustomCursor";
+import { Preloader } from "@/components/effects/Preloader";
+import { ScrollProgress } from "@/components/effects/ScrollProgress";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -23,7 +27,7 @@ const bebas = Bebas_Neue({
 export const metadata: Metadata = {
   title: "Signal Trade GPT — AI Trading Signals",
   description:
-    "Премиальные AI-сигналы для бинарных опционов Pocket Option. Точность 87%+, работа 24/7.",
+    "Сигналы для PocketOption. Открывай аккаунт по нашей ссылке — получи доступ к боту в Telegram. Чем выше депозит, тем сильнее перки.",
 };
 
 export default function RootLayout({
@@ -36,7 +40,11 @@ export default function RootLayout({
       lang="ru"
       className={`${manrope.variable} ${jetbrains.variable} ${bebas.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col bg-[#07070d] text-[#e8e8f0]">
+      <body className="min-h-full flex flex-col">
+        <AnimatedBackground />
+        <ScrollProgress />
+        <CustomCursor />
+        <Preloader />
         {children}
       </body>
     </html>
