@@ -14,10 +14,15 @@ class User:
     # `subscription_plan` retained for legacy users only.
     tier: int = 0
     po_trader_id: Optional[str] = None
+    click_id: Optional[str] = None  # PocketOption click_id for postback attribution
+    deposit_total: float = 0.0  # mirrored from web platform via tier-sync
+    notifications_enabled: bool = True
     is_premium: bool = False
     subscription_plan: str = "free"
     promo_code_used: Optional[str] = None
     signals_received: int = 0
+    wins: int = 0
+    losses: int = 0
     joined_at: datetime = field(default_factory=datetime.utcnow)
 
 

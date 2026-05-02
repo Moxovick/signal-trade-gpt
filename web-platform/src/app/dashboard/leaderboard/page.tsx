@@ -1,89 +1,240 @@
-export default async function LeaderboardPage() {
-  const mockEntries = [
-    { name: "Alex_Trade", plan: "vip", score: 94.2, signals: 847, rank: 1 },
-    { name: "ProTrader_RU", plan: "vip", score: 91.8, signals: 763, rank: 2 },
-    { name: "BinaryKing", plan: "premium", score: 89.5, signals: 695, rank: 3 },
-    { name: "Signal_Master", plan: "premium", score: 87.3, signals: 612, rank: 4 },
-    { name: "TradeFox", plan: "premium", score: 85.1, signals: 548, rank: 5 },
-  ];
+/**
+ * Dashboard — Leaderboard page (rework v2).
+ *
+ * Pulls top users by signalsReceived + tier as a proxy for activity.
+ * Highlights the current user's position with a gold card. If the user is
+ * outside top-10, we render a dedicated "Your rank" row underneath.
+ */
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { Card } from "@/components/ui/Card";
+import { TierBadge } from "@/components/ui/TierBadge";
+import { TIER_LABELS } from "@/lib/tier";
+import { Trophy, Medal, Award, Crown } from "lucide-react";
 
-  const planBadge: Record<string, { label: string; color: string }> = {
-    vip: { label: "VIP", color: "#00e5a0" },
-    premium: { label: "PREMIUM", color: "#f5c518" },
-    free: { label: "FREE", color: "#666" },
+type Row = {
+  id: string;
+  displayName: string;
+  tier: number;
+  signalsReceived: number;
+  totalDeposit: number;
+  rank: number;
+};
+
+function displayName(u: {
+  firstName: string | null;
+  username: string | null;
+  email: string | null;
+}): string {
+  return u.firstName ?? u.username ?? (u.email ? u.email.split("@")[0] : "Аноним");
+}
+
+export default async function LeaderboardPage() {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+  const userId = session.user.id;
+
+  const [topUsers, me, myStats] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: { not: "admin" } },
+      orderBy: [{ tier: "desc" }, { signalsReceived: "desc" }],
+      take: 50,
+      select: {
+        id: true,
+        firstName: true,
+        username: true,
+        email: true,
+        tier: true,
+        signalsReceived: true,
+        poAccount: { select: { totalDeposit: true } },
+      },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        firstName: true,
+        username: true,
+        email: true,
+        tier: true,
+        signalsReceived: true,
+        poAccount: { select: { totalDeposit: true } },
+      },
+    }),
+    prisma.user.count({ where: { role: { not: "admin" } } }),
+  ]);
+
+  const rows: Row[] = topUsers.slice(0, 10).map((u, i) => ({
+    id: u.id,
+    displayName: displayName(u),
+    tier: u.tier,
+    signalsReceived: u.signalsReceived,
+    totalDeposit: Number(u.poAccount?.totalDeposit ?? 0),
+    rank: i + 1,
+  }));
+
+  // Find user's rank (if outside top-10)
+  const myIdx = topUsers.findIndex((u) => u.id === userId);
+  const myRow: Row | null =
+    me && myIdx === -1
+      ? {
+          id: me.id,
+          displayName: displayName(me),
+          tier: me.tier,
+          signalsReceived: me.signalsReceived,
+          totalDeposit: Number(me.poAccount?.totalDeposit ?? 0),
+          rank: Math.min(50, myStats),
+        }
+      : null;
+
+  const medalFor = (rank: number) => {
+    if (rank === 1) return { icon: Crown, color: "#f5c518", bg: "rgba(245,197,24,0.12)" };
+    if (rank === 2) return { icon: Medal, color: "#c0c0c0", bg: "rgba(192,192,192,0.1)" };
+    if (rank === 3) return { icon: Award, color: "#cd7f32", bg: "rgba(205,127,50,0.1)" };
+    return null;
   };
 
-  const medalColors = ["#f5c518", "#aaa", "#c87533"];
-
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Лидерборд</h1>
-        <p className="text-[#666] text-sm mt-1">Топ трейдеров по точности сигналов</p>
+        <p className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-1">
+          Лидерборд
+        </p>
+        <h1 className="text-3xl md:text-4xl font-bold">Топ-10 трейдеров</h1>
+        <p className="text-[var(--t-2)] mt-2">
+          Рейтинг формируется по тиру + количеству полученных сигналов.
+          Обновляется в реальном времени.
+        </p>
       </div>
 
-      <div
-        className="rounded-2xl border overflow-hidden"
-        style={{ background: "#0d0d18", borderColor: "rgba(255,255,255,0.07)" }}
-      >
-        <div
-          className="grid grid-cols-12 px-5 py-3 text-xs text-[#555] border-b"
-          style={{ borderColor: "rgba(255,255,255,0.05)" }}
-        >
-          <span className="col-span-1">#</span>
-          <span className="col-span-5">Трейдер</span>
-          <span className="col-span-2 text-right">Сигналов</span>
-          <span className="col-span-2 text-right">Точность</span>
-          <span className="col-span-2 text-right">Тариф</span>
-        </div>
-
-        {mockEntries.map((entry, i) => {
-          const badge = planBadge[entry.plan];
-          const medal = i < 3 ? medalColors[i] : null;
-          return (
-            <div
-              key={entry.rank}
-              className="grid grid-cols-12 px-5 py-4 items-center border-b transition-colors hover:bg-white/[0.02]"
-              style={{ borderColor: "rgba(255,255,255,0.04)" }}
-            >
-              <span
-                className="col-span-1 text-sm font-bold"
-                style={{ color: medal ?? "#555" }}
-              >
-                {i < 3 ? ["🥇", "🥈", "🥉"][i] : entry.rank}
-              </span>
-              <span className="col-span-5 text-sm font-medium">{entry.name}</span>
-              <span
-                className="col-span-2 text-right text-sm"
-                style={{ fontFamily: "var(--font-jetbrains)", color: "#aaa" }}
-              >
-                {entry.signals}
-              </span>
-              <span
-                className="col-span-2 text-right font-bold text-sm"
-                style={{ fontFamily: "var(--font-jetbrains)", color: "#00e5a0" }}
-              >
-                {entry.score}%
-              </span>
-              <div className="col-span-2 text-right">
-                <span
-                  className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                  style={{ background: `${badge.color}20`, color: badge.color }}
+      {/* Podium: top-3 */}
+      {rows.length >= 3 && (
+        <div className="grid grid-cols-3 gap-3">
+          {[rows[1], rows[0], rows[2]]
+            .filter((r): r is Row => !!r)
+            .map((r) => {
+              const medal = medalFor(r.rank);
+              const isMe = r.id === userId;
+              const heightClass =
+                r.rank === 1 ? "pt-6" : r.rank === 2 ? "pt-10" : "pt-12";
+              return (
+                <Card
+                  key={r.id}
+                  variant={r.rank === 1 ? "highlight" : "default"}
+                  padding="md"
+                  className={`${heightClass} flex flex-col items-center text-center ${
+                    isMe ? "ring-2 ring-[var(--brand-gold)]" : ""
+                  }`}
                 >
-                  {badge.label}
-                </span>
+                  {medal && (
+                    <medal.icon
+                      size={r.rank === 1 ? 36 : 28}
+                      style={{ color: medal.color }}
+                      className="mb-2"
+                    />
+                  )}
+                  <div className="text-xs text-[var(--t-3)]">#{r.rank}</div>
+                  <div className="font-semibold truncate max-w-full">{r.displayName}</div>
+                  <div className="mt-2">
+                    <TierBadge tier={r.tier} size="sm" />
+                  </div>
+                  <div
+                    className="mt-2 text-sm text-[var(--brand-gold)]"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
+                    {r.signalsReceived} сигн.
+                  </div>
+                </Card>
+              );
+            })}
+        </div>
+      )}
+
+      {/* Full table */}
+      <Card padding="lg">
+        <div className="flex items-center gap-2 mb-4">
+          <Trophy size={18} className="text-[var(--brand-gold)]" />
+          <h2 className="text-lg font-semibold">Топ-10</h2>
+        </div>
+        {rows.length === 0 ? (
+          <p className="text-[var(--t-2)] text-center py-8">
+            Пока нет трейдеров в рейтинге.
+          </p>
+        ) : (
+          <div className="divide-y divide-[var(--b-soft)]">
+            {rows.map((r) => {
+              const isMe = r.id === userId;
+              const medal = medalFor(r.rank);
+              return (
+                <div
+                  key={r.id}
+                  className={`grid grid-cols-12 items-center gap-3 py-3 -mx-2 px-2 rounded-lg transition-colors ${
+                    isMe ? "bg-[rgba(212,160,23,0.08)]" : ""
+                  }`}
+                >
+                  <div className="col-span-1 text-center">
+                    {medal ? (
+                      <medal.icon size={16} style={{ color: medal.color }} className="mx-auto" />
+                    ) : (
+                      <span className="text-xs text-[var(--t-3)] font-mono">#{r.rank}</span>
+                    )}
+                  </div>
+                  <div className="col-span-5 min-w-0">
+                    <div
+                      className={`font-medium text-sm truncate ${
+                        isMe ? "text-[var(--brand-gold)]" : ""
+                      }`}
+                    >
+                      {r.displayName}
+                      {isMe && <span className="ml-2 text-xs">(ты)</span>}
+                    </div>
+                  </div>
+                  <div className="col-span-3 text-xs">
+                    <TierBadge tier={r.tier} size="sm" />
+                    <span className="ml-2 text-[var(--t-3)]">
+                      {TIER_LABELS[r.tier]}
+                    </span>
+                  </div>
+                  <div
+                    className="col-span-3 text-right text-sm text-[var(--brand-gold)]"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
+                    {r.signalsReceived}
+                    <span className="ml-1 text-xs text-[var(--t-3)]">сигн.</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Your row if outside top-10 */}
+        {myRow && (
+          <>
+            <div className="my-4 border-t border-dashed border-[var(--b-soft)]" />
+            <div className="grid grid-cols-12 items-center gap-3 py-3 -mx-2 px-2 rounded-lg bg-[rgba(212,160,23,0.08)]">
+              <div className="col-span-1 text-center text-xs text-[var(--brand-gold)] font-mono">
+                #{myRow.rank}+
+              </div>
+              <div className="col-span-5 min-w-0">
+                <div className="font-medium text-sm text-[var(--brand-gold)] truncate">
+                  {myRow.displayName} <span className="ml-1 text-xs">(ты)</span>
+                </div>
+              </div>
+              <div className="col-span-3 text-xs">
+                <TierBadge tier={myRow.tier} size="sm" />
+              </div>
+              <div
+                className="col-span-3 text-right text-sm text-[var(--brand-gold)]"
+                style={{ fontFamily: "var(--font-jetbrains)" }}
+              >
+                {myRow.signalsReceived}
+                <span className="ml-1 text-xs text-[var(--t-3)]">сигн.</span>
               </div>
             </div>
-          );
-        })}
-      </div>
-
-      <div
-        className="p-4 rounded-xl text-sm text-center"
-        style={{ background: "rgba(245,197,24,0.06)", border: "1px solid rgba(245,197,24,0.15)", color: "#c8a010" }}
-      >
-        Для участия в лидерборде необходим тариф Premium или VIP
-      </div>
+          </>
+        )}
+      </Card>
     </div>
   );
 }

@@ -1,88 +1,152 @@
 import Link from "next/link";
+import { Star, ArrowRight, Quote } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
+import { Card } from "@/components/ui/Card";
+import { ButtonLink } from "@/components/ui/Button";
 
-const REVIEWS = [
-  { name: "Алексей К.", plan: "VIP", text: "За 2 месяца вышел в стабильный плюс. Сигналы приходят моментально, AI confidence реально работает — на 90%+ практически всегда в деньгах. Рекомендую всем, кто серьёзно относится к трейдингу.", rating: 5, date: "15.04.2026" },
-  { name: "Марина Р.", plan: "Premium", text: "Раньше торговала по интуиции — сливала. С Signal Trade GPT наконец-то начала зарабатывать. Бот удобный, всё понятно с первого сигнала. За месяц подняла $400 на Premium-тарифе.", rating: 5, date: "12.04.2026" },
-  { name: "Дмитрий В.", plan: "Premium", text: "Попробовал бесплатные сигналы — удивился точности. Перешёл на Premium через неделю. Рекомендую всем, кто торгует на Pocket Option. Экспирация подбирается идеально.", rating: 5, date: "10.04.2026" },
-  { name: "Сергей П.", plan: "VIP", text: "Лучший бот для бинарных опционов. Пользуюсь 3 месяца, реферальная программа тоже приносит доход. Персональный менеджер на VIP — отдельный плюс. Спасибо команде!", rating: 5, date: "08.04.2026" },
-  { name: "Елена М.", plan: "Premium", text: "Удобный формат — сигнал пришёл, открыла сделку, заработала. Никакого стресса и анализа графиков. AI делает всё за тебя. Точность действительно высокая.", rating: 4, date: "05.04.2026" },
-  { name: "Игорь Т.", plan: "Free", text: "Даже на бесплатном тарифе можно неплохо заработать. 3-5 сигналов в день — этого хватает для начала. Думаю перейти на Premium после того, как наберусь опыта.", rating: 5, date: "03.04.2026" },
-  { name: "Анна К.", plan: "VIP", text: "Пользуюсь ботом с самого запуска. Стабильные результаты, быстрая поддержка. VIP стоит каждого доллара — безлимитные сигналы + менеджер, который всегда на связи.", rating: 5, date: "01.04.2026" },
-  { name: "Максим Д.", plan: "Premium", text: "Скептически относился к AI-сигналам, но решил попробовать Free. Через 2 недели оформил Premium — результаты говорят сами за себя. 87% точности — не маркетинг.", rating: 5, date: "28.03.2026" },
-  { name: "Ольга С.", plan: "Free", text: "Начала с бесплатного тарифа месяц назад. Пока очень довольна! Сигналы понятные, приходят вовремя. Собираюсь переходить на Premium за расширенными парами.", rating: 4, date: "25.03.2026" },
-  { name: "Виктор Л.", plan: "VIP", text: "Самый профессиональный бот для Pocket Option. Пробовал 5 разных ботов — этот лучший по всем параметрам. Точность, скорость, удобство. На VIP — полный контроль.", rating: 5, date: "22.03.2026" },
-  { name: "Наталья Б.", plan: "Premium", text: "Подключила реферальную программу — приятный бонус! Друзья тоже довольны. AI Confidence помогает выбирать лучшие сигналы. Однозначно рекомендую.", rating: 5, date: "20.03.2026" },
-  { name: "Роман Ш.", plan: "Premium", text: "Торгую по сигналам уже 2 месяца. Средний win rate у меня — около 85%. Что важно — сигналы приходят стабильно, без перебоев. Отличная работа команды.", rating: 4, date: "18.03.2026" },
-];
+const BOT_URL =
+  process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/traitsignaltsest_bot";
 
-const STATS = [
-  { value: "4.9", label: "Средняя оценка" },
-  { value: "1200+", label: "Отзывов" },
-  { value: "97%", label: "Довольных" },
-];
+export const dynamic = "force-dynamic";
 
-export default function ReviewsPage() {
+export default async function ReviewsPage() {
+  const reviews = await prisma.review.findMany({
+    where: { isPublic: true, status: "published" },
+    orderBy: [{ isFeatured: "desc" }, { position: "asc" }, { createdAt: "desc" }],
+  });
+
+  const featured = reviews.filter((r) => r.isFeatured);
+  const rest = reviews.filter((r) => !r.isFeatured);
+
+  const avgRating =
+    reviews.length > 0
+      ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
+      : "—";
+
   return (
-    <main className="min-h-screen bg-[#07070d] pt-8 pb-20 px-4">
-      <div className="max-w-5xl mx-auto">
-        <Link href="/" className="text-sm text-[#555] hover:text-[#888] transition-colors">
-          ← На главную
-        </Link>
-
-        <div className="text-center mt-8 mb-12">
-          <span className="inline-block px-4 py-1 rounded-full text-xs font-semibold mb-4" style={{ background: "rgba(245,197,24,0.1)", color: "#f5c518" }}>
-            Отзывы
-          </span>
-          <h1 className="text-5xl md:text-6xl font-black tracking-wider mb-4" style={{ fontFamily: "var(--font-bebas)" }}>
-            ЧТО ГОВОРЯТ <span style={{ color: "#f5c518" }}>ТРЕЙДЕРЫ</span>
+    <>
+      <SiteHeader />
+      <main className="relative">
+        <section className="max-w-5xl mx-auto px-6 pt-16 pb-10 text-center">
+          <Link
+            href="/"
+            className="text-xs uppercase tracking-widest text-[var(--t-3)] hover:text-[var(--brand-gold)] transition-colors"
+          >
+            ← На главную
+          </Link>
+          <div className="inline-flex items-center gap-2 px-3 h-8 mt-8 rounded-full text-xs uppercase tracking-widest border border-[var(--b-soft)] text-[var(--brand-gold)] bg-[var(--bg-1)]">
+            Отзывы трейдеров
+          </div>
+          <h1 className="mt-6 text-5xl md:text-6xl font-bold leading-[1.05] text-shimmer">
+            Что говорят трейдеры
           </h1>
-          <p className="text-[#888]">Реальные отзывы пользователей Signal Trade GPT</p>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-12">
-          {STATS.map(({ value, label }) => (
-            <div key={label} className="text-center p-5 rounded-2xl border" style={{ background: "#0d0d18", borderColor: "rgba(255,255,255,0.07)" }}>
-              <div className="text-3xl font-bold mb-1" style={{ fontFamily: "var(--font-jetbrains)", color: "#f5c518" }}>
-                {value}
-              </div>
-              <div className="text-xs text-[#666]">{label}</div>
+          <div className="mt-8 flex items-center justify-center gap-6 text-sm text-[var(--t-2)]">
+            <div className="flex items-center gap-2">
+              <span className="text-3xl font-bold text-[var(--brand-gold)]">{avgRating}</span>
+              <span>средний рейтинг</span>
             </div>
-          ))}
-        </div>
-
-        {/* Reviews grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {REVIEWS.map((r) => (
-            <div key={r.name + r.date} className="rounded-2xl p-5 border" style={{ background: "#0d0d18", borderColor: "rgba(255,255,255,0.07)" }}>
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0" style={{ background: "#f5c518", color: "#07070d" }}>
-                  {r.name[0]}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{r.name}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(245,197,24,0.12)", color: "#f5c518" }}>
-                      {r.plan}
-                    </span>
-                    <span className="text-xs text-[#555]">{r.date}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="mb-2 text-sm" style={{ color: "#f5c518" }}>
-                {"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}
-              </div>
-              <p className="text-sm text-[#999] leading-relaxed">{r.text}</p>
+            <div className="w-px h-8 bg-[var(--b-soft)]" />
+            <div>
+              <span className="text-3xl font-bold text-[var(--t-1)]">{reviews.length}</span>{" "}
+              отзывов
             </div>
-          ))}
-        </div>
+          </div>
+        </section>
 
-        <div className="text-center mt-12">
-          <p className="text-xs text-[#444] max-w-md mx-auto">
-            Signal Trade GPT не является финансовым советником. Отзывы отражают личный опыт пользователей.
-          </p>
+        {featured.length > 0 && (
+          <section className="max-w-6xl mx-auto px-6 pb-12">
+            <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-5">
+              Featured
+            </div>
+            <div className="grid md:grid-cols-3 gap-5">
+              {featured.map((r) => (
+                <ReviewCard key={r.id} r={r} highlight />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {rest.length > 0 && (
+          <section className="max-w-6xl mx-auto px-6 pb-16">
+            <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-5">
+              Все отзывы
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {rest.map((r) => (
+                <ReviewCard key={r.id} r={r} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {reviews.length === 0 && (
+          <section className="max-w-3xl mx-auto px-6 py-20 text-center text-[var(--t-3)]">
+            Отзывов пока нет — будь первым.
+          </section>
+        )}
+
+        <section className="max-w-4xl mx-auto px-6 py-16">
+          <Card variant="highlight" padding="lg">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold">Готов поделиться опытом?</h2>
+                <p className="mt-2 text-[var(--t-2)]">
+                  Напиши нам в боте после первой недели — лучшие отзывы попадут на главную.
+                </p>
+              </div>
+              <ButtonLink
+                href={BOT_URL}
+                external
+                size="lg"
+                iconRight={<ArrowRight size={18} />}
+              >
+                Открыть бота
+              </ButtonLink>
+            </div>
+          </Card>
+        </section>
+      </main>
+      <SiteFooter />
+    </>
+  );
+}
+
+type ReviewLite = {
+  id: string;
+  authorName: string;
+  authorRole: string | null;
+  rating: number;
+  text: string;
+  avatarUrl: string | null;
+};
+
+function ReviewCard({ r, highlight = false }: { r: ReviewLite; highlight?: boolean }) {
+  return (
+    <Card variant={highlight ? "highlight" : "default"} padding="lg" hover className="flex flex-col">
+      <Quote size={28} className="text-[var(--brand-gold)] opacity-60 mb-4" />
+      <p className="text-[var(--t-1)] leading-relaxed flex-1">{r.text}</p>
+      <div className="mt-6 pt-5 border-t border-[var(--b-soft)] flex items-center justify-between">
+        <div>
+          <div className="font-semibold text-[var(--t-1)]">{r.authorName}</div>
+          {r.authorRole && (
+            <div className="text-xs text-[var(--t-3)] mt-0.5">{r.authorRole}</div>
+          )}
+        </div>
+        <div className="flex gap-0.5">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Star
+              key={i}
+              size={14}
+              className={
+                i < r.rating
+                  ? "fill-[var(--brand-gold)] text-[var(--brand-gold)]"
+                  : "text-[var(--t-3)]"
+              }
+            />
+          ))}
         </div>
       </div>
-    </main>
+    </Card>
   );
 }

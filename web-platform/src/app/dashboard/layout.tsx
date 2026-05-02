@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import DashboardSidebar from "@/components/dashboard/Sidebar";
+import { DashboardTopNav } from "@/components/dashboard/TopNav";
 
 export default async function DashboardLayout({
   children,
@@ -13,12 +13,13 @@ export default async function DashboardLayout({
   const user = {
     name: session.user?.name ?? null,
     email: session.user?.email ?? null,
+    role: (session.user as { role?: string }).role ?? "user",
   };
 
   return (
-    <div className="flex min-h-screen bg-[#07070d]">
-      <DashboardSidebar user={user} />
-      <main className="flex-1 ml-0 md:ml-64 p-6 overflow-y-auto">{children}</main>
+    <div className="min-h-screen">
+      <DashboardTopNav user={user} />
+      <main className="max-w-6xl mx-auto px-6 py-8">{children}</main>
     </div>
   );
 }

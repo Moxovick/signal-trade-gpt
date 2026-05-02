@@ -15,7 +15,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
-from database.db import get_user, set_po_trader_id
+from database.db import get_user, set_po_trader_id  # noqa: F401
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -57,15 +57,61 @@ async def receive_id(message: Message, state: FSMContext) -> None:
         )
         return
 
+    # Phase Q — best-effort verification + deposit refresh.
+    verified_msg = ""
+    try:
+        from services.po_api import fetch_trader_info
+
+        info = await fetch_trader_info(candidate)
+        if info is not None:
+            from database.db import set_deposit_total
+
+            try:
+                await set_deposit_total(message.from_user.id, info.deposit_total)
+            except Exception:  # noqa: BLE001
+                logger.warning("Could not store deposit_total from PO API", exc_info=True)
+            verified_msg = (
+                f"\n\n✅ <b>Подтверждено в PocketOption</b> — "
+                f"депозит: ${info.deposit_total:,.0f}"
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("PO verification skipped: %s", exc)
+
     await set_po_trader_id(message.from_user.id, candidate)
+    data = await state.get_data()
+    is_onboarding = bool(data.get("onboarding"))
     await state.clear()
-    await message.answer(
-        f"<b>Привязано.</b>\n\n"
-        f"PocketOption ID: <code>{candidate}</code>\n"
-        f"Tier пересчитается, как только PocketOption пришлёт нам postback "
-        f"о депозите.",
-        parse_mode=ParseMode.HTML,
-    )
+
+    if is_onboarding:
+        bot_info = await message.bot.get_me()
+        user = await get_user(message.from_user.id)
+        ref_code = user.referral_code if user else "??"
+        ref_link = f"https://t.me/{bot_info.username}?start=ref_{ref_code}"
+        await message.answer(
+            f"<b>✅ Готово — обучение пройдено</b>\n"
+            f"\n"
+            f"PocketOption ID: <code>{candidate}</code>\n"
+            f"Текущий тир: <b>T0 · Демо</b> (2 сигнала за всё время)\n"
+            f"\n"
+            f"Как только PocketOption пришлёт нам postback о депозите ≥ $100 — "
+            f"тир обновится автоматически и я напишу сюда.\n"
+            f"\n"
+            f"Попробуй первый сигнал — нажми «📊 Сигнал» внизу.\n"
+            f"\n"
+            f"Реф-ссылка (5% sub-affiliate с FTD друзей):\n"
+            f"<code>{ref_link}</code>"
+            + verified_msg,
+            parse_mode=ParseMode.HTML,
+        )
+    else:
+        await message.answer(
+            f"<b>Привязано.</b>\n\n"
+            f"PocketOption ID: <code>{candidate}</code>\n"
+            f"Tier пересчитается, как только PocketOption пришлёт нам postback "
+            f"о депозите."
+            + verified_msg,
+            parse_mode=ParseMode.HTML,
+        )
 
 
 @router.message(Command("cancel"))

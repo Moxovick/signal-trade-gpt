@@ -1,0 +1,285 @@
+From 04478ce36e0e70fa936e78830adc4149a014770b Mon Sep 17 00:00:00 2001
+From: yawiheb450 <yawiheb450@donumart.com>
+Date: Wed, 29 Apr 2026 14:28:54 +0000
+Subject: [PATCH 5/5] =?UTF-8?q?feat(bot):=20Phase=20L=20=E2=80=94=20admin?=
+ =?UTF-8?q?=20tools=20(/admin,=20/broadcast,=20/set=5Ftier,=20/ban,=20/unb?=
+ =?UTF-8?q?an,=20/stats=5Fglobal)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- handlers/admin.py: full admin panel guarded by ADMIN_IDS env list
+- broadcast iterates all users and reports sent/failed counts
+- set_tier overrides user tier without web round-trip
+- ban/unban add a 'banned' boolean column lazily via _ensure_banned_column
+- stats_global aggregates deposits, wins/losses, winrate across linked accounts
+- main.py: register admin router first
+---
+ bot/handlers/admin.py | 233 ++++++++++++++++++++++++++++++++++++++++++
+ bot/main.py           |   3 +-
+ 2 files changed, 235 insertions(+), 1 deletion(-)
+ create mode 100644 bot/handlers/admin.py
+
+diff --git a/bot/handlers/admin.py b/bot/handlers/admin.py
+new file mode 100644
+index 0000000..dbbb769
+--- /dev/null
++++ b/bot/handlers/admin.py
+@@ -0,0 +1,233 @@
++"""
++In-bot admin tools.
++
++Restricted to telegram_ids listed in env ADMIN_IDS (comma-separated). Commands:
++  /admin                      — show admin panel summary
++  /broadcast <message…>       — send a message to every registered user
++  /set_tier <user_id> <T>     — manually override a user's tier
++  /ban <user_id>              — block a user from the bot (sets tier=-1 sentinel)
++  /unban <user_id>            — restore (sets tier=0)
++  /stats_global               — full platform stats
++
++The implementation is intentionally simple: no separate admin DB tables.
++Bans are tracked via a `banned` flag column added by `_ensure_columns`.
++"""
++from __future__ import annotations
++
++import logging
++
++import aiosqlite
++from aiogram import Router
++from aiogram.filters import Command, CommandObject
++from aiogram.types import Message
++from aiogram.enums import ParseMode
++
++from config import settings
++from database.db import (
++    DB_PATH,
++    get_total_signals,
++    get_total_users,
++    get_user,
++    set_tier,
++)
++
++logger = logging.getLogger(__name__)
++router = Router()
++
++
++def _admin_ids() -> set[int]:
++    raw = (settings.admin_ids or "").strip()
++    if not raw:
++        return set()
++    out: set[int] = set()
++    for chunk in raw.split(","):
++        chunk = chunk.strip()
++        if chunk.isdigit():
++            out.add(int(chunk))
++    return out
++
++
++def _is_admin(telegram_id: int) -> bool:
++    return telegram_id in _admin_ids()
++
++
++async def _ensure_banned_column() -> None:
++    async with aiosqlite.connect(DB_PATH) as db:
++        async with db.execute("PRAGMA table_info(users)") as cur:
++            cols = [r[1] for r in await cur.fetchall()]
++        if "banned" not in cols:
++            await db.execute("ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0")
++            await db.commit()
++
++
++async def _set_banned(telegram_id: int, banned: bool) -> None:
++    await _ensure_banned_column()
++    async with aiosqlite.connect(DB_PATH) as db:
++        await db.execute(
++            "UPDATE users SET banned = ? WHERE telegram_id = ?",
++            (1 if banned else 0, telegram_id),
++        )
++        await db.commit()
++
++
++async def _all_user_ids() -> list[int]:
++    async with aiosqlite.connect(DB_PATH) as db:
++        async with db.execute("SELECT telegram_id FROM users") as cur:
++            return [r[0] for r in await cur.fetchall()]
++
++
++async def _tier_breakdown() -> dict[int, int]:
++    async with aiosqlite.connect(DB_PATH) as db:
++        async with db.execute(
++            "SELECT tier, COUNT(*) FROM users GROUP BY tier"
++        ) as cur:
++            return {int(r[0]): int(r[1]) for r in await cur.fetchall()}
++
++
++# ── handlers ──────────────────────────────────────────────────────────────────
++
++
++@router.message(Command("admin"))
++async def cmd_admin(message: Message) -> None:
++    if not _is_admin(message.from_user.id):
++        return  # silent
++    total_signals = await get_total_signals()
++    total_users = await get_total_users()
++    breakdown = await _tier_breakdown()
++    tier_lines = "\n".join(
++        f"  T{t}: <b>{breakdown.get(t, 0)}</b>" for t in sorted(breakdown)
++    )
++    text = (
++        "<b>🛠 Admin panel</b>\n"
++        "\n"
++        f"<b>Users:</b> {total_users:,}\n"
++        f"<b>Signals:</b> {total_signals:,}\n"
++        "\n"
++        f"<b>Tier breakdown:</b>\n{tier_lines}\n"
++        "\n"
++        "Commands:\n"
++        "  <code>/broadcast &lt;text&gt;</code>\n"
++        "  <code>/set_tier &lt;user_id&gt; &lt;T&gt;</code>\n"
++        "  <code>/ban &lt;user_id&gt;</code>\n"
++        "  <code>/unban &lt;user_id&gt;</code>\n"
++        "  <code>/stats_global</code>"
++    )
++    await message.answer(text, parse_mode=ParseMode.HTML)
++
++
++@router.message(Command("broadcast"))
++async def cmd_broadcast(message: Message, command: CommandObject) -> None:
++    if not _is_admin(message.from_user.id):
++        return
++    text = (command.args or "").strip()
++    if not text:
++        await message.answer("Usage: /broadcast &lt;text&gt;", parse_mode=ParseMode.HTML)
++        return
++
++    user_ids = await _all_user_ids()
++    sent = 0
++    failed = 0
++    for uid in user_ids:
++        try:
++            await message.bot.send_message(uid, text, parse_mode=ParseMode.HTML)
++            sent += 1
++        except Exception:  # noqa: BLE001
++            failed += 1
++    await message.answer(
++        f"<b>Broadcast done</b>\nsent: {sent}, failed: {failed}",
++        parse_mode=ParseMode.HTML,
++    )
++
++
++@router.message(Command("set_tier"))
++async def cmd_set_tier(message: Message, command: CommandObject) -> None:
++    if not _is_admin(message.from_user.id):
++        return
++    parts = (command.args or "").split()
++    if len(parts) != 2 or not all(p.lstrip("-").isdigit() for p in parts):
++        await message.answer(
++            "Usage: <code>/set_tier &lt;user_id&gt; &lt;T 0..4&gt;</code>",
++            parse_mode=ParseMode.HTML,
++        )
++        return
++    target_id = int(parts[0])
++    new_tier = int(parts[1])
++    if not (0 <= new_tier <= 4):
++        await message.answer("Tier must be 0..4")
++        return
++    target = await get_user(target_id)
++    if target is None:
++        await message.answer(f"User {target_id} not found")
++        return
++    await set_tier(target_id, new_tier)
++    await message.answer(
++        f"User <code>{target_id}</code> → T{new_tier}", parse_mode=ParseMode.HTML
++    )
++
++
++@router.message(Command("ban"))
++async def cmd_ban(message: Message, command: CommandObject) -> None:
++    if not _is_admin(message.from_user.id):
++        return
++    raw = (command.args or "").strip()
++    if not raw.lstrip("-").isdigit():
++        await message.answer("Usage: /ban &lt;user_id&gt;", parse_mode=ParseMode.HTML)
++        return
++    target_id = int(raw)
++    target = await get_user(target_id)
++    if target is None:
++        await message.answer(f"User {target_id} not found")
++        return
++    await _set_banned(target_id, True)
++    await message.answer(f"User <code>{target_id}</code> banned", parse_mode=ParseMode.HTML)
++
++
++@router.message(Command("unban"))
++async def cmd_unban(message: Message, command: CommandObject) -> None:
++    if not _is_admin(message.from_user.id):
++        return
++    raw = (command.args or "").strip()
++    if not raw.lstrip("-").isdigit():
++        await message.answer("Usage: /unban &lt;user_id&gt;", parse_mode=ParseMode.HTML)
++        return
++    target_id = int(raw)
++    await _set_banned(target_id, False)
++    await message.answer(
++        f"User <code>{target_id}</code> unbanned", parse_mode=ParseMode.HTML
++    )
++
++
++@router.message(Command("stats_global"))
++async def cmd_stats_global(message: Message) -> None:
++    if not _is_admin(message.from_user.id):
++        return
++    total_signals = await get_total_signals()
++    total_users = await get_total_users()
++    breakdown = await _tier_breakdown()
++    async with aiosqlite.connect(DB_PATH) as db:
++        async with db.execute(
++            "SELECT SUM(deposit_total), SUM(wins), SUM(losses), COUNT(po_trader_id) "
++            "FROM users WHERE po_trader_id IS NOT NULL"
++        ) as cur:
++            row = await cur.fetchone()
++            sum_dep = float(row[0] or 0.0)
++            sum_wins = int(row[1] or 0)
++            sum_losses = int(row[2] or 0)
++            linked = int(row[3] or 0)
++    total_results = sum_wins + sum_losses
++    wr = (sum_wins / total_results * 100) if total_results else 0
++    text = (
++        "<b>📊 Global stats</b>\n"
++        "\n"
++        f"<b>Users:</b> {total_users:,}  ·  Linked PO: {linked:,}\n"
++        f"<b>Signals:</b> {total_signals:,}\n"
++        f"<b>Total deposits (PO):</b> ${sum_dep:,.2f}\n"
++        f"<b>Wins / Losses:</b> {sum_wins:,} / {sum_losses:,}\n"
++        f"<b>Aggregate winrate:</b> {wr:.1f}%\n"
++        "\n"
++        "<b>By tier:</b>\n"
++        + "\n".join(
++            f"  T{t}: <b>{breakdown.get(t, 0):,}</b>" for t in sorted(breakdown)
++        )
++    )
++    await message.answer(text, parse_mode=ParseMode.HTML)
+diff --git a/bot/main.py b/bot/main.py
+index 69c35c7..a70137c 100644
+--- a/bot/main.py
++++ b/bot/main.py
+@@ -10,7 +10,7 @@ from aiogram.enums import ParseMode
+ 
+ from config import settings
+ from database.db import init_db
+-from handlers import link, menu, onboarding, signals, start, stats
++from handlers import admin, link, menu, onboarding, signals, start, stats
+ from services.scheduler import daily_brief_loop, signal_loop
+ from services.tier_sync import tier_sync_loop
+ 
+@@ -57,6 +57,7 @@ async def main() -> None:
+     dp = Dispatcher()
+ 
+     # Order matters: specific command routers first, generic menu/text last.
++    dp.include_router(admin.router)
+     dp.include_router(start.router)
+     dp.include_router(onboarding.router)
+     dp.include_router(signals.router)
+-- 
+2.34.1
+

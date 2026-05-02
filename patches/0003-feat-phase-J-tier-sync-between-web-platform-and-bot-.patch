@@ -1,0 +1,323 @@
+From 6ead10e099cd34f31eca66e7a2ff4ac4f5a645fe Mon Sep 17 00:00:00 2001
+From: yawiheb450 <yawiheb450@donumart.com>
+Date: Wed, 29 Apr 2026 14:25:05 +0000
+Subject: [PATCH 3/5] feat(phase-J): tier-sync between web platform and bot via
+ /api/bot/sync polling
+
+- web: GET /api/bot/sync returns [{poTraderId, tier, totalDeposit, telegramId}], guarded by BOT_SYNC_SECRET header
+- bot/services/tier_sync.py: 60s poll, mirrors deposit, fires tier-card photo + congrats text on tier upgrade
+- bot/main.py: launch tier_sync_loop alongside signal_loop
+- bot/config.py: PLATFORM_API_URL, BOT_SYNC_SECRET, ADMIN_IDS env support
+- .env.example updated for both web and bot
+---
+ bot/.env.example                           |  10 +-
+ bot/config.py                              |   8 ++
+ bot/main.py                                |   5 +-
+ bot/services/tier_sync.py                  | 137 +++++++++++++++++++++
+ web-platform/.env.example                  |  10 ++
+ web-platform/src/app/api/bot/sync/route.ts |  59 +++++++++
+ 6 files changed, 226 insertions(+), 3 deletions(-)
+ create mode 100644 bot/services/tier_sync.py
+ create mode 100644 web-platform/src/app/api/bot/sync/route.ts
+
+diff --git a/bot/.env.example b/bot/.env.example
+index a6d6bf7..e956842 100644
+--- a/bot/.env.example
++++ b/bot/.env.example
+@@ -15,9 +15,15 @@ DATABASE_URL=sqlite+aiosqlite:///data/bot.db
+ # Place your aff URL with {click_id} placeholder if you want to attribute users.
+ POCKET_OPTION_URL=https://pocketoption.com
+ 
+-# Optional: web platform base URL — when set, the bot will sync tier with
+-# the web platform's REST API on /tier and /signal commands.
++# Web platform base URL — when set together with BOT_SYNC_SECRET, the bot
++# polls /api/bot/sync every 60s, mirrors tier+deposit, and pushes a
++# "Tier unlocked" message to the user when their tier increases on PocketOption.
+ PLATFORM_API_URL=
++BOT_SYNC_SECRET=
++
++# Comma-separated telegram_ids that can run /admin commands inside the bot
++# (broadcast, ban, set_tier, etc). Leave empty to disable.
++ADMIN_IDS=
+ 
+ # Logging
+ LOG_LEVEL=INFO
+diff --git a/bot/config.py b/bot/config.py
+index 095daf2..5f3924a 100644
+--- a/bot/config.py
++++ b/bot/config.py
+@@ -15,6 +15,14 @@ class Settings(BaseSettings):
+ 
+     pocket_option_url: str = Field("https://pocketoption.com", env="POCKET_OPTION_URL")
+ 
++    # Phase J — sync with the web platform's PocketOption account state.
++    # Both must be set or the tier-sync loop is disabled.
++    platform_api_url: str = Field("", env="PLATFORM_API_URL")
++    bot_sync_secret: str = Field("", env="BOT_SYNC_SECRET")
++
++    # Phase L — admin commands inside the bot. Comma-separated telegram_ids.
++    admin_ids: str = Field("", env="ADMIN_IDS")
++
+     log_level: str = Field("INFO", env="LOG_LEVEL")
+ 
+     class Config:
+diff --git a/bot/main.py b/bot/main.py
+index a160505..270abb6 100644
+--- a/bot/main.py
++++ b/bot/main.py
+@@ -12,6 +12,7 @@ from config import settings
+ from database.db import init_db
+ from handlers import link, menu, onboarding, signals, start, stats
+ from services.scheduler import signal_loop
++from services.tier_sync import tier_sync_loop
+ 
+ logging.basicConfig(
+     level=getattr(logging, settings.log_level.upper(), logging.INFO),
+@@ -63,8 +64,9 @@ async def main() -> None:
+     dp.include_router(stats.router)
+     dp.include_router(menu.router)
+ 
+-    # Start signal loop in background
++    # Start background loops (signal cadence + tier-sync from web platform)
+     loop_task = asyncio.create_task(signal_loop(bot))
++    sync_task = asyncio.create_task(tier_sync_loop(bot))
+ 
+     # Drop any active webhook so polling works without conflict
+     await bot.delete_webhook(drop_pending_updates=True)
+@@ -73,6 +75,7 @@ async def main() -> None:
+         await dp.start_polling(bot)
+     finally:
+         loop_task.cancel()
++        sync_task.cancel()
+         await bot.session.close()
+         if PID_FILE.exists():
+             PID_FILE.unlink()
+diff --git a/bot/services/tier_sync.py b/bot/services/tier_sync.py
+new file mode 100644
+index 0000000..4cb3c69
+--- /dev/null
++++ b/bot/services/tier_sync.py
+@@ -0,0 +1,137 @@
++"""
++Tier-sync — periodically pulls a snapshot of PocketOption account state from
++the web platform and applies it to the bot's local SQLite mirror.
++
++When a user's tier is upgraded, the bot fires a congratulations message
++including a regenerated tier-card image. Idempotent: if the snapshot tier
++matches local state, nothing is sent.
++
++Disabled when PLATFORM_API_URL or BOT_SYNC_SECRET are unset (the bot can run
++fully standalone for local dev).
++"""
++from __future__ import annotations
++
++import asyncio
++import logging
++from typing import Any
++
++import aiosqlite
++import httpx
++from aiogram import Bot
++from aiogram.enums import ParseMode
++from aiogram.types import BufferedInputFile
++
++from config import settings
++from database.db import DB_PATH, set_deposit_total, set_tier
++from services.imagegen import make_tier_card
++
++logger = logging.getLogger(__name__)
++
++POLL_INTERVAL_SECONDS = 60
++USER_TIER_DEPOSIT_THRESHOLDS = {1: 100, 2: 500, 3: 2000, 4: 10000}
++USER_TIER_NAMES = {0: "Демо", 1: "Starter", 2: "Active", 3: "Pro", 4: "VIP"}
++
++
++async def _fetch_snapshot() -> list[dict[str, Any]]:
++    url = f"{settings.platform_api_url.rstrip('/')}/api/bot/sync"
++    async with httpx.AsyncClient(timeout=10.0) as client:
++        resp = await client.get(
++            url, headers={"X-Bot-Secret": settings.bot_sync_secret}
++        )
++        resp.raise_for_status()
++        body = resp.json()
++        if not body.get("ok"):
++            raise RuntimeError(f"sync failed: {body}")
++        return body["accounts"]
++
++
++async def _local_state(po_trader_id: str) -> tuple[int, float, int | None] | None:
++    """Returns (tier, deposit_total, telegram_id) for a po_trader_id, or None."""
++    async with aiosqlite.connect(DB_PATH) as db:
++        async with db.execute(
++            "SELECT tier, deposit_total, telegram_id FROM users WHERE po_trader_id = ?",
++            (po_trader_id,),
++        ) as cur:
++            row = await cur.fetchone()
++            if row is None:
++                return None
++            return int(row[0] or 0), float(row[1] or 0.0), int(row[2])
++
++
++async def _send_upgrade(bot: Bot, telegram_id: int, new_tier: int, deposit: float) -> None:
++    name = USER_TIER_NAMES.get(new_tier, "—")
++    next_threshold = USER_TIER_DEPOSIT_THRESHOLDS.get(new_tier + 1)
++    try:
++        card = make_tier_card(new_tier, deposit, next_threshold)
++    except Exception as exc:  # noqa: BLE001
++        logger.warning("Could not render tier card on upgrade: %s", exc)
++        card = None
++
++    text = (
++        f"<b>🎉 Тир разблокирован: T{new_tier} · {name}</b>\n"
++        f"\n"
++        f"Депозит на PocketOption: <b>${deposit:,.2f}</b>\n"
++        f"\n"
++        + (
++            f"Дальше — T{new_tier + 1} (≥${next_threshold:,}).\n" if next_threshold else "Это максимальный тир. 🏆\n"
++        )
++        + "\n"
++        "Новые перки уже активны — попробуй «📊 Сигнал» из меню."
++    )
++    if card:
++        await bot.send_photo(
++            telegram_id,
++            BufferedInputFile(card, filename=f"tier_{new_tier}.png"),
++            caption=text,
++            parse_mode=ParseMode.HTML,
++        )
++    else:
++        await bot.send_message(telegram_id, text, parse_mode=ParseMode.HTML)
++
++
++async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
++    po_id = str(item["poTraderId"])
++    new_tier = int(item.get("tier") or 0)
++    deposit = float(item.get("totalDeposit") or 0.0)
++
++    state = await _local_state(po_id)
++    if state is None:
++        # Account exists on web but bot user hasn't /linked locally yet — skip.
++        return
++    old_tier, old_deposit, telegram_id = state
++
++    if abs(deposit - old_deposit) > 1e-2:
++        await set_deposit_total(telegram_id, deposit)
++
++    if new_tier > old_tier:
++        await set_tier(telegram_id, new_tier)
++        try:
++            await _send_upgrade(bot, telegram_id, new_tier, deposit)
++        except Exception as exc:  # noqa: BLE001
++            logger.warning("Could not deliver tier upgrade to %s: %s", telegram_id, exc)
++    elif new_tier < old_tier:
++        # Edge case (refund / rollback) — silently mirror without notifying.
++        await set_tier(telegram_id, new_tier)
++
++
++async def tier_sync_loop(bot: Bot) -> None:
++    """Background task that polls the web platform every POLL_INTERVAL_SECONDS."""
++    if not settings.platform_api_url or not settings.bot_sync_secret:
++        logger.info("Tier-sync disabled (PLATFORM_API_URL or BOT_SYNC_SECRET unset)")
++        return
++
++    logger.info(
++        "Tier-sync loop started, poll=%ds, target=%s",
++        POLL_INTERVAL_SECONDS,
++        settings.platform_api_url,
++    )
++    while True:
++        try:
++            snapshot = await _fetch_snapshot()
++            for item in snapshot:
++                await _apply_one(bot, item)
++        except httpx.HTTPError as exc:
++            logger.warning("Tier-sync fetch failed: %s", exc)
++        except Exception as exc:  # noqa: BLE001
++            logger.exception("Tier-sync iteration failed: %s", exc)
++        await asyncio.sleep(POLL_INTERVAL_SECONDS)
+diff --git a/web-platform/.env.example b/web-platform/.env.example
+index 5d03dd5..cb9c001 100644
+--- a/web-platform/.env.example
++++ b/web-platform/.env.example
+@@ -19,3 +19,13 @@ TELEGRAM_LOGIN_BOT_TOKEN=""
+ # --- PocketOption postback ---
+ # Shared secret signing the X-Signature header on incoming postbacks.
+ POCKETOPTION_POSTBACK_SECRET=""
++
++# --- Bot sync ---
++# Shared secret the bot uses on the X-Bot-Secret header when polling
++# GET /api/bot/sync. Must match BOT_SYNC_SECRET in bot/.env.
++BOT_SYNC_SECRET=""
++
++# --- Optional ---
++# Chipa API key for real candle data on the live chart. Leave blank to use
++# deterministic synthetic candles (good enough for dev/staging).
++CHIPA_API_KEY=""
+diff --git a/web-platform/src/app/api/bot/sync/route.ts b/web-platform/src/app/api/bot/sync/route.ts
+new file mode 100644
+index 0000000..575c7e3
+--- /dev/null
++++ b/web-platform/src/app/api/bot/sync/route.ts
+@@ -0,0 +1,59 @@
++/**
++ * GET /api/bot/sync
++ *
++ * Bot-facing endpoint that returns a snapshot of every linked PocketOption
++ * account: { poTraderId, tier, totalDeposit, telegramId? }.
++ *
++ * Auth: header `X-Bot-Secret` must equal env BOT_SYNC_SECRET. We use a shared
++ * secret rather than HMAC because the response is read-only and the bot
++ * deployment is trusted.
++ *
++ * The bot polls this endpoint periodically (default every 60s) and:
++ *   - Updates its own SQLite mirror of (po_id → tier, deposit_total)
++ *   - When tier increases, sends a "Поздравляем — Tx разблокирован" push
++ *     to the user (we send `telegramId` so it can find them).
++ */
++import { NextResponse, type NextRequest } from "next/server";
++import { prisma } from "@/lib/prisma";
++
++export const dynamic = "force-dynamic";
++export const runtime = "nodejs";
++
++export async function GET(req: NextRequest) {
++  const secret = process.env.BOT_SYNC_SECRET;
++  if (!secret) {
++    return NextResponse.json(
++      { ok: false, reason: "sync_disabled" },
++      { status: 503 },
++    );
++  }
++  const provided = req.headers.get("x-bot-secret");
++  if (provided !== secret) {
++    return NextResponse.json(
++      { ok: false, reason: "bad_secret" },
++      { status: 401 },
++    );
++  }
++
++  const accounts = await prisma.pocketOptionAccount.findMany({
++    select: {
++      poTraderId: true,
++      totalDeposit: true,
++      user: {
++        select: {
++          tier: true,
++          telegramId: true,
++        },
++      },
++    },
++  });
++
++  const data = accounts.map((a) => ({
++    poTraderId: a.poTraderId,
++    tier: a.user.tier,
++    totalDeposit: Number(a.totalDeposit),
++    telegramId: a.user.telegramId ? a.user.telegramId.toString() : null,
++  }));
++
++  return NextResponse.json({ ok: true, accounts: data, ts: Date.now() });
++}
+-- 
+2.34.1
+

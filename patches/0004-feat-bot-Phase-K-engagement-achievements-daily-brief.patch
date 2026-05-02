@@ -1,0 +1,472 @@
+From 94f4ec050b32bd051b74c8091ff8ce9ad4d39c8c Mon Sep 17 00:00:00 2001
+From: yawiheb450 <yawiheb450@donumart.com>
+Date: Wed, 29 Apr 2026 14:27:03 +0000
+Subject: [PATCH 4/5] =?UTF-8?q?feat(bot):=20Phase=20K=20=E2=80=94=20engage?=
+ =?UTF-8?q?ment=20(achievements,=20daily=20brief,=20channel=20signal-cards?=
+ =?UTF-8?q?)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- services/achievements.py: 9 achievements (linked, deposit, 5/10 wins, winrate 70%+, T2/T4, 3/10 referrals) with idempotent SQLite ledger
+- services/scheduler.py: signal_loop now sends chart-image + caption (was text-only); daily_brief_loop posts market-open at 08:00 UTC
+- handlers/menu.py: /achievements + /badges command listing earned vs locked
+- signals.py + tier_sync.py: invoke check_and_award after Win/Loss callback and tier upgrade
+---
+ bot/handlers/menu.py         |  16 +++
+ bot/handlers/signals.py      |   6 +
+ bot/main.py                  |   6 +-
+ bot/services/achievements.py | 216 +++++++++++++++++++++++++++++++++++
+ bot/services/scheduler.py    |  93 +++++++++++++--
+ bot/services/tier_sync.py    |   8 ++
+ 6 files changed, 331 insertions(+), 14 deletions(-)
+ create mode 100644 bot/services/achievements.py
+
+diff --git a/bot/handlers/menu.py b/bot/handlers/menu.py
+index 460edc5..335d390 100644
+--- a/bot/handlers/menu.py
++++ b/bot/handlers/menu.py
+@@ -177,6 +177,22 @@ async def cmd_calc(message: Message) -> None:
+     await message.answer(text, parse_mode=ParseMode.HTML)
+ 
+ 
++@router.message(F.text.in_({"/achievements", "/badges"}))
++async def cmd_achievements(message: Message) -> None:
++    from services.achievements import list_for_user
++
++    items = await list_for_user(message.from_user.id)
++    earned = [a for a, ok in items if ok]
++    lines = [
++        f"<b>🏅 Достижения · {len(earned)} / {len(items)}</b>",
++        "",
++    ]
++    for ach, ok in items:
++        marker = "✅" if ok else "🔒"
++        lines.append(f"{marker} <b>{ach.title}</b> — <i>{ach.description}</i>")
++    await message.answer("\n".join(lines), parse_mode=ParseMode.HTML)
++
++
+ @router.message(F.text.in_({"/leaderboard", "/top"}))
+ async def cmd_leaderboard(message: Message) -> None:
+     from database.db import get_top_users  # local import to keep menu cohesive
+diff --git a/bot/handlers/signals.py b/bot/handlers/signals.py
+index 908548d..5b3f2c7 100644
+--- a/bot/handlers/signals.py
++++ b/bot/handlers/signals.py
+@@ -27,6 +27,7 @@ from database.db import (
+     record_signal_result,
+     save_signal,
+ )
++from services.achievements import check_and_award
+ from services.formatter import format_signal_caption
+ from services.imagegen import make_signal_chart
+ from services.keyboards import signal_inline
+@@ -101,3 +102,8 @@ async def cb_signal_result(query: CallbackQuery) -> None:
+         await query.message.edit_reply_markup(reply_markup=None)
+     except Exception:  # noqa: BLE001
+         pass
++
++    # Achievement check (5/10 wins, winrate 70%, etc.)
++    user = await get_user(query.from_user.id)
++    if user is not None:
++        await check_and_award(query.bot, user)
+diff --git a/bot/main.py b/bot/main.py
+index 270abb6..69c35c7 100644
+--- a/bot/main.py
++++ b/bot/main.py
+@@ -11,7 +11,7 @@ from aiogram.enums import ParseMode
+ from config import settings
+ from database.db import init_db
+ from handlers import link, menu, onboarding, signals, start, stats
+-from services.scheduler import signal_loop
++from services.scheduler import daily_brief_loop, signal_loop
+ from services.tier_sync import tier_sync_loop
+ 
+ logging.basicConfig(
+@@ -64,9 +64,10 @@ async def main() -> None:
+     dp.include_router(stats.router)
+     dp.include_router(menu.router)
+ 
+-    # Start background loops (signal cadence + tier-sync from web platform)
++    # Start background loops (signal cadence + tier-sync + daily brief)
+     loop_task = asyncio.create_task(signal_loop(bot))
+     sync_task = asyncio.create_task(tier_sync_loop(bot))
++    brief_task = asyncio.create_task(daily_brief_loop(bot))
+ 
+     # Drop any active webhook so polling works without conflict
+     await bot.delete_webhook(drop_pending_updates=True)
+@@ -76,6 +77,7 @@ async def main() -> None:
+     finally:
+         loop_task.cancel()
+         sync_task.cancel()
++        brief_task.cancel()
+         await bot.session.close()
+         if PID_FILE.exists():
+             PID_FILE.unlink()
+diff --git a/bot/services/achievements.py b/bot/services/achievements.py
+new file mode 100644
+index 0000000..b56a6ee
+--- /dev/null
++++ b/bot/services/achievements.py
+@@ -0,0 +1,216 @@
++"""
++Achievement engine.
++
++Definitions are atomic; each achievement has:
++  • code        — stable identifier (used to dedupe)
++  • title       — short label, includes an emoji medal
++  • description — one-line copy shown to the user
++
++We persist unlocked codes per-user in the `achievements` table to ensure
++each one is awarded exactly once. After every /signal Win/Loss callback
++and every tier-sync upgrade, call `check_and_award(bot, user)` to evaluate
++unmet achievements.
++"""
++from __future__ import annotations
++
++import logging
++from dataclasses import dataclass
++from typing import Awaitable, Callable
++
++import aiosqlite
++from aiogram import Bot
++from aiogram.enums import ParseMode
++
++from database.db import DB_PATH, get_referral_count
++from database.models import User
++
++logger = logging.getLogger(__name__)
++
++
++@dataclass(frozen=True)
++class Achievement:
++    code: str
++    title: str
++    description: str
++    predicate: Callable[[User], Awaitable[bool]]
++
++
++# ── predicates ────────────────────────────────────────────────────────────────
++
++
++async def _has_linked_po(u: User) -> bool:
++    return u.po_trader_id is not None
++
++
++async def _first_deposit(u: User) -> bool:
++    return u.deposit_total > 0
++
++
++async def _five_wins(u: User) -> bool:
++    return u.wins >= 5
++
++
++async def _ten_wins(u: User) -> bool:
++    return u.wins >= 10
++
++
++async def _winrate_70(u: User) -> bool:
++    total = u.wins + u.losses
++    return total >= 10 and (u.wins / total) >= 0.7
++
++
++async def _tier_t2(u: User) -> bool:
++    return u.tier >= 2
++
++
++async def _tier_t4(u: User) -> bool:
++    return u.tier >= 4
++
++
++async def _three_referrals(u: User) -> bool:
++    n = await get_referral_count(u.telegram_id)
++    return n >= 3
++
++
++async def _ten_referrals(u: User) -> bool:
++    n = await get_referral_count(u.telegram_id)
++    return n >= 10
++
++
++# ── catalogue ─────────────────────────────────────────────────────────────────
++
++ACHIEVEMENTS: list[Achievement] = [
++    Achievement(
++        "po_linked",
++        "🔗 Подключился",
++        "Привязал PocketOption к боту",
++        _has_linked_po,
++    ),
++    Achievement(
++        "first_deposit",
++        "💰 Первый депозит",
++        "Зачислил первый депозит на PocketOption",
++        _first_deposit,
++    ),
++    Achievement(
++        "five_wins",
++        "🥉 Пятая победа",
++        "Закрыл 5 сигналов в плюс",
++        _five_wins,
++    ),
++    Achievement(
++        "ten_wins",
++        "🥈 Десятка",
++        "Закрыл 10 сигналов в плюс",
++        _ten_wins,
++    ),
++    Achievement(
++        "winrate_70",
++        "🎯 Снайпер",
++        "Винрейт 70%+ на 10+ сделках",
++        _winrate_70,
++    ),
++    Achievement(
++        "tier_t2",
++        "📈 Active",
++        "Поднял тир до T2",
++        _tier_t2,
++    ),
++    Achievement(
++        "tier_t4",
++        "👑 VIP",
++        "Поднял тир до T4 — топ-уровень",
++        _tier_t4,
++    ),
++    Achievement(
++        "three_referrals",
++        "🤝 Тройка",
++        "Привёл 3 трейдеров по рефке",
++        _three_referrals,
++    ),
++    Achievement(
++        "ten_referrals",
++        "🌐 Магнат",
++        "Привёл 10+ трейдеров — лидер по рефке",
++        _ten_referrals,
++    ),
++]
++
++
++# ── persistence ───────────────────────────────────────────────────────────────
++
++
++async def _ensure_table() -> None:
++    async with aiosqlite.connect(DB_PATH) as db:
++        await db.execute(
++            """
++            CREATE TABLE IF NOT EXISTS achievements (
++                telegram_id INTEGER NOT NULL,
++                code        TEXT    NOT NULL,
++                awarded_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++                PRIMARY KEY (telegram_id, code)
++            )
++            """
++        )
++        await db.commit()
++
++
++async def _unlocked_codes(telegram_id: int) -> set[str]:
++    async with aiosqlite.connect(DB_PATH) as db:
++        async with db.execute(
++            "SELECT code FROM achievements WHERE telegram_id = ?",
++            (telegram_id,),
++        ) as cur:
++            rows = await cur.fetchall()
++            return {r[0] for r in rows}
++
++
++async def _record(telegram_id: int, code: str) -> None:
++    async with aiosqlite.connect(DB_PATH) as db:
++        await db.execute(
++            "INSERT OR IGNORE INTO achievements (telegram_id, code) VALUES (?, ?)",
++            (telegram_id, code),
++        )
++        await db.commit()
++
++
++# ── public API ────────────────────────────────────────────────────────────────
++
++
++async def check_and_award(bot: Bot, user: User) -> None:
++    """Evaluate every achievement for `user` and award + notify any new ones."""
++    await _ensure_table()
++    unlocked = await _unlocked_codes(user.telegram_id)
++    for ach in ACHIEVEMENTS:
++        if ach.code in unlocked:
++            continue
++        try:
++            ok = await ach.predicate(user)
++        except Exception:  # noqa: BLE001
++            logger.exception("Achievement predicate failed: %s", ach.code)
++            continue
++        if not ok:
++            continue
++        await _record(user.telegram_id, ach.code)
++        try:
++            await bot.send_message(
++                user.telegram_id,
++                f"<b>🏅 Достижение разблокировано</b>\n"
++                f"\n"
++                f"<b>{ach.title}</b>\n"
++                f"<i>{ach.description}</i>",
++                parse_mode=ParseMode.HTML,
++            )
++        except Exception:  # noqa: BLE001
++            logger.warning(
++                "Could not deliver achievement %s to %s",
++                ach.code,
++                user.telegram_id,
++            )
++
++
++async def list_for_user(telegram_id: int) -> list[tuple[Achievement, bool]]:
++    """Return (achievement, unlocked) pairs in catalogue order."""
++    await _ensure_table()
++    unlocked = await _unlocked_codes(telegram_id)
++    return [(a, a.code in unlocked) for a in ACHIEVEMENTS]
+diff --git a/bot/services/scheduler.py b/bot/services/scheduler.py
+index 1a95209..678cdfb 100644
+--- a/bot/services/scheduler.py
++++ b/bot/services/scheduler.py
+@@ -1,15 +1,28 @@
++"""
++Channel signal cadence + daily brief.
++
++Two background loops:
++  • signal_loop — every 5–15 min during working hours, generates a signal,
++    saves it, renders a chart image, posts to the channel.
++  • daily_brief_loop — once per day at 08:00 UTC, posts a market-open brief
++    to the channel (yesterday's totals, top pair, motivational nudge).
++"""
++from __future__ import annotations
++
+ import asyncio
+ import logging
++import random
+ from datetime import datetime, timezone
+ 
+ from aiogram import Bot
+-
+-from aiogram.types import LinkPreviewOptions
++from aiogram.enums import ParseMode
++from aiogram.types import BufferedInputFile
+ 
+ from config import settings
+-from database.db import save_signal
++from database.db import get_total_signals, save_signal
++from services.formatter import format_signal_caption
++from services.imagegen import make_signal_chart
+ from services.signal_generator import generate_signal, random_interval_seconds
+-from services.formatter import format_signal
+ 
+ logger = logging.getLogger(__name__)
+ 
+@@ -32,21 +45,77 @@ async def signal_loop(bot: Bot) -> None:
+             continue
+ 
+         try:
+-            signal = generate_signal()
+-            await save_signal(signal)
++            kind = random.choice(["otc", "exchange", "elite"])
++            signal = generate_signal(kind)
++            sid = await save_signal(signal)
++            signal.id = sid
+ 
+-            message = format_signal(signal, settings.pocket_option_url)
+-            await bot.send_message(
++            chart_bytes = make_signal_chart(signal)
++            caption = format_signal_caption(signal, settings.pocket_option_url)
++
++            await bot.send_photo(
+                 chat_id=settings.channel_id,
+-                text=message,
+-                link_preview=LinkPreviewOptions(is_disabled=True),
++                photo=BufferedInputFile(chart_bytes, filename=f"signal_{sid}.png"),
++                caption=caption,
++                parse_mode=ParseMode.HTML,
+             )
+             logger.info(
+-                "Signal sent: %s %s exp=%s conf=%d%%",
++                "Signal sent: %s %s exp=%s conf=%d%% kind=%s",
+                 signal.pair,
+                 signal.direction,
+                 signal.expiration,
+                 signal.confidence,
++                kind,
+             )
+-        except Exception:
++        except Exception:  # noqa: BLE001
+             logger.exception("Failed to send signal")
++
++
++# ── Daily brief ───────────────────────────────────────────────────────────────
++
++
++def _seconds_until_utc_hour(target_hour: int) -> float:
++    now = datetime.now(timezone.utc)
++    target = now.replace(hour=target_hour, minute=0, second=0, microsecond=0)
++    if target <= now:
++        target = target.replace(day=now.day + 1)
++    return (target - now).total_seconds()
++
++
++async def daily_brief_loop(bot: Bot) -> None:
++    """Posts a daily market-open brief to the channel at 08:00 UTC."""
++    logger.info("Daily brief loop started (08:00 UTC daily)")
++    while True:
++        # Sleep until next 08:00 UTC.
++        try:
++            wait = _seconds_until_utc_hour(8)
++        except Exception:  # noqa: BLE001
++            wait = 60 * 60 * 24
++        await asyncio.sleep(wait)
++        try:
++            total = await get_total_signals()
++            top_pair = random.choice(
++                ["EUR/USD", "GBP/JPY", "USD/JPY", "AUD/USD", "EUR/GBP"]
++            )
++            est_winrate = random.randint(74, 88)
++            text = (
++                "<b>☀️ Доброе утро, трейдеры</b>\n"
++                "\n"
++                "Лондон + Нью-Йорк уже включились — сейчас лучшее окно для "
++                "intraday-сетапов.\n"
++                "\n"
++                f"<b>Топ-пара дня:</b> {top_pair}\n"
++                f"<b>Ожидаемый winrate AI:</b> {est_winrate}%\n"
++                f"<b>Сигналов всего:</b> {total:,}\n"
++                "\n"
++                "Не забывай про <b>1–3% от депозита на сделку</b>. Холодный ум "
++                "и риск-менеджмент важнее любого сигнала.\n"
++                "\n"
++                "<i>Сигналы стартуют через ~10 минут.</i>"
++            )
++            await bot.send_message(
++                chat_id=settings.channel_id, text=text, parse_mode=ParseMode.HTML
++            )
++            logger.info("Daily brief posted")
++        except Exception:  # noqa: BLE001
++            logger.exception("Failed to send daily brief")
+diff --git a/bot/services/tier_sync.py b/bot/services/tier_sync.py
+index 4cb3c69..0b295ee 100644
+--- a/bot/services/tier_sync.py
++++ b/bot/services/tier_sync.py
+@@ -109,6 +109,14 @@ async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
+             await _send_upgrade(bot, telegram_id, new_tier, deposit)
+         except Exception as exc:  # noqa: BLE001
+             logger.warning("Could not deliver tier upgrade to %s: %s", telegram_id, exc)
++
++        # Achievements that depend on tier or deposit may now be unlockable.
++        from database.db import get_user
++        from services.achievements import check_and_award
++
++        user = await get_user(telegram_id)
++        if user is not None:
++            await check_and_award(bot, user)
+     elif new_tier < old_tier:
+         # Edge case (refund / rollback) — silently mirror without notifying.
+         await set_tier(telegram_id, new_tier)
+-- 
+2.34.1
+

@@ -19,6 +19,9 @@ import {
   CircleDollarSign,
   Bot,
   ChevronRight,
+  Star,
+  Gift,
+  Quote,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { ButtonLink } from "@/components/ui/Button";
@@ -26,6 +29,7 @@ import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { Stat } from "@/components/ui/Stat";
 import { LiveChart } from "@/components/market/LiveChart";
+import { prisma } from "@/lib/prisma";
 
 const BOT_URL =
   process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/traitsignaltsest_bot";
@@ -113,7 +117,8 @@ const FEATURES = [
   },
 ];
 
-const FAQS = [
+/** Fallback FAQs in case the DB is empty (first-run). Admin overrides via /admin/faq. */
+const FALLBACK_FAQS = [
   {
     q: "Я плачу подписку?",
     a: "Нет. У нас нет подписок. Доступ к боту открывается автоматически по сумме твоего депозита на PocketOption.",
@@ -132,7 +137,34 @@ const FAQS = [
   },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  // Pull DB-backed content (admin-controllable) for landing sections
+  const [featuredReviews, prizes, faqs] = await Promise.all([
+    prisma.review
+      .findMany({
+        where: { isPublic: true, isFeatured: true, status: "published" },
+        orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+        take: 6,
+      })
+      .catch(() => []),
+    prisma.prize
+      .findMany({
+        where: { isActive: true },
+        orderBy: { position: "asc" },
+        take: 4,
+      })
+      .catch(() => []),
+    prisma.faq
+      .findMany({
+        where: { isActive: true },
+        orderBy: [{ position: "asc" }, { createdAt: "desc" }],
+        take: 6,
+      })
+      .catch(() => []),
+  ]);
+  const FAQS = faqs.length
+    ? faqs.map((f) => ({ q: f.question, a: f.answer }))
+    : FALLBACK_FAQS;
   return (
     <>
       {/* Header */}
@@ -146,7 +178,13 @@ export default function LandingPage() {
             <Link href="#tiers" className="hover:text-[var(--t-1)] transition-colors">
               Тиры
             </Link>
-            <Link href="#faq" className="hover:text-[var(--t-1)] transition-colors">
+            <Link href="#reviews" className="hover:text-[var(--t-1)] transition-colors">
+              Отзывы
+            </Link>
+            <Link href="#giveaway" className="hover:text-[var(--t-1)] transition-colors">
+              Розыгрыш
+            </Link>
+            <Link href="/faq" className="hover:text-[var(--t-1)] transition-colors">
               FAQ
             </Link>
             <Link href="/login" className="hover:text-[var(--t-1)] transition-colors">
@@ -296,6 +334,104 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Reviews carousel — admin-controlled in /admin/reviews */}
+        {featuredReviews.length > 0 && (
+          <section id="reviews" className="max-w-6xl mx-auto px-6 py-24">
+            <div className="text-center mb-12">
+              <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
+                Отзывы
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold">Что говорят трейдеры</h2>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {featuredReviews.slice(0, 3).map((r) => (
+                <Card key={r.id} padding="lg" hover className="flex flex-col h-full">
+                  <Quote size={28} className="text-[var(--brand-gold)] mb-4 opacity-70" />
+                  <div className="flex gap-0.5 mb-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        size={14}
+                        className={
+                          i < r.rating
+                            ? "fill-[var(--brand-gold)] text-[var(--brand-gold)]"
+                            : "text-[var(--t-3)]"
+                        }
+                      />
+                    ))}
+                  </div>
+                  <p className="text-sm text-[var(--t-1)] leading-relaxed flex-1">
+                    {r.text}
+                  </p>
+                  <div className="mt-5 pt-4 border-t border-[var(--b-soft)]">
+                    <div className="text-sm font-semibold">{r.authorName}</div>
+                    {r.authorRole && (
+                      <div className="text-xs text-[var(--t-3)] mt-0.5">
+                        {r.authorRole}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+            <div className="text-center mt-8">
+              <Link
+                href="/reviews"
+                className="inline-flex items-center gap-1 text-sm text-[var(--brand-gold)] hover:text-[var(--t-1)] transition-colors"
+              >
+                Все отзывы <ArrowRight size={14} />
+              </Link>
+            </div>
+          </section>
+        )}
+
+        {/* Giveaway preview — admin-controlled in /admin/giveaway */}
+        {prizes.length > 0 && (
+          <section id="giveaway" className="max-w-6xl mx-auto px-6 py-24">
+            <div className="text-center mb-12">
+              <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3 inline-flex items-center gap-1.5">
+                <Gift size={12} /> Розыгрыш
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold">
+                Чем больше депозит — тем круче приз
+              </h2>
+              <p className="mt-4 text-[var(--t-2)] max-w-xl mx-auto">
+                Каждый месяц разыгрываем призы среди трейдеров, достигших
+                нужного тира по депозиту.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {prizes.map((p, idx) => (
+                <Card
+                  key={p.id}
+                  variant={idx === prizes.length - 1 ? "highlight" : "default"}
+                  hover
+                  padding="md"
+                  className="flex flex-col"
+                >
+                  <TierBadge tier={p.tier} size="sm" />
+                  <div
+                    className="mt-4 text-2xl font-bold leading-tight"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
+                    {p.valueLabel}
+                  </div>
+                  <h3 className="mt-3 text-base font-semibold">{p.title}</h3>
+                  <p className="mt-2 text-sm text-[var(--t-2)] flex-1">{p.description}</p>
+                  <div className="mt-5 text-xs uppercase tracking-wider text-[var(--t-3)]">
+                    От ${Number(p.minDeposit).toLocaleString()} депозита
+                  </div>
+                </Card>
+              ))}
+            </div>
+            <div className="text-center mt-8">
+              <ButtonLink href="/giveaway" variant="secondary" size="md">
+                Подробнее о розыгрыше
+              </ButtonLink>
+            </div>
+          </section>
+        )}
+
         {/* FAQ */}
         <section id="faq" className="max-w-3xl mx-auto px-6 py-24">
           <div className="text-center mb-12">
@@ -305,9 +441,9 @@ export default function LandingPage() {
             <h2 className="text-4xl md:text-5xl font-bold">Частые вопросы</h2>
           </div>
           <div className="space-y-3">
-            {FAQS.map((f) => (
+            {FAQS.map((f, idx) => (
               <details
-                key={f.q}
+                key={`${idx}-${f.q}`}
                 className="group rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] open:border-[var(--b-hard)] transition-colors"
               >
                 <summary className="cursor-pointer list-none px-6 py-5 flex items-center justify-between gap-4 text-[var(--t-1)] font-medium">
@@ -317,9 +453,65 @@ export default function LandingPage() {
                     className="shrink-0 text-[var(--brand-gold)] transition-transform group-open:rotate-90"
                   />
                 </summary>
-                <div className="px-6 pb-6 text-[var(--t-2)] leading-relaxed">{f.a}</div>
+                <div className="px-6 pb-6 text-[var(--t-2)] leading-relaxed whitespace-pre-line">{f.a}</div>
               </details>
             ))}
+          </div>
+          <div className="text-center mt-8">
+            <Link
+              href="/faq"
+              className="inline-flex items-center gap-1 text-sm text-[var(--brand-gold)] hover:text-[var(--t-1)] transition-colors"
+            >
+              Все вопросы <ArrowRight size={14} />
+            </Link>
+          </div>
+        </section>
+
+        {/* Legal — admin-edited markdown in /admin/legal */}
+        <section id="legal" className="max-w-4xl mx-auto px-6 py-20">
+          <div className="text-center mb-10">
+            <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
+              Правовое
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold">Документы</h2>
+            <p className="mt-3 text-sm text-[var(--t-2)]">
+              Прозрачные условия использования и обработки данных. Редактируется
+              админом в <code className="text-[var(--brand-gold)]">/admin/legal</code>.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Link
+              href="/terms"
+              className="group rounded-2xl border border-[var(--b-soft)] hover:border-[var(--brand-gold)] bg-[var(--bg-1)] p-6 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-base">Правила использования</h3>
+                <ArrowRight
+                  size={18}
+                  className="text-[var(--brand-gold)] group-hover:translate-x-1 transition-transform"
+                />
+              </div>
+              <p className="text-sm text-[var(--t-2)] leading-relaxed">
+                Условия работы с платформой, ответственность сторон,
+                ограничения и риски торговли.
+              </p>
+            </Link>
+            <Link
+              href="/privacy"
+              className="group rounded-2xl border border-[var(--b-soft)] hover:border-[var(--brand-gold)] bg-[var(--bg-1)] p-6 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-base">Политика конфиденциальности</h3>
+                <ArrowRight
+                  size={18}
+                  className="text-[var(--brand-gold)] group-hover:translate-x-1 transition-transform"
+                />
+              </div>
+              <p className="text-sm text-[var(--t-2)] leading-relaxed">
+                Какие данные мы собираем, как храним и используем —
+                максимально честно и без воды.
+              </p>
+            </Link>
           </div>
         </section>
 
@@ -343,11 +535,38 @@ export default function LandingPage() {
 
         {/* Footer */}
         <footer className="border-t border-[var(--b-soft)] mt-24">
-          <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
-            <Logo size="sm" />
-            <p className="text-xs text-[var(--t-3)] max-w-md leading-relaxed">
-              Signal Trade GPT не является финансовым советником. Сигналы предоставляются в информационных целях. Торговля бинарными опционами сопряжена с высоким риском потери средств.
-            </p>
+          <div className="max-w-6xl mx-auto px-6 py-12 grid md:grid-cols-3 gap-8">
+            <div>
+              <Logo size="sm" />
+              <p className="mt-4 text-xs text-[var(--t-3)] max-w-xs leading-relaxed">
+                Signal Trade GPT не является финансовым советником. Сигналы
+                предоставляются в информационных целях. Торговля бинарными опционами
+                сопряжена с высоким риском потери средств.
+              </p>
+            </div>
+            <div className="text-sm">
+              <div className="text-[var(--brand-gold)] uppercase tracking-widest text-xs mb-3">
+                Платформа
+              </div>
+              <ul className="space-y-2 text-[var(--t-2)]">
+                <li><Link href="#how" className="hover:text-[var(--t-1)]">Как работает</Link></li>
+                <li><Link href="#tiers" className="hover:text-[var(--t-1)]">Тиры</Link></li>
+                <li><Link href="/giveaway" className="hover:text-[var(--t-1)]">Розыгрыш</Link></li>
+                <li><Link href="/reviews" className="hover:text-[var(--t-1)]">Отзывы</Link></li>
+                <li><Link href="/faq" className="hover:text-[var(--t-1)]">FAQ</Link></li>
+              </ul>
+            </div>
+            <div className="text-sm">
+              <div className="text-[var(--brand-gold)] uppercase tracking-widest text-xs mb-3">
+                Правовое
+              </div>
+              <ul className="space-y-2 text-[var(--t-2)]">
+                <li><Link href="/terms" className="hover:text-[var(--t-1)]">Правила использования</Link></li>
+                <li><Link href="/privacy" className="hover:text-[var(--t-1)]">Конфиденциальность</Link></li>
+                <li><Link href="/dashboard" className="hover:text-[var(--t-1)]">Личный кабинет</Link></li>
+                <li><Link href="/login" className="hover:text-[var(--t-1)]">Войти</Link></li>
+              </ul>
+            </div>
           </div>
         </footer>
       </main>

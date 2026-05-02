@@ -3,36 +3,27 @@
 import { useEffect, useState } from "react";
 
 /**
- * 1.2s splash screen with logo + progress bar. Fades out and unmounts.
- *
- * Always shown on initial mount; CSS animation handles fade-out so we don't
- * mutate state in the same render that triggered the effect.
+ * 1.5s splash. Failsafe: even if React hydration is delayed/blocked, a
+ * CSS animation removes the splash via `animation-fill-mode: forwards` +
+ * `pointer-events: none` after 1.6s, so the page is never visually frozen.
  */
 export function Preloader() {
-  const [hidden, setHidden] = useState(false);
-  const [done, setDone] = useState(false);
+  const [unmounted, setUnmounted] = useState(false);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setDone(true), 1100);
-    const t2 = setTimeout(() => setHidden(true), 1500);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    const t = setTimeout(() => setUnmounted(true), 1700);
+    return () => clearTimeout(t);
   }, []);
 
-  if (hidden) return null;
+  if (unmounted) return null;
 
   return (
     <div
       aria-hidden
-      className="fixed inset-0 flex flex-col items-center justify-center"
+      className="preloader-root fixed inset-0 flex flex-col items-center justify-center"
       style={{
         background: "var(--bg-0)",
         zIndex: 10000,
-        transition: "opacity .35s ease",
-        opacity: done ? 0 : 1,
-        pointerEvents: done ? "none" : undefined,
       }}
     >
       <div
@@ -63,6 +54,13 @@ export function Preloader() {
         @keyframes preload-bar {
           from { width: 0%; }
           to   { width: 100%; }
+        }
+        @keyframes preload-fade {
+          0%, 80% { opacity: 1; pointer-events: auto; }
+          100%    { opacity: 0; pointer-events: none; visibility: hidden; }
+        }
+        .preloader-root {
+          animation: preload-fade 1.6s ease-out forwards;
         }
       `}</style>
     </div>

@@ -1,0 +1,273 @@
+From bac3c4ba0da85142d8dbfe0688cd0b603d1771d6 Mon Sep 17 00:00:00 2001
+From: yawiheb450 <yawiheb450@donumart.com>
+Date: Wed, 29 Apr 2026 14:22:27 +0000
+Subject: [PATCH 2/5] =?UTF-8?q?feat(bot):=20Phase=20I=20=E2=80=94=20onboar?=
+ =?UTF-8?q?ding=20FSM=20+=20deep-link=20click=5Fid=20(auto-launch=20on=20/?=
+ =?UTF-8?q?start=20for=20unlinked=20users)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ bot/handlers/link.py       |  40 ++++++++--
+ bot/handlers/onboarding.py | 148 +++++++++++++++++++++++++++++++++++++
+ bot/handlers/start.py      |   7 ++
+ bot/main.py                |   3 +-
+ 4 files changed, 189 insertions(+), 9 deletions(-)
+ create mode 100644 bot/handlers/onboarding.py
+
+diff --git a/bot/handlers/link.py b/bot/handlers/link.py
+index 24b9acf..488c7e3 100644
+--- a/bot/handlers/link.py
++++ b/bot/handlers/link.py
+@@ -15,7 +15,7 @@ from aiogram.enums import ParseMode
+ from aiogram.fsm.context import FSMContext
+ from aiogram.fsm.state import StatesGroup, State
+ 
+-from database.db import get_user, set_po_trader_id
++from database.db import get_user, set_po_trader_id  # noqa: F401
+ 
+ logger = logging.getLogger(__name__)
+ router = Router()
+@@ -58,14 +58,38 @@ async def receive_id(message: Message, state: FSMContext) -> None:
+         return
+ 
+     await set_po_trader_id(message.from_user.id, candidate)
++    data = await state.get_data()
++    is_onboarding = bool(data.get("onboarding"))
+     await state.clear()
+-    await message.answer(
+-        f"<b>Привязано.</b>\n\n"
+-        f"PocketOption ID: <code>{candidate}</code>\n"
+-        f"Tier пересчитается, как только PocketOption пришлёт нам postback "
+-        f"о депозите.",
+-        parse_mode=ParseMode.HTML,
+-    )
++
++    if is_onboarding:
++        bot_info = await message.bot.get_me()
++        user = await get_user(message.from_user.id)
++        ref_code = user.referral_code if user else "??"
++        ref_link = f"https://t.me/{bot_info.username}?start=ref_{ref_code}"
++        await message.answer(
++            f"<b>✅ Готово — обучение пройдено</b>\n"
++            f"\n"
++            f"PocketOption ID: <code>{candidate}</code>\n"
++            f"Текущий тир: <b>T0 · Демо</b> (2 сигнала за всё время)\n"
++            f"\n"
++            f"Как только PocketOption пришлёт нам postback о депозите ≥ $100 — "
++            f"тир обновится автоматически и я напишу сюда.\n"
++            f"\n"
++            f"Попробуй первый сигнал — нажми «📊 Сигнал» внизу.\n"
++            f"\n"
++            f"Реф-ссылка (5% sub-affiliate с FTD друзей):\n"
++            f"<code>{ref_link}</code>",
++            parse_mode=ParseMode.HTML,
++        )
++    else:
++        await message.answer(
++            f"<b>Привязано.</b>\n\n"
++            f"PocketOption ID: <code>{candidate}</code>\n"
++            f"Tier пересчитается, как только PocketOption пришлёт нам postback "
++            f"о депозите.",
++            parse_mode=ParseMode.HTML,
++        )
+ 
+ 
+ @router.message(Command("cancel"))
+diff --git a/bot/handlers/onboarding.py b/bot/handlers/onboarding.py
+new file mode 100644
+index 0000000..9a88b8b
+--- /dev/null
++++ b/bot/handlers/onboarding.py
+@@ -0,0 +1,148 @@
++"""
++Step-by-step onboarding flow for new users.
++
++Triggered automatically right after /start for users who haven't linked a
++PocketOption account yet, and on demand via the "Начать обучение" button.
++
++Flow:
++  Step 1/3 — explain RevShare model + show "Открыть PocketOption" CTA
++  Step 2/3 — explain tier system + show "Я зарегистрировался" button
++  Step 3/3 — collect PocketOption ID via FSM (reuses LinkPo state)
++  Done    — confirmation + first demo signal unlock hint
++"""
++from __future__ import annotations
++
++import logging
++
++from aiogram import F, Router
++from aiogram.filters import Command
++from aiogram.fsm.context import FSMContext
++from aiogram.types import (
++    CallbackQuery,
++    InlineKeyboardButton,
++    InlineKeyboardMarkup,
++    Message,
++)
++from aiogram.enums import ParseMode
++
++from config import settings
++from handlers.link import LinkPo
++
++logger = logging.getLogger(__name__)
++router = Router()
++
++
++def _step_keyboard(po_url: str, next_cb: str | None) -> InlineKeyboardMarkup:
++    rows: list[list[InlineKeyboardButton]] = [
++        [InlineKeyboardButton(text="💎 Открыть PocketOption", url=po_url)],
++    ]
++    if next_cb:
++        rows.append(
++            [InlineKeyboardButton(text="Дальше →", callback_data=next_cb)]
++        )
++    return InlineKeyboardMarkup(inline_keyboard=rows)
++
++
++@router.message(Command("onboard", "tutorial", "start_tour"))
++async def cmd_onboard(message: Message) -> None:
++    await _send_step1(message)
++
++
++async def _send_step1(message: Message) -> None:
++    text = (
++        "<b>🎓 Шаг 1 из 3 · Как это работает</b>\n"
++        "\n"
++        "Signal Trade GPT — <b>не подписка</b>. Ты не платишь нам ни цента.\n"
++        "\n"
++        "Мы зарабатываем <b>RevShare</b> — процент с прибыли, которую брокер "
++        "получает с твоих сделок. Поэтому нам выгодно, чтобы <b>ты выигрывал</b>: "
++        "чем дольше ты в плюсе — тем больше депозит, тем выше твой тир, тем "
++        "сильнее перки бота.\n"
++        "\n"
++        "Жми кнопку ниже — это <b>наша партнёрская ссылка</b>. Она нужна, "
++        "чтобы PocketOption знал, что ты пришёл от нас, и активировал тебе "
++        "тир в боте автоматически после депозита."
++    )
++    await message.answer(
++        text,
++        parse_mode=ParseMode.HTML,
++        reply_markup=_step_keyboard(settings.pocket_option_url, "onb:step2"),
++    )
++
++
++@router.callback_query(F.data == "onb:step2")
++async def cb_step2(query: CallbackQuery) -> None:
++    text = (
++        "<b>🎓 Шаг 2 из 3 · Тиры по депозиту</b>\n"
++        "\n"
++        "Тир открывается автоматически, как только PocketOption присылает нам "
++        "postback о твоём депозите.\n"
++        "\n"
++        "  • <b>T0 · Демо</b> — 2 сигнала за всё время\n"
++        "  • <b>T1 ≥ $100</b> — 5 OTC-сигналов в день\n"
++        "  • <b>T2 ≥ $500</b> — 15 в день, биржа + OTC\n"
++        "  • <b>T3 ≥ $2 000</b> — 25 в день, аналитика\n"
++        "  • <b>T4 ≥ $10 000</b> — безлимит, ранний доступ\n"
++        "\n"
++        "Дополнительно — <b>5% sub-affiliate</b> с FTD каждого приглашённого тобой "
++        "трейдера. Реф-ссылку дам в конце обучения.\n"
++        "\n"
++        "Если уже зарегистрировался — жми «Я зарегистрировался» и пришли свой "
++        "PocketOption Trader ID."
++    )
++    if query.message:
++        await query.message.edit_text(
++            text,
++            parse_mode=ParseMode.HTML,
++            reply_markup=InlineKeyboardMarkup(
++                inline_keyboard=[
++                    [InlineKeyboardButton(text="💎 Открыть PocketOption", url=settings.pocket_option_url)],
++                    [InlineKeyboardButton(text="Я зарегистрировался — ввести ID", callback_data="onb:step3")],
++                ]
++            ),
++        )
++    await query.answer()
++
++
++@router.callback_query(F.data == "onb:step3")
++async def cb_step3(query: CallbackQuery, state: FSMContext) -> None:
++    text = (
++        "<b>🎓 Шаг 3 из 3 · Привязка ID</b>\n"
++        "\n"
++        "Открой PocketOption → <b>Профиль</b> → раздел <b>«Мой ID»</b>. "
++        "Там 6–9-значный номер. Пришли его сюда сообщением (только цифры).\n"
++        "\n"
++        "<i>Если ещё не зарегистрирован — нажми кнопку ниже сначала.</i>"
++    )
++    if query.message:
++        await query.message.edit_text(
++            text,
++            parse_mode=ParseMode.HTML,
++            reply_markup=InlineKeyboardMarkup(
++                inline_keyboard=[
++                    [InlineKeyboardButton(text="💎 Открыть PocketOption", url=settings.pocket_option_url)],
++                    [InlineKeyboardButton(text="❌ Отменить", callback_data="onb:cancel")],
++                ]
++            ),
++        )
++    await state.set_state(LinkPo.waiting_for_id)
++    # Tag this state as onboarding so receive_id can offer post-link bonus message.
++    await state.update_data(onboarding=True)
++    await query.answer()
++
++
++@router.callback_query(F.data == "onb:cancel")
++async def cb_cancel(query: CallbackQuery, state: FSMContext) -> None:
++    await state.clear()
++    if query.message:
++        await query.message.edit_text(
++            "Обучение отложено. Запустишь заново — /onboard.\n"
++            "Доступно меню снизу: получить демо-сигнал, посмотреть тир, привязать позже.",
++        )
++    await query.answer()
++
++
++# Public helper called from start.py for brand-new users.
++async def trigger_for_new_user(message: Message) -> None:
++    """Launch step 1 of the onboarding for a freshly-registered user."""
++    await _send_step1(message)
+diff --git a/bot/handlers/start.py b/bot/handlers/start.py
+index 072532b..8629f1a 100644
+--- a/bot/handlers/start.py
++++ b/bot/handlers/start.py
+@@ -120,6 +120,13 @@ async def cmd_start(message: Message) -> None:
+         reply_markup=MAIN_MENU,
+     )
+ 
++    # Auto-trigger onboarding for users who haven't linked PocketOption yet.
++    if existing is None or not user.po_trader_id:
++        # Defer import to avoid circular dependency.
++        from handlers.onboarding import trigger_for_new_user
++
++        await trigger_for_new_user(message)
++
+ 
+ @router.message(Command("help"))
+ async def cmd_help(message: Message) -> None:
+diff --git a/bot/main.py b/bot/main.py
+index 900b2c1..a160505 100644
+--- a/bot/main.py
++++ b/bot/main.py
+@@ -10,7 +10,7 @@ from aiogram.enums import ParseMode
+ 
+ from config import settings
+ from database.db import init_db
+-from handlers import link, menu, signals, start, stats
++from handlers import link, menu, onboarding, signals, start, stats
+ from services.scheduler import signal_loop
+ 
+ logging.basicConfig(
+@@ -57,6 +57,7 @@ async def main() -> None:
+ 
+     # Order matters: specific command routers first, generic menu/text last.
+     dp.include_router(start.router)
++    dp.include_router(onboarding.router)
+     dp.include_router(signals.router)
+     dp.include_router(link.router)
+     dp.include_router(stats.router)
+-- 
+2.34.1
+

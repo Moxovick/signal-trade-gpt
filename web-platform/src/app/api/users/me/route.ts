@@ -25,7 +25,11 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ user });
+  // BigInt is not JSON-serializable; coerce telegramId to string before serializing.
+  const safe = user
+    ? { ...user, telegramId: user.telegramId == null ? null : user.telegramId.toString() }
+    : null;
+  return NextResponse.json({ user: safe });
 }
 
 export async function PUT(req: NextRequest) {

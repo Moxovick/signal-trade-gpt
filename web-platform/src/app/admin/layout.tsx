@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   BarChart3,
+  Bot,
   Layers,
   Send,
   Sparkles,
@@ -12,6 +13,9 @@ import {
   Users,
   Wallet,
   HelpCircle,
+  MessageSquare,
+  Trophy,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -25,8 +29,12 @@ const adminNav: NavItem[] = [
   { href: "/admin/perks", label: "Перки бота", icon: Sparkles },
   { href: "/admin/users", label: "Пользователи", icon: Users },
   { href: "/admin/signals", label: "Сигналы", icon: Send },
+  { href: "/admin/bot-config", label: "Конфиг бота", icon: Bot },
   { href: "/admin/deposits", label: "Депозиты", icon: Wallet },
   { href: "/admin/faq", label: "FAQ", icon: HelpCircle },
+  { href: "/admin/reviews", label: "Отзывы", icon: MessageSquare },
+  { href: "/admin/giveaway", label: "Розыгрыш", icon: Trophy },
+  { href: "/admin/legal", label: "Правовые", icon: FileText },
   { href: "/admin/settings", label: "Настройки", icon: SettingsIcon },
 ];
 

@@ -15,6 +15,19 @@ class Settings(BaseSettings):
 
     pocket_option_url: str = Field("https://pocketoption.com", env="POCKET_OPTION_URL")
 
+    # Phase J — sync with the web platform's PocketOption account state.
+    # Both must be set or the tier-sync loop is disabled.
+    platform_api_url: str = Field("", env="PLATFORM_API_URL")
+    bot_sync_secret: str = Field("", env="BOT_SYNC_SECRET")
+
+    # Phase L — admin commands inside the bot. Comma-separated telegram_ids.
+    admin_ids: str = Field("", env="ADMIN_IDS")
+
+    # Phase Q — PocketOption Affiliate API direct-query credentials.
+    # Both must be set to enable live trader-info lookup.
+    pocket_option_api_token: str = Field("", env="POCKETOPTION_API_TOKEN")
+    pocket_option_partner_id: str = Field("", env="POCKETOPTION_PARTNER_ID")
+
     log_level: str = Field("INFO", env="LOG_LEVEL")
 
     class Config:

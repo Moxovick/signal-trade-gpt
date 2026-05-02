@@ -10,8 +10,10 @@ from aiogram.enums import ParseMode
 
 from config import settings
 from database.db import init_db
-from handlers import start, stats, signals, link
-from services.scheduler import signal_loop
+from handlers import admin, link, menu, onboarding, signals, start, stats
+from services.scheduler import daily_brief_loop, signal_loop
+from services.tier_sync import tier_sync_loop
+from services.web_sync import web_sync_loop
 
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
@@ -55,13 +57,21 @@ async def main() -> None:
     )
     dp = Dispatcher()
 
+    # Order matters: specific command routers first, generic menu/text last.
+    dp.include_router(admin.router)
     dp.include_router(start.router)
-    dp.include_router(stats.router)
+    dp.include_router(onboarding.router)
     dp.include_router(signals.router)
     dp.include_router(link.router)
+    dp.include_router(stats.router)
+    dp.include_router(menu.router)
 
-    # Start signal loop in background
+    # Start background loops (signal cadence + tier-sync + daily brief +
+    # web-sync to pull bot config & admin signals from the platform).
     loop_task = asyncio.create_task(signal_loop(bot))
+    sync_task = asyncio.create_task(tier_sync_loop(bot))
+    brief_task = asyncio.create_task(daily_brief_loop(bot))
+    web_sync_task = asyncio.create_task(web_sync_loop())
 
     # Drop any active webhook so polling works without conflict
     await bot.delete_webhook(drop_pending_updates=True)
@@ -70,6 +80,9 @@ async def main() -> None:
         await dp.start_polling(bot)
     finally:
         loop_task.cancel()
+        sync_task.cancel()
+        brief_task.cancel()
+        web_sync_task.cancel()
         await bot.session.close()
         if PID_FILE.exists():
             PID_FILE.unlink()

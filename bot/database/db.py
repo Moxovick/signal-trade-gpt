@@ -32,21 +32,36 @@ async def init_db() -> None:
         # v2 migrations on existing dbs.
         await _ensure_column(db, "users", "tier", "tier INTEGER DEFAULT 0")
         await _ensure_column(db, "users", "po_trader_id", "po_trader_id TEXT")
+        await _ensure_column(db, "users", "click_id", "click_id TEXT")
+        await _ensure_column(db, "users", "deposit_total", "deposit_total REAL DEFAULT 0")
+        await _ensure_column(
+            db, "users", "notifications_enabled", "notifications_enabled INTEGER DEFAULT 1"
+        )
+        await _ensure_column(db, "users", "wins", "wins INTEGER DEFAULT 0")
+        await _ensure_column(db, "users", "losses", "losses INTEGER DEFAULT 0")
         await db.commit()
     logger.info("Database initialized at %s", DB_PATH)
 
 
 def _row_to_user(row: aiosqlite.Row) -> User:
+    keys = row.keys()
     return User(
         telegram_id=row["telegram_id"],
         username=row["username"],
         first_name=row["first_name"],
         referral_code=row["referral_code"],
         referred_by=row["referred_by"],
-        tier=row["tier"] if "tier" in row.keys() else 0,
-        po_trader_id=row["po_trader_id"] if "po_trader_id" in row.keys() else None,
+        tier=row["tier"] if "tier" in keys else 0,
+        po_trader_id=row["po_trader_id"] if "po_trader_id" in keys else None,
+        click_id=row["click_id"] if "click_id" in keys else None,
+        deposit_total=float(row["deposit_total"]) if "deposit_total" in keys else 0.0,
+        notifications_enabled=bool(row["notifications_enabled"])
+        if "notifications_enabled" in keys
+        else True,
         is_premium=bool(row["is_premium"]),
         signals_received=row["signals_received"],
+        wins=row["wins"] if "wins" in keys else 0,
+        losses=row["losses"] if "losses" in keys else 0,
     )
 
 
@@ -155,3 +170,79 @@ async def get_user_by_referral_code(code: str) -> Optional[User]:
         ) as cursor:
             row = await cursor.fetchone()
             return _row_to_user(row) if row else None
+
+
+async def set_click_id(telegram_id: int, click_id: str) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET click_id = ? WHERE telegram_id = ?",
+            (click_id, telegram_id),
+        )
+        await db.commit()
+
+
+async def set_deposit_total(telegram_id: int, deposit_total: float) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET deposit_total = ? WHERE telegram_id = ?",
+            (deposit_total, telegram_id),
+        )
+        await db.commit()
+
+
+async def toggle_notifications(telegram_id: int) -> bool:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET notifications_enabled = 1 - notifications_enabled "
+            "WHERE telegram_id = ?",
+            (telegram_id,),
+        )
+        await db.commit()
+        async with db.execute(
+            "SELECT notifications_enabled FROM users WHERE telegram_id = ?",
+            (telegram_id,),
+        ) as cursor:
+            row = await cursor.fetchone()
+            return bool(row[0]) if row else True
+
+
+async def record_signal_result(telegram_id: int, signal_id: int, result: str) -> None:
+    """Mark a signal's result and bump the user's win/loss counter."""
+    if result not in {"win", "loss"}:
+        raise ValueError(f"Bad signal result: {result!r}")
+    column = "wins" if result == "win" else "losses"
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE signals SET result = ? WHERE id = ?", (result, signal_id)
+        )
+        await db.execute(
+            f"UPDATE users SET {column} = {column} + 1 WHERE telegram_id = ?",
+            (telegram_id,),
+        )
+        await db.commit()
+
+
+async def get_referral_count(telegram_id: int) -> int:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT COUNT(*) FROM users WHERE referred_by = ?", (telegram_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            return row[0] if row else 0
+
+
+async def get_top_users(limit: int = 10) -> list[User]:
+    """Top users by win rate (min 5 signals)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            """
+            SELECT * FROM users
+            WHERE (wins + losses) >= 5
+            ORDER BY (CAST(wins AS REAL) / (wins + losses)) DESC, wins DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [_row_to_user(r) for r in rows]

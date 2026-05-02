@@ -5,3 +5,11 @@ python-dotenv>=1.0.1
 loguru>=0.7.2
 pydantic>=2.10.0
 pydantic-settings>=2.7.0
+# Phase H — visuals
+Pillow>=11.0.0
+matplotlib>=3.9.0
+numpy>=2.0.0
+# Phase J — http for tier-sync from web platform
+httpx>=0.28.0
+# Phase O — QR codes for /referrals card
+qrcode>=7.4.2

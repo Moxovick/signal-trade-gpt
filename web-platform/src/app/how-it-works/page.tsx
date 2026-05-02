@@ -42,7 +42,7 @@ export default function HowItWorksPage() {
     <main className="min-h-screen relative z-10">
       <nav className="fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-3 glass">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/"><Logo size="md" glow /></Link>
+          <Logo size="md" />
           <div className="hidden md:flex items-center gap-6 text-sm text-[#888]">
             <Link href="/" className="hover:text-[#f5c518] transition-colors">Главная</Link>
             <Link href="/pricing" className="hover:text-[#f5c518] transition-colors">Тарифы</Link>

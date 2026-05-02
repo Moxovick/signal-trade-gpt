@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Manrope, JetBrains_Mono, Bebas_Neue } from "next/font/google";
 import "./globals.css";
 import { AnimatedBackground } from "@/components/effects/AnimatedBackground";
-import { CustomCursor } from "@/components/effects/CustomCursor";
 import { Preloader } from "@/components/effects/Preloader";
 import { ScrollProgress } from "@/components/effects/ScrollProgress";
 
@@ -38,12 +37,12 @@ export default function RootLayout({
   return (
     <html
       lang="ru"
+      data-scroll-behavior="smooth"
       className={`${manrope.variable} ${jetbrains.variable} ${bebas.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <AnimatedBackground />
         <ScrollProgress />
-        <CustomCursor />
         <Preloader />
         {children}
       </body>

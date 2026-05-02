@@ -279,27 +279,40 @@ model PromoCode {
 }
 
 model Review {
-  id        String       @id @default(cuid())
-  userId    String
-  user      User         @relation(fields: [userId], references: [id])
-  text      String
-  rating    Int
-  status    ReviewStatus @default(moderation)
-  adminNote String?
-  createdAt DateTime     @default(now())
+  id         String       @id @default(cuid())
+  /// Optional FK — admin can author reviews without a user account.
+  userId     String?
+  user       User?        @relation(fields: [userId], references: [id])
+  /// Public-facing fields (shown on /reviews and the landing carousel).
+  authorName String
+  authorRole String?      // e.g. "Trader, T2"
+  avatarUrl  String?
+  rating     Int          @default(5)
+  text       String       @db.Text
+  isFeatured Boolean      @default(false)
+  isPublic   Boolean      @default(true)
+  position   Int          @default(0)
+  status     ReviewStatus @default(published)
+  adminNote  String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
   @@index([status])
+  @@index([isPublic, isFeatured, position])
   @@map("reviews")
 }
 
 model Faq {
-  id       String  @id @default(cuid())
-  question String
-  answer   String
-  category String  @default("general")
-  order    Int     @default(0)
-  isActive Boolean @default(true)
+  id        String   @id @default(cuid())
+  question  String
+  answer    String   @db.Text
+  category  String   @default("general")
+  position  Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
+  @@index([category, position])
   @@map("faqs")
 }
 
@@ -472,4 +485,43 @@ model BotPerk {
 
   @@index([minTier, isActive])
   @@map("bot_perks")
+}
+
+// ═══════════════════════════════════════
+// V2 — CONTENT (FAQ, Reviews, Giveaway, Legal pages)
+// ═══════════════════════════════════════
+
+/// Giveaway/prize tier — bigger deposit = bigger prize. Editable from admin.
+model Prize {
+  id            String   @id @default(cuid())
+  /// Order from cheapest to most premium (used for sorting).
+  position      Int      @default(0)
+  /// Minimum totalDeposit on PocketOption to be eligible.
+  minDeposit    Decimal
+  title         String
+  description   String   @db.Text
+  imageUrl      String?
+  /// "$10 кешбэк", "iPhone 16 Pro", "MacBook Pro" — informational label.
+  valueLabel    String
+  /// Tier this prize is associated with (1..4) for grouping in UI.
+  tier          Int      @default(1)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tier, position])
+  @@map("prizes")
+}
+
+/// Editable long-form pages (Terms of Use, Privacy, etc.). Markdown body.
+model LegalPage {
+  id        String   @id @default(cuid())
+  slug      String   @unique  // "terms", "privacy", "refund"
+  title     String
+  body      String   @db.Text  // markdown
+  isActive  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@map("legal_pages")
 }

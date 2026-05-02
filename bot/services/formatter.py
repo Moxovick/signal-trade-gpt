@@ -1,8 +1,35 @@
 from database.models import Signal
+from services import web_sync
 
 
 DIRECTION_ARROW = {"CALL": "⬆", "PUT": "⬇"}
 DIRECTION_TAG = {"CALL": "call", "PUT": "put"}
+DIRECTION_WORD = {"CALL": "ВВЕРХ", "PUT": "ВНИЗ"}
+
+
+def _render_admin_template(template: str, signal: Signal, entry_price: float | None) -> str:
+    """Substitute {placeholders} in admin-defined signal template."""
+    arrow = DIRECTION_ARROW.get(signal.direction, "")
+    word = DIRECTION_WORD.get(signal.direction, signal.direction)
+    entry_line = (
+        f"<b>Цена входа:</b> {entry_price:.5f}\n" if entry_price is not None else ""
+    )
+    analysis_line = (
+        f"<b>Анализ:</b> <i>{signal.analysis}</i>\n" if signal.analysis else ""
+    )
+    return (
+        template
+        .replace("{pair}", signal.pair)
+        .replace("{direction}", signal.direction)
+        .replace("{direction_word}", word)
+        .replace("{direction_emoji}", arrow)
+        .replace("{expiration}", signal.expiration)
+        .replace("{confidence}", str(signal.confidence))
+        .replace("{entry_price}", f"{entry_price:.5f}" if entry_price is not None else "—")
+        .replace("{entry_line}", entry_line)
+        .replace("{analysis_line}", analysis_line)
+        .replace("{tier}", (signal.tier or "otc").upper())
+    )
 
 TIER_HEADERS = {
     "demo": "<b>ДЕМО-СИГНАЛ</b>",
@@ -28,6 +55,46 @@ TIER_TAGS = {
 # Human label per user-tier (0..4).
 USER_TIER_NAMES = {0: "Демо", 1: "Starter", 2: "Active", 3: "Pro", 4: "VIP"}
 USER_TIER_DEPOSIT_THRESHOLDS = {1: 100, 2: 500, 3: 2000, 4: 10000}
+
+
+def format_signal_caption(signal: Signal, pocket_option_url: str, entry_price: float | None = None) -> str:
+    """
+    Compact caption to attach under a signal-chart image.
+    Telegram captions are capped at 1024 chars; we keep it well under.
+
+    If admin has set a custom signal template via /admin/bot-config, we render
+    it instead of the legacy hard-coded layout.
+    """
+    admin_template = web_sync.get_signal_template()
+    if admin_template:
+        return _render_admin_template(admin_template, signal, entry_price)
+
+    arrow = DIRECTION_ARROW[signal.direction]
+    pair_tag = signal.pair.replace("/", "").replace(" ", "").lower()
+    dir_tag = DIRECTION_TAG[signal.direction]
+    tier = signal.tier or "otc"
+    badge = TIER_BADGES.get(tier, "OTC")
+    tier_tag = TIER_TAGS.get(tier, "#otc")
+    conf_bar_full = round(signal.confidence / 10)
+    conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
+
+    lines = [
+        f"<b>{signal.pair}</b>  ·  {signal.direction} {arrow}  ·  <code>{badge}</code>",
+        "",
+        f"<b>Экспирация:</b> {signal.expiration}",
+        f"<b>AI Confidence:</b> {signal.confidence}%  {conf_bar}",
+    ]
+    if signal.analysis:
+        lines.append(f"<b>Анализ:</b> <i>{signal.analysis}</i>")
+    lines.extend(
+        [
+            "",
+            "Объём: 1–3% депозита",
+            "",
+            f"#signal #{pair_tag} #{dir_tag} {tier_tag}",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def format_signal(signal: Signal, pocket_option_url: str) -> str:

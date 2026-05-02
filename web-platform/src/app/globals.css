@@ -316,3 +316,69 @@ body::after {
 
 /* Make sure interactive content sits above the fixed grid/grain pseudo-elements */
 header, main, footer, [data-z="content"] { position: relative; z-index: 3; }
+
+/* ════════════════════════════════════════════════════════════════════
+   Legal/markdown prose (used on /terms, /privacy)
+   ════════════════════════════════════════════════════════════════════ */
+.legal-prose {
+  color: var(--t-2);
+  font-size: 15px;
+  line-height: 1.75;
+}
+.legal-prose h1 {
+  color: var(--t-1);
+  font-size: 2rem;
+  font-weight: 700;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+}
+.legal-prose h2 {
+  color: var(--brand-gold);
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 2.25rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.01em;
+}
+.legal-prose h3 {
+  color: var(--t-1);
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+.legal-prose p { margin: 0.85rem 0; }
+.legal-prose strong { color: var(--t-1); font-weight: 600; }
+.legal-prose ul,
+.legal-prose ol { margin: 0.85rem 0 0.85rem 1.4rem; }
+.legal-prose ul { list-style: disc; }
+.legal-prose ol { list-style: decimal; }
+.legal-prose li { margin: 0.4rem 0; }
+.legal-prose li::marker { color: var(--brand-gold); }
+.legal-prose a {
+  color: var(--brand-gold);
+  border-bottom: 1px dotted currentColor;
+}
+.legal-prose a:hover { color: var(--brand-gold-bright, #f6b933); }
+.legal-prose blockquote {
+  border-left: 3px solid var(--brand-gold);
+  padding: 0.75rem 1.25rem;
+  margin: 1rem 0;
+  background: var(--bg-1);
+  border-radius: 0 8px 8px 0;
+  color: var(--t-2);
+}
+.legal-prose code {
+  background: var(--bg-2);
+  border: 1px solid var(--b-soft);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: var(--font-jetbrains), monospace;
+  font-size: 0.85em;
+  color: var(--brand-gold);
+}
+.legal-prose hr {
+  border: 0;
+  border-top: 1px solid var(--b-soft);
+  margin: 2rem 0;
+}
