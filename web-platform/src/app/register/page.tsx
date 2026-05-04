@@ -1,12 +1,9 @@
 /**
- * /register — v2.1.
+ * /register — v3 (email-first, post-supervisor-feedback).
  *
- * Two paths:
- * 1. Telegram Login Widget — preferred (instant, no password).
- * 2. Email + password — fallback for users who can't / don't want Telegram.
- *
- * Email path POSTs to /api/auth/register, then auto-logins via NextAuth's
- * "credentials" provider and redirects to /dashboard.
+ * Email + password is the primary path. Telegram Login Widget is shown as an
+ * optional fast path below. Form collects nickname, telegram username, and
+ * referral code in addition to email + password.
  */
 import Link from "next/link";
 import { Suspense } from "react";
@@ -29,32 +26,28 @@ export default function RegisterPage() {
         <Card padding="lg">
           <h1 className="text-2xl font-bold mb-2">Регистрация</h1>
           <p className="text-sm text-[var(--t-2)] mb-6">
-            Создай аккаунт через Telegram (быстрее) или email с паролем.
+            Создай аккаунт за 30 секунд. Демо-сигналы доступны сразу, без
+            депозита.
           </p>
-
-          <div className="flex justify-center py-2">
-            {botUsername ? (
-              <Suspense>
-                <TelegramLoginButton botUsername={botUsername} />
-              </Suspense>
-            ) : (
-              <div className="text-xs text-[var(--t-3)] text-center px-4 py-3 rounded-xl border border-dashed border-[var(--b-soft)]">
-                Telegram Login пока не настроен (нужен{" "}
-                <code>NEXT_PUBLIC_TELEGRAM_LOGIN_BOT</code>). Используй email
-                ниже.
-              </div>
-            )}
-          </div>
-
-          <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-widest text-[var(--t-3)]">
-            <span className="flex-1 h-px bg-[var(--b-soft)]" />
-            или email
-            <span className="flex-1 h-px bg-[var(--b-soft)]" />
-          </div>
 
           <Suspense>
             <RegisterForm />
           </Suspense>
+
+          {botUsername && (
+            <>
+              <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-widest text-[var(--t-3)]">
+                <span className="flex-1 h-px bg-[var(--b-soft)]" />
+                или быстро через telegram
+                <span className="flex-1 h-px bg-[var(--b-soft)]" />
+              </div>
+              <div className="flex justify-center py-2">
+                <Suspense>
+                  <TelegramLoginButton botUsername={botUsername} />
+                </Suspense>
+              </div>
+            </>
+          )}
 
           <p className="text-center text-sm text-[var(--t-3)] mt-6">
             Уже есть аккаунт?{" "}

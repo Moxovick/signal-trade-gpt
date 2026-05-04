@@ -74,6 +74,51 @@ def get_daily_limit(tier: int) -> int | None:
     return None
 
 
+def get_tier_features(tier: int) -> dict[str, Any]:
+    """
+    Return per-tier feature flags from admin config.
+
+    Falls back to sensible defaults: T2+ get chart indicators, T3+ get 60s
+    early access, T4 gets elite pairs. Bot consumes:
+      - chartIndicators: bool — render chart with RSI/MACD/volume overlay
+      - earlyAccessSeconds: int — seconds of early access vs public release
+      - elitePairs: bool — may receive 'elite' band signals
+    """
+    defaults: dict[str, dict[str, Any]] = {
+        "0": {"chartIndicators": False, "earlyAccessSeconds": 0, "elitePairs": False},
+        "1": {"chartIndicators": False, "earlyAccessSeconds": 0, "elitePairs": False},
+        "2": {"chartIndicators": True, "earlyAccessSeconds": 0, "elitePairs": False},
+        "3": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": False},
+        "4": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": True},
+    }
+    features = _state.config.get("tierFeatures")
+    fallback = defaults.get(str(tier), defaults["1"])
+    if not isinstance(features, dict):
+        return fallback
+    val = features.get(str(tier))
+    if not isinstance(val, dict):
+        return fallback
+    return {
+        "chartIndicators": bool(val.get("chartIndicators", fallback["chartIndicators"])),
+        "earlyAccessSeconds": int(val.get("earlyAccessSeconds", fallback["earlyAccessSeconds"])),
+        "elitePairs": bool(val.get("elitePairs", fallback["elitePairs"])),
+    }
+
+
+def get_tier_thresholds() -> dict[str, int]:
+    """Return tier deposit thresholds from admin config (USD)."""
+    defaults = {"1": 100, "2": 1000, "3": 5000, "4": 10000}
+    thresholds = _state.config.get("tierThresholds")
+    if not isinstance(thresholds, dict):
+        return defaults
+    out: dict[str, int] = dict(defaults)
+    for key in ("1", "2", "3", "4"):
+        val = thresholds.get(key)
+        if isinstance(val, (int, float)) and val >= 0:
+            out[key] = int(val)
+    return out
+
+
 def get_price_source() -> dict[str, Any]:
     """Returns {provider, endpoint, apiKey} dict, or default {provider: 'off'}."""
     src = _state.config.get("priceSource")

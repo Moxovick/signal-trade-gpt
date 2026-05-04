@@ -5,7 +5,48 @@
  * used when a key is missing.
  */
 
+/**
+ * DEPRECATED: Daily-limits-per-tier. Kept for backward compatibility with the
+ * bot's older sync payload, but defaults are now unlimited for T1+. The new
+ * tier model gates *features* (chart indicators, early access), not signal
+ * count. See `TierFeatures` below.
+ */
 export type DailyLimits = Record<"0" | "1" | "2" | "3" | "4", number>;
+
+/**
+ * Per-tier feature flags. Bot reads this to decide rendering/timing for each
+ * user's tier. Editable via /admin/bot-config.
+ *
+ * - chartIndicators: render extended chart with RSI / MACD / volume overlay
+ * - earlyAccessSeconds: how many seconds before public release this tier sees
+ *   the signal (0 = no early access)
+ * - elitePairs: tier may see "elite" / high-confidence pairs
+ */
+export type TierFeatures = {
+  "0": TierFeatureFlags;
+  "1": TierFeatureFlags;
+  "2": TierFeatureFlags;
+  "3": TierFeatureFlags;
+  "4": TierFeatureFlags;
+};
+
+export type TierFeatureFlags = {
+  chartIndicators: boolean;
+  earlyAccessSeconds: number;
+  elitePairs: boolean;
+};
+
+/**
+ * Deposit thresholds (USD) at which each tier unlocks. Mirrors the
+ * `tier_thresholds` SiteSettings row, included in the bot-config payload so
+ * the bot can render correct "you need $X more" hints in onboarding.
+ */
+export type TierThresholds = {
+  "1": number;
+  "2": number;
+  "3": number;
+  "4": number;
+};
 
 export type BotAutopost = {
   enabled: boolean;
@@ -52,10 +93,25 @@ export const DEFAULT_BOT_DISCLAIMER =
 
 export const DEFAULT_DAILY_LIMITS: DailyLimits = {
   "0": 2,
-  "1": 5,
-  "2": 15,
-  "3": 25,
+  "1": 9999,
+  "2": 9999,
+  "3": 9999,
   "4": 9999,
+};
+
+export const DEFAULT_TIER_FEATURES: TierFeatures = {
+  "0": { chartIndicators: false, earlyAccessSeconds: 0, elitePairs: false },
+  "1": { chartIndicators: false, earlyAccessSeconds: 0, elitePairs: false },
+  "2": { chartIndicators: true, earlyAccessSeconds: 0, elitePairs: false },
+  "3": { chartIndicators: true, earlyAccessSeconds: 60, elitePairs: false },
+  "4": { chartIndicators: true, earlyAccessSeconds: 60, elitePairs: true },
+};
+
+export const DEFAULT_BOT_TIER_THRESHOLDS: TierThresholds = {
+  "1": 100,
+  "2": 1000,
+  "3": 5000,
+  "4": 10000,
 };
 
 export const DEFAULT_AUTOPOST: BotAutopost = {
@@ -87,6 +143,8 @@ export const SETTING_KEYS = {
   signalTemplate: "bot_signal_template",
   disclaimer: "bot_disclaimer",
   dailyLimits: "bot_daily_limits",
+  tierFeatures: "bot_tier_features",
+  tierThresholds: "bot_tier_thresholds",
   autopost: "bot_autopost",
   faq: "bot_faq",
   priceSource: "bot_price_source",
@@ -97,6 +155,8 @@ export type BotConfig = {
   signalTemplate: string;
   disclaimer: string;
   dailyLimits: DailyLimits;
+  tierFeatures: TierFeatures;
+  tierThresholds: TierThresholds;
   autopost: BotAutopost;
   faq: BotFaqEntry[];
   priceSource: PriceSource;
@@ -111,6 +171,45 @@ function asDailyLimits(v: unknown): DailyLimits {
   const obj = v as Record<string, unknown>;
   const out: DailyLimits = { ...DEFAULT_DAILY_LIMITS };
   for (const k of ["0", "1", "2", "3", "4"] as const) {
+    const n = Number(obj[k]);
+    if (Number.isFinite(n) && n >= 0) out[k] = Math.floor(n);
+  }
+  return out;
+}
+
+function asTierFeatures(v: unknown): TierFeatures {
+  if (!v || typeof v !== "object") return DEFAULT_TIER_FEATURES;
+  const obj = v as Record<string, unknown>;
+  const out: TierFeatures = {
+    ...DEFAULT_TIER_FEATURES,
+    "0": { ...DEFAULT_TIER_FEATURES["0"] },
+    "1": { ...DEFAULT_TIER_FEATURES["1"] },
+    "2": { ...DEFAULT_TIER_FEATURES["2"] },
+    "3": { ...DEFAULT_TIER_FEATURES["3"] },
+    "4": { ...DEFAULT_TIER_FEATURES["4"] },
+  };
+  for (const k of ["0", "1", "2", "3", "4"] as const) {
+    const tier = obj[k];
+    if (!tier || typeof tier !== "object") continue;
+    const t = tier as Record<string, unknown>;
+    if (typeof t["chartIndicators"] === "boolean") {
+      out[k].chartIndicators = t["chartIndicators"];
+    }
+    if (typeof t["earlyAccessSeconds"] === "number" && t["earlyAccessSeconds"] >= 0) {
+      out[k].earlyAccessSeconds = Math.floor(t["earlyAccessSeconds"]);
+    }
+    if (typeof t["elitePairs"] === "boolean") {
+      out[k].elitePairs = t["elitePairs"];
+    }
+  }
+  return out;
+}
+
+function asTierThresholds(v: unknown): TierThresholds {
+  if (!v || typeof v !== "object") return DEFAULT_BOT_TIER_THRESHOLDS;
+  const obj = v as Record<string, unknown>;
+  const out: TierThresholds = { ...DEFAULT_BOT_TIER_THRESHOLDS };
+  for (const k of ["1", "2", "3", "4"] as const) {
     const n = Number(obj[k]);
     if (Number.isFinite(n) && n >= 0) out[k] = Math.floor(n);
   }
@@ -183,6 +282,8 @@ export function parseBotConfig(
       DEFAULT_BOT_DISCLAIMER,
     ),
     dailyLimits: asDailyLimits(map.get(SETTING_KEYS.dailyLimits)),
+    tierFeatures: asTierFeatures(map.get(SETTING_KEYS.tierFeatures)),
+    tierThresholds: asTierThresholds(map.get(SETTING_KEYS.tierThresholds)),
     autopost: asAutopost(map.get(SETTING_KEYS.autopost)),
     faq: asFaq(map.get(SETTING_KEYS.faq)),
     priceSource: asPriceSource(map.get(SETTING_KEYS.priceSource)),

@@ -4,14 +4,16 @@
 Behaviour:
   1. T0 users get demo signals (no real trade tag), with a hard lifetime cap of
      2 across the user's lifetime.
-  2. Higher tiers see admin-published signals first (queue from /api/bot/sync).
-  3. Daily limits per tier are read from admin bot-config when available; the
-     legacy 5/15/25/∞ defaults are used otherwise.
-  4. If price-source is configured, we fetch the real entry price for the pair
+  2. T1+ get unlimited signals — no daily count cap. Tier model gates *features*
+     (chart indicators, early access), not signal count.
+  3. Higher tiers see admin-published signals first (queue from /api/bot/sync).
+  4. T2+ (or whichever tier admin enables `chartIndicators` for) get an
+     advanced chart: candles + EMA20 + RSI + MACD + volume.
+  5. If price-source is configured, we fetch the real entry price for the pair
      and overlay it on the chart + caption.
 
-Each signal renders a candle-chart image (matplotlib) with direction overlay,
-plus inline buttons for Win/Loss feedback after expiration.
+Each signal renders a chart image (matplotlib) with direction overlay, plus
+inline buttons for Win/Loss feedback after expiration.
 """
 import logging
 
@@ -35,7 +37,7 @@ from database.models import Signal
 from services import web_sync
 from services.achievements import check_and_award
 from services.formatter import format_signal_caption
-from services.imagegen import make_signal_chart
+from services.imagegen import make_signal_chart, make_signal_chart_advanced
 from services.keyboards import signal_inline
 from services.price_feed import fetch_price
 from services.signal_generator import generate_signal
@@ -86,19 +88,17 @@ async def cmd_signal(message: Message) -> None:
         )
         return
 
-    # Daily quota (admin-configurable).
+    # T1+ get unlimited signals. Admins can still pause a tier by setting its
+    # daily limit to 0 in /admin/bot-config (back-compat with the legacy
+    # `dailyLimits` setting, kept for emergency throttle).
     daily_limit = web_sync.get_daily_limit(user.tier)
-    if daily_limit is not None and user.tier > 0 and daily_limit < 9999:
-        # NOTE: signals_received is lifetime, not daily. Daily window enforcement
-        # is the web platform's responsibility; here we only short-circuit on
-        # the obvious "0" override admins might set to pause a tier.
-        if daily_limit == 0:
-            await message.answer(
-                "<b>Сигналы временно приостановлены</b>\n"
-                "Админ выставил лимит 0 для твоего тира. Обновись или попробуй позже.",
-                parse_mode=ParseMode.HTML,
-            )
-            return
+    if user.tier > 0 and daily_limit == 0:
+        await message.answer(
+            "<b>Сигналы временно приостановлены</b>\n"
+            "Админ выставил паузу для твоего тира. Попробуй позже.",
+            parse_mode=ParseMode.HTML,
+        )
+        return
 
     # 1) Try admin-published signal first.
     allowed_bands = TIER_ALLOWED_BANDS.get(user.tier, ["otc"])
@@ -125,7 +125,11 @@ async def cmd_signal(message: Message) -> None:
     signal.id = signal_id
     await increment_signals_received(user.telegram_id)
 
-    chart_bytes = make_signal_chart(signal)
+    features = web_sync.get_tier_features(user.tier)
+    if features.get("chartIndicators"):
+        chart_bytes = make_signal_chart_advanced(signal)
+    else:
+        chart_bytes = make_signal_chart(signal)
     caption = format_signal_caption(signal, settings.pocket_option_url, entry_price)
 
     await message.answer_photo(

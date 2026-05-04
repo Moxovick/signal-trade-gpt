@@ -2,12 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Save, Plus, Trash2, MessageSquare, Send, Bot, Activity, HelpCircle, LineChart } from "lucide-react";
+import { Save, Plus, Trash2, MessageSquare, Send, Activity, HelpCircle, LineChart, BarChart3, Layers } from "lucide-react";
 import {
   type BotConfig,
   type BotFaqEntry,
-  type DailyLimits,
   type PriceSource,
+  type TierFeatureFlags,
+  type TierFeatures,
+  type TierThresholds,
   SETTING_KEYS,
 } from "@/lib/bot-config";
 
@@ -28,8 +30,11 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
   const [welcome, setWelcome] = useState(initial.welcome);
   const [signalTemplate, setSignalTemplate] = useState(initial.signalTemplate);
   const [disclaimer, setDisclaimer] = useState(initial.disclaimer);
-  const [dailyLimits, setDailyLimits] = useState<DailyLimits>(
-    initial.dailyLimits,
+  const [tierFeatures, setTierFeatures] = useState<TierFeatures>(
+    initial.tierFeatures,
+  );
+  const [tierThresholds, setTierThresholds] = useState<TierThresholds>(
+    initial.tierThresholds,
   );
   const [autoEnabled, setAutoEnabled] = useState(initial.autopost.enabled);
   const [autoInterval, setAutoInterval] = useState(
@@ -46,8 +51,18 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function setLimit(tier: keyof DailyLimits, value: number) {
-    setDailyLimits((prev) => ({ ...prev, [tier]: value }));
+  function setTierFeature(
+    tier: keyof TierFeatures,
+    patch: Partial<TierFeatureFlags>,
+  ) {
+    setTierFeatures((prev) => ({
+      ...prev,
+      [tier]: { ...prev[tier], ...patch },
+    }));
+  }
+
+  function setThreshold(tier: keyof TierThresholds, value: number) {
+    setTierThresholds((prev) => ({ ...prev, [tier]: value }));
   }
 
   function addFaq() {
@@ -75,7 +90,8 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
       { key: SETTING_KEYS.welcome, value: welcome },
       { key: SETTING_KEYS.signalTemplate, value: signalTemplate },
       { key: SETTING_KEYS.disclaimer, value: disclaimer },
-      { key: SETTING_KEYS.dailyLimits, value: dailyLimits },
+      { key: SETTING_KEYS.tierFeatures, value: tierFeatures },
+      { key: SETTING_KEYS.tierThresholds, value: tierThresholds },
       {
         key: SETTING_KEYS.autopost,
         value: {
@@ -195,27 +211,92 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
         </p>
       </div>
 
-      {/* Daily limits */}
+      {/* Tier deposit thresholds */}
       <div className={SECTION_CARD} style={SECTION_STYLE}>
         <div className={SECTION_HEADER}>
-          <Bot size={16} className="text-[#f5c518]" />
-          Дневные лимиты сигналов на тир
+          <Layers size={16} className="text-[#f5c518]" />
+          Пороги депозита для тиров (USD)
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {(["0", "1", "2", "3", "4"] as const).map((t) => (
+        <p className="text-xs text-[#777]">
+          Минимальная сумма депозита на PocketOption, при которой открывается
+          соответствующий тир. T0 — без депозита.
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {(["1", "2", "3", "4"] as const).map((t) => (
             <label
               key={t}
               className="text-xs text-[#777] flex flex-col gap-1"
             >
-              T{t} (∞ = 9999)
+              T{t} (USD)
               <input
                 type="number"
                 min={0}
-                value={dailyLimits[t]}
-                onChange={(e) => setLimit(t, Number(e.target.value))}
+                value={tierThresholds[t]}
+                onChange={(e) =>
+                  setThreshold(t, Number(e.target.value))
+                }
                 className={FIELD}
               />
             </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Tier features */}
+      <div className={SECTION_CARD} style={SECTION_STYLE}>
+        <div className={SECTION_HEADER}>
+          <BarChart3 size={16} className="text-[#f5c518]" />
+          Перки на тир
+        </div>
+        <p className="text-xs text-[#777]">
+          Что открывается на каждом уровне. Лимита по числу сигналов больше
+          нет — все тиры с T1 видят сигналы безлимитом. Старшие тиры получают
+          углублённый анализ и ранний доступ.
+        </p>
+        <div className="space-y-2">
+          {(["0", "1", "2", "3", "4"] as const).map((t) => (
+            <div
+              key={t}
+              className="grid grid-cols-1 md:grid-cols-[60px_1fr_1fr_1fr] gap-3 items-center px-3 py-2 rounded-xl border border-white/[0.05]"
+            >
+              <div className="text-xs font-mono text-[#f5c518]">T{t}</div>
+              <label className="flex items-center gap-2 text-xs text-[#aaa] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={tierFeatures[t].chartIndicators}
+                  onChange={(e) =>
+                    setTierFeature(t, { chartIndicators: e.target.checked })
+                  }
+                  className="w-4 h-4 accent-[#f5c518]"
+                />
+                График с RSI / MACD / объёмом
+              </label>
+              <label className="flex items-center gap-2 text-xs text-[#aaa]">
+                Ранний доступ (сек)
+                <input
+                  type="number"
+                  min={0}
+                  value={tierFeatures[t].earlyAccessSeconds}
+                  onChange={(e) =>
+                    setTierFeature(t, {
+                      earlyAccessSeconds: Number(e.target.value),
+                    })
+                  }
+                  className={`${FIELD} w-20`}
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs text-[#aaa] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={tierFeatures[t].elitePairs}
+                  onChange={(e) =>
+                    setTierFeature(t, { elitePairs: e.target.checked })
+                  }
+                  className="w-4 h-4 accent-[#f5c518]"
+                />
+                Elite-пары (≥90%)
+              </label>
+            </div>
           ))}
         </div>
       </div>

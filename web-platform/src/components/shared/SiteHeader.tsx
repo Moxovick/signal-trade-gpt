@@ -3,15 +3,9 @@ import { ArrowRight } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { ButtonLink } from "@/components/ui/Button";
 
-const BOT_URL =
-  process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/traitsignaltsest_bot";
-
 const NAV = [
-  { href: "/#how", label: "Как работает" },
-  { href: "/#tiers", label: "Тиры" },
-  { href: "/giveaway", label: "Розыгрыш" },
-  { href: "/reviews", label: "Отзывы" },
-  { href: "/faq", label: "FAQ" },
+  { href: "/how-it-works", label: "Как это работает" },
+  { href: "/about", label: "Про нас" },
 ];
 
 export function SiteHeader() {
@@ -35,8 +29,8 @@ export function SiteHeader() {
             Войти
           </Link>
         </div>
-        <ButtonLink href={BOT_URL} external size="sm" iconRight={<ArrowRight size={16} />}>
-          В Telegram
+        <ButtonLink href="/register" size="sm" iconRight={<ArrowRight size={16} />}>
+          Зарегистрироваться
         </ButtonLink>
       </nav>
     </header>
@@ -60,10 +54,10 @@ export function SiteFooter() {
             Платформа
           </div>
           <ul className="space-y-2 text-[var(--t-2)]">
-            <li><Link href="/#how" className="hover:text-[var(--t-1)]">Как работает</Link></li>
-            <li><Link href="/#tiers" className="hover:text-[var(--t-1)]">Тиры</Link></li>
-            <li><Link href="/giveaway" className="hover:text-[var(--t-1)]">Розыгрыш</Link></li>
-            <li><Link href="/reviews" className="hover:text-[var(--t-1)]">Отзывы</Link></li>
+            <li><Link href="/how-it-works" className="hover:text-[var(--t-1)]">Как это работает</Link></li>
+            <li><Link href="/about" className="hover:text-[var(--t-1)]">Про нас</Link></li>
+            <li><Link href="/register" className="hover:text-[var(--t-1)]">Регистрация</Link></li>
+            <li><Link href="/login" className="hover:text-[var(--t-1)]">Войти</Link></li>
           </ul>
         </div>
         <div className="text-sm">

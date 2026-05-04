@@ -34,6 +34,17 @@ export async function registerAction(
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
   const referralCode = String(formData.get("referralCode") ?? "").trim();
+  const nickname = String(formData.get("nickname") ?? "")
+    .trim()
+    .slice(0, 32);
+  // telegramUsername: strip leading @, allow A-Za-z0-9_, max 32 chars.
+  const telegramUsernameRaw = String(formData.get("telegramUsername") ?? "")
+    .trim()
+    .replace(/^@/, "")
+    .slice(0, 32);
+  const telegramUsername = /^[A-Za-z0-9_]{0,32}$/.test(telegramUsernameRaw)
+    ? telegramUsernameRaw
+    : "";
 
   if (!email.includes("@")) {
     return { ok: false, error: "Введи корректный email" };
@@ -69,6 +80,8 @@ export async function registerAction(
         referralCode: code,
         referredById,
         subscriptionPlan: "free",
+        ...(nickname ? { firstName: nickname } : {}),
+        ...(telegramUsername ? { username: telegramUsername } : {}),
       },
       select: { id: true, email: true },
     });

@@ -1,158 +1,198 @@
-import Link from "next/link";
-import { Logo } from "@/components/shared/Logo";
-
-const BOT_URL = process.env.NEXT_PUBLIC_BOT_URL ?? "https://t.me/traitsignaltsest_bot";
+/**
+ * /how-it-works — explains the user journey end-to-end.
+ *
+ * Replaces the old subscription-tariff page with the v2 deposit-driven flow.
+ */
+import {
+  ArrowRight,
+  UserPlus,
+  CircleDollarSign,
+  Bot,
+  TrendingUp,
+  BarChart3,
+  Zap,
+} from "lucide-react";
+import { ButtonLink } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { TierBadge } from "@/components/ui/TierBadge";
+import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
 
 const STEPS = [
   {
-    num: "01", title: "ПОДКЛЮЧИ БОТА", icon: "📱",
-    desc: "Нажми /start в Telegram-боте Signal Trade GPT. Регистрация занимает 10 секунд — только email и пароль.",
-    details: ["Мгновенная активация", "Бесплатный OTC-доступ сразу", "Промо-код = неделя Premium"],
+    n: "01",
+    icon: UserPlus,
+    title: "Регистрация на сайте",
+    desc: "Email + пароль. 30 секунд. Никаких ботов и Telegram на старте — всё на сайте. После регистрации сразу попадаешь в личный кабинет.",
   },
   {
-    num: "02", title: "ВЫБЕРИ ТАРИФ", icon: "💎",
-    desc: "Free, Premium, VIP или Elite — каждый тариф открывает новые типы сигналов и расширяет аналитику.",
-    details: ["Free: 3-5 OTC сигналов/день", "Premium: OTC + Биржевые, 15-25/день", "VIP/Elite: Безлимит + экспертный анализ"],
+    n: "02",
+    icon: CircleDollarSign,
+    title: "Открой счёт PocketOption",
+    desc: "По нашей реферальной ссылке (она показывается в кабинете). Регистрация на PO бесплатная и занимает 1 минуту. Это нужно, чтобы мы могли видеть твой депозит и автоматически открывать тиры.",
   },
   {
-    num: "03", title: "ПОЛУЧИ СИГНАЛ", icon: "📊",
-    desc: "AI анализирует рынок и присылает CALL/PUT прямо в Telegram. Каждый сигнал с AI Confidence и reasoning.",
-    details: ["Пара + направление + экспирация", "AI Confidence 73-96%", "Анализ: почему вверх/вниз"],
+    n: "03",
+    icon: TrendingUp,
+    title: "Внеси депозит",
+    desc: "От $100 — открывается базовый тир, безлимит сигналов. От $1000 — углублённый анализ с индикаторами. Чем больше депозит, тем глубже инструменты.",
   },
   {
-    num: "04", title: "ТОРГУЙ И ЗАРАБАТЫВАЙ", icon: "📈",
-    desc: "Открой сделку в Pocket Option по полученному сигналу. Рекомендуемый объём — 1-3% депозита.",
-    details: ["Pocket Option — лучший брокер", "1-3% депозита на сделку", "Результат: WIN/LOSS фиксируется"],
+    n: "04",
+    icon: Bot,
+    title: "Привяжи Telegram-бота (опционально)",
+    desc: "Если хочешь получать сигналы push-уведомлениями в Telegram — привяжи аккаунт через /link в боте. Без этого сигналы всё равно приходят в личный кабинет на сайте.",
   },
 ];
 
-const TIERS_INFO = [
-  { name: "OTC Угоди", tier: "otc", color: "#8888ff", access: "Free+", desc: "Внебиржевой рынок 24/7. Торгуй даже когда биржи закрыты. 4 основных пары.", accuracy: "82-85%" },
-  { name: "Біржеві Угоди", tier: "exchange", color: "#00e5a0", access: "Premium+", desc: "Реальный биржевой рынок. Все 12 пар. Расширенный AI-анализ и reasoning.", accuracy: "85-89%" },
-  { name: "Еліт Угоди", tier: "elite", color: "#f5c518", access: "VIP + $500", desc: "Максимальный анализ. AI + экспертная аналитика. Персональный менеджер.", accuracy: "90-96%" },
+const TIERS = [
+  {
+    tier: 0,
+    name: "Демо",
+    deposit: "$0",
+    desc: "2 пробных сигнала, чтобы посмотреть формат.",
+  },
+  {
+    tier: 1,
+    name: "Базовый",
+    deposit: "от $100",
+    desc: "Все сигналы, безлимитом. Все валютные пары. OTC + биржа.",
+  },
+  {
+    tier: 2,
+    name: "Трейдер",
+    deposit: "от $1000",
+    desc: "+ графики с RSI / MACD / объём, углублённый разбор.",
+  },
+  {
+    tier: 3,
+    name: "Pro",
+    deposit: "от $5000",
+    desc: "+ ранний доступ к сигналу за 60 секунд до публикации.",
+  },
+  {
+    tier: 4,
+    name: "Elite",
+    deposit: "от $10000",
+    desc: "+ Elite-пары (≥90% уверенность), приоритет в очереди публикации.",
+  },
 ];
 
-const PAIRS = [
-  "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "EUR/GBP", "GBP/JPY",
-  "USD/CHF", "NZD/USD", "EUR/JPY", "AUD/JPY", "USD/CAD", "EUR/AUD",
+const FEATURES = [
+  {
+    icon: Zap,
+    title: "Сигналы появляются автоматически",
+    desc: "AI генерирует 24/7. Ты получаешь push в кабинет (и в Telegram, если привязал бота).",
+  },
+  {
+    icon: BarChart3,
+    title: "Углублённый анализ от $1000",
+    desc: "Сигнал приходит с графиком: RSI, MACD, объём, уровни support/resistance. Видишь не просто 'вверх/вниз', а почему.",
+  },
 ];
 
 export default function HowItWorksPage() {
   return (
-    <main className="min-h-screen relative z-10">
-      <nav className="fixed top-0 left-0 right-0 z-50 px-4 md:px-6 py-3 glass">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Logo size="md" />
-          <div className="hidden md:flex items-center gap-6 text-sm text-[#888]">
-            <Link href="/" className="hover:text-[#f5c518] transition-colors">Главная</Link>
-            <Link href="/pricing" className="hover:text-[#f5c518] transition-colors">Тарифы</Link>
-            <Link href="/faq" className="hover:text-[#f5c518] transition-colors">FAQ</Link>
+    <>
+      <SiteHeader />
+      <main className="relative">
+        <section className="max-w-4xl mx-auto px-6 pt-20 pb-12 text-center">
+          <div className="inline-flex items-center gap-2 px-3 h-8 rounded-full text-xs uppercase tracking-widest border border-[var(--b-soft)] text-[var(--brand-gold)] bg-[var(--bg-1)]">
+            Как это работает
           </div>
-          <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: "#f5c518", color: "#08081a" }}>Подключить →</a>
-        </div>
-      </nav>
+          <h1 className="mt-8 text-5xl md:text-6xl font-bold leading-[1.05]">
+            От регистрации до первого сигнала — 5 минут
+          </h1>
+          <p className="mt-6 text-lg text-[var(--t-2)]">
+            Ниже — каждый шаг по порядку. Без сюрпризов.
+          </p>
+        </section>
 
-      <section className="pt-28 md:pt-36 pb-12 px-4 text-center">
-        <span className="inline-block px-4 py-1 rounded-full text-xs font-semibold mb-4 tier-exchange">Как работает</span>
-        <h1 className="text-5xl md:text-7xl font-black tracking-wider mb-4" style={{ fontFamily: "var(--font-bebas)" }}>
-          4 ШАГА ДО <span className="text-gold-gradient">ПРОФИТА</span>
-        </h1>
-        <p className="text-[#888] max-w-lg mx-auto">От подключения бота до первой прибыльной сделки — меньше 5 минут</p>
-      </section>
-
-      {/* Steps */}
-      <section className="px-4 pb-16">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {STEPS.map((step, i) => (
-            <div key={step.num} className="card-premium rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start">
-              <div className="shrink-0 text-center">
-                <div className="text-4xl mb-2">{step.icon}</div>
-                <div className="text-xs font-mono text-gold-gradient font-bold">{step.num}</div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-black tracking-wider mb-2" style={{ fontFamily: "var(--font-bebas)", color: "#f5c518" }}>{step.title}</h3>
-                <p className="text-sm text-[#888] mb-3">{step.desc}</p>
-                <div className="space-y-1">
-                  {step.details.map((d) => (
-                    <div key={d} className="flex items-center gap-2 text-xs text-[#ccc]">
-                      <span style={{ color: "#00e5a0" }}>✓</span> {d}
-                    </div>
-                  ))}
+        <section className="max-w-6xl mx-auto px-6 py-12">
+          <div className="grid md:grid-cols-2 gap-5">
+            {STEPS.map((s) => (
+              <Card key={s.n} hover padding="lg">
+                <div
+                  className="text-xs font-mono text-[var(--t-3)] mb-4"
+                  style={{ fontFamily: "var(--font-jetbrains)" }}
+                >
+                  {s.n}
                 </div>
-              </div>
-              {i < STEPS.length - 1 && <div className="hidden md:block text-[#333] text-2xl self-center">→</div>}
+                <s.icon size={28} className="text-[var(--brand-gold)] mb-4" />
+                <h3 className="text-xl font-semibold mb-2">{s.title}</h3>
+                <p className="text-sm text-[var(--t-2)] leading-relaxed">{s.desc}</p>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        <section className="max-w-6xl mx-auto px-6 py-16">
+          <div className="text-center mb-12">
+            <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
+              Что открывается на каждом тире
             </div>
-          ))}
-        </div>
-      </section>
+            <h2 className="text-3xl md:text-4xl font-bold">5 уровней доступа</h2>
+          </div>
+          <div className="space-y-3">
+            {TIERS.map((t) => (
+              <Card key={t.tier} padding="md" className="flex flex-col md:flex-row md:items-center gap-4">
+                <div className="shrink-0">
+                  <TierBadge tier={t.tier} size="md" />
+                </div>
+                <div
+                  className="text-2xl font-bold shrink-0 md:w-32"
+                  style={{ fontFamily: "var(--font-jetbrains)" }}
+                >
+                  {t.deposit}
+                </div>
+                <div className="text-sm text-[var(--t-2)] flex-1">{t.desc}</div>
+              </Card>
+            ))}
+          </div>
+        </section>
 
-      {/* Signal example */}
-      <section className="px-4 pb-16" style={{ background: "var(--surface)" }}>
-        <div className="max-w-4xl mx-auto py-12">
-          <h2 className="text-3xl md:text-4xl font-black tracking-wider text-center mb-8" style={{ fontFamily: "var(--font-bebas)" }}>
-            КАК ВЫГЛЯДИТ <span className="text-gold-gradient">СИГНАЛ</span>
-          </h2>
-          <div className="grid md:grid-cols-3 gap-4">
-            {TIERS_INFO.map((tier) => (
-              <div key={tier.tier} className="card-premium rounded-2xl p-5 relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: tier.color }} />
-                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold mb-3 inline-block tier-${tier.tier}`}>{tier.access}</span>
-                <h3 className="text-lg font-bold mb-2" style={{ fontFamily: "var(--font-bebas)", color: tier.color, letterSpacing: "0.05em" }}>{tier.name}</h3>
-                <p className="text-xs text-[#888] mb-3">{tier.desc}</p>
-
-                <div className="rounded-xl p-3 mb-3" style={{ background: "rgba(0,0,0,0.3)" }}>
-                  <div className="text-xs text-[#555] mb-1 font-mono">Пример сигнала:</div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono font-bold text-sm">EUR/USD</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded font-bold" style={{ background: "rgba(0,229,160,0.15)", color: "#00e5a0" }}>CALL ⬆</span>
+        <section className="max-w-6xl mx-auto px-6 py-16">
+          <div className="grid md:grid-cols-2 gap-5">
+            {FEATURES.map((f) => (
+              <Card key={f.title} padding="lg" hover>
+                <div className="flex items-start gap-4">
+                  <div
+                    className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0"
+                    style={{
+                      background: "rgba(212, 160, 23, 0.08)",
+                      border: "1px solid var(--b-soft)",
+                    }}
+                  >
+                    <f.icon size={22} className="text-[var(--brand-gold)]" />
                   </div>
-                  <div className="text-xs text-[#666]">Экспирация: 1 мин · AI: <span style={{ color: tier.color }}>{tier.accuracy.split("-")[1]}</span></div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-1">{f.title}</h3>
+                    <p className="text-[var(--t-2)] leading-relaxed">{f.desc}</p>
+                  </div>
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#555]">Точность:</span>
-                  <span className="text-sm font-bold" style={{ color: tier.color }}>{tier.accuracy}</span>
-                </div>
-              </div>
+              </Card>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Supported pairs */}
-      <section className="px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-black tracking-wider text-center mb-8" style={{ fontFamily: "var(--font-bebas)" }}>
-            ПОДДЕРЖИВАЕМЫЕ <span className="text-gold-gradient">ПАРЫ</span>
-          </h2>
-          <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-            {PAIRS.map((pair) => (
-              <div key={pair} className="card-premium rounded-xl p-3 text-center hover:scale-[1.02] transition-transform">
-                <span className="font-mono font-bold text-sm text-gold-gradient">{pair}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="px-4 py-12 text-center">
-        <h2 className="text-4xl md:text-5xl font-black tracking-wider mb-6" style={{ fontFamily: "var(--font-bebas)" }}>
-          ГОТОВ <span className="text-gold-gradient">НАЧАТЬ?</span>
-        </h2>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
-          <a href={BOT_URL} target="_blank" rel="noopener noreferrer" className="px-8 py-4 rounded-2xl font-bold transition-all hover:scale-105" style={{ background: "linear-gradient(135deg, #f5c518, #f0a500)", color: "#08081a" }}>🚀 Подключить бота</a>
-          <Link href="/register" className="px-8 py-4 rounded-2xl font-bold card-premium transition-all" style={{ color: "#f5c518" }}>Создать аккаунт →</Link>
-        </div>
-        <p className="text-xs text-[#555]">✓ Промо-код при регистрации · ✓ Бесплатный старт · ✓ 24/7</p>
-      </section>
-
-      <footer className="px-4 py-8 glass">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <Logo size="sm" />
-          <p className="text-xs text-[#333]">Signal Trade GPT не является финансовым советником. Торговля сопряжена с риском.</p>
-        </div>
-      </footer>
-    </main>
+        <section className="max-w-4xl mx-auto px-6 py-20 text-center">
+          <Card variant="highlight" padding="lg">
+            <h2 className="text-3xl font-bold">Начни прямо сейчас</h2>
+            <p className="mt-4 text-[var(--t-2)]">
+              Регистрация бесплатная. Демо-режим доступен без депозита.
+            </p>
+            <div className="mt-8">
+              <ButtonLink
+                href="/register"
+                size="lg"
+                iconRight={<ArrowRight size={18} />}
+              >
+                Зарегистрироваться
+              </ButtonLink>
+            </div>
+          </Card>
+        </section>
+      </main>
+      <SiteFooter />
+    </>
   );
 }

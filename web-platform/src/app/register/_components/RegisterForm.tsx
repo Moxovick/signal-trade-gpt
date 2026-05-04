@@ -1,17 +1,14 @@
 "use client";
 
 /**
- * Registration form — uses a Next.js Server Action so it works even when
- * client hydration is broken.
+ * Registration form — Server Action backed for resilience to broken hydration.
  *
- * Path A (JS enabled): useActionState handles the response, on success we
- * call NextAuth signIn() and push to /dashboard.
- *
- * Path B (no JS / hydration broken): the form submits via plain HTML POST
- * to `registerActionRedirect`, which redirects to /login?registered=1.
- *
- * The `?err=...` query param is read on first render to surface server-side
- * errors after a no-JS redirect.
+ * Fields:
+ *   - email (required)
+ *   - password + confirm (required)
+ *   - nickname (optional, stored as User.firstName, used as display name)
+ *   - telegramUsername (optional, stored as User.username, used to link bot)
+ *   - referralCode (optional, sets User.referredById)
  */
 import { useActionState, useEffect, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
@@ -36,7 +33,6 @@ export function RegisterForm() {
   const [autoLoginError, setAutoLoginError] = useState<string | null>(null);
   const lastHandledRef = useRef<string | null>(null);
 
-  // Path A: when client-side action returns ok, sign in and redirect.
   useEffect(() => {
     if (!state.ok || !state.email || !state.password) return;
     const key = `${state.email}:${state.password}`;
@@ -72,7 +68,7 @@ export function RegisterForm() {
         name="email"
         required
         autoComplete="email"
-        placeholder="email@example.com"
+        placeholder="Email"
         className={FIELD}
       />
       <input
@@ -90,6 +86,22 @@ export function RegisterForm() {
         autoComplete="new-password"
         placeholder="Повтори пароль"
         className={FIELD}
+      />
+      <input
+        type="text"
+        name="nickname"
+        autoComplete="nickname"
+        placeholder="Ник для leaderboard (необязательно)"
+        className={FIELD}
+        maxLength={32}
+      />
+      <input
+        type="text"
+        name="telegramUsername"
+        autoComplete="off"
+        placeholder="Telegram username, без @ (необязательно)"
+        className={FIELD}
+        maxLength={32}
       />
       <input
         type="text"

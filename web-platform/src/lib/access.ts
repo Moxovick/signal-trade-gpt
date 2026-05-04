@@ -2,7 +2,8 @@
  * Access engine — given a userId, decide which signals/perks they can see.
  *
  * Tier-driven, no subscription checks. T0 users get a hard-capped lifetime
- * demo allowance; T1+ get tier-scaled daily limits + tier-gated perks.
+ * demo allowance; T1+ get unlimited signals (perks differ by tier — chart
+ * indicators / early access — but signal *count* is no longer rate-limited).
  */
 import { prisma } from "@/lib/prisma";
 
@@ -28,9 +29,9 @@ export const T0_LIFETIME_DEMO_LIMIT = 2;
 
 const TIER_DAILY_LIMITS: Record<number, number | null> = {
   0: 0, // T0 uses lifetime cap, not daily
-  1: 5,
-  2: 15,
-  3: 25,
+  1: null, // unlimited
+  2: null, // unlimited
+  3: null, // unlimited
   4: null, // unlimited
 };
 

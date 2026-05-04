@@ -23,8 +23,8 @@ export type TierThresholds = {
 
 export const DEFAULT_TIER_THRESHOLDS: TierThresholds = {
   1: 100,
-  2: 500,
-  3: 2000,
+  2: 1000,
+  3: 5000,
   4: 10000,
 };
 
@@ -78,8 +78,8 @@ export function distanceToNextTier(
 
 export const TIER_LABELS: Record<number, string> = {
   0: "Демо",
-  1: "Starter",
-  2: "Active",
+  1: "Базовый",
+  2: "Трейдер",
   3: "Pro",
-  4: "VIP",
+  4: "Elite",
 };

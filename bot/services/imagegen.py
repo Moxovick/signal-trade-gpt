@@ -296,6 +296,178 @@ def make_signal_chart(signal: Signal) -> bytes:
     return buf.getvalue()
 
 
+def _rsi(closes: np.ndarray, period: int = 14) -> np.ndarray:
+    """Standard Wilder RSI. Returns array of same length, NaN for first `period` points."""
+    deltas = np.diff(closes, prepend=closes[0])
+    gain = np.where(deltas > 0, deltas, 0.0)
+    loss = np.where(deltas < 0, -deltas, 0.0)
+    avg_gain = np.zeros_like(closes)
+    avg_loss = np.zeros_like(closes)
+    avg_gain[period] = gain[1 : period + 1].mean()
+    avg_loss[period] = loss[1 : period + 1].mean()
+    for i in range(period + 1, len(closes)):
+        avg_gain[i] = (avg_gain[i - 1] * (period - 1) + gain[i]) / period
+        avg_loss[i] = (avg_loss[i - 1] * (period - 1) + loss[i]) / period
+    rs = np.divide(avg_gain, avg_loss, out=np.full_like(avg_gain, 1.0), where=avg_loss != 0)
+    rsi = 100 - (100 / (1 + rs))
+    rsi[:period] = np.nan
+    return rsi
+
+
+def _ema(values: np.ndarray, period: int) -> np.ndarray:
+    """Exponential moving average."""
+    out = np.zeros_like(values, dtype=float)
+    if len(values) == 0:
+        return out
+    out[0] = values[0]
+    alpha = 2 / (period + 1)
+    for i in range(1, len(values)):
+        out[i] = alpha * values[i] + (1 - alpha) * out[i - 1]
+    return out
+
+
+def _macd(closes: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Returns (macd_line, signal_line, histogram) using 12/26/9."""
+    fast = _ema(closes, 12)
+    slow = _ema(closes, 26)
+    macd_line = fast - slow
+    signal_line = _ema(macd_line, 9)
+    hist = macd_line - signal_line
+    return macd_line, signal_line, hist
+
+
+def _synthetic_volume(seed: str, n: int) -> np.ndarray:
+    """Deterministic per-pair volume series (normalized)."""
+    h = hashlib.sha256(("vol-" + seed).encode()).digest()
+    rnd = random.Random(int.from_bytes(h[:8], "big"))
+    return np.array([abs(rnd.gauss(1.0, 0.4)) for _ in range(n)])
+
+
+def make_signal_chart_advanced(signal: Signal) -> bytes:
+    """
+    Tier-2+ chart: candlestick + RSI + MACD + volume in a single 4-row figure.
+
+    Same input data as `make_signal_chart` but with three extra technical
+    panels stacked underneath. Returns PNG bytes.
+    """
+    pair = signal.pair
+    direction = signal.direction
+    is_call = direction == "CALL"
+
+    seed = pair + str(signal.confidence)
+    ohlc = _seeded_walk(seed, n=80)
+    n = ohlc.shape[0]
+    closes = ohlc[:, 3]
+
+    rsi = _rsi(closes)
+    macd_line, signal_line, hist = _macd(closes)
+    volume = _synthetic_volume(seed, n)
+
+    fig, axes = plt.subplots(
+        4,
+        1,
+        figsize=(12.8, 9.6),
+        dpi=100,
+        gridspec_kw={"height_ratios": [4, 1.2, 1.4, 1.2]},
+        sharex=True,
+    )
+    fig.patch.set_facecolor(BG_0)
+
+    ax_price, ax_vol, ax_rsi, ax_macd = axes
+    for ax in axes:
+        ax.set_facecolor(BG_0)
+        for spine in ax.spines.values():
+            spine.set_color(BG_2)
+        ax.tick_params(axis="both", colors=TEXT_2, labelsize=8)
+        ax.grid(color=BG_2, lw=0.4, alpha=0.5)
+
+    # Candles + EMA20 trendline
+    width = 0.7
+    for i, (o, hi, lo, c) in enumerate(ohlc):
+        color = GREEN if c >= o else RED
+        ax_price.plot([i, i], [lo, hi], color=color, lw=1.0, zorder=2)
+        body_low, body_high = sorted([o, c])
+        ax_price.add_patch(
+            plt.Rectangle(
+                (i - width / 2, body_low),
+                width,
+                body_high - body_low,
+                color=color,
+                zorder=3,
+            )
+        )
+    ema20 = _ema(closes, 20)
+    ax_price.plot(np.arange(n), ema20, color=GOLD, lw=1.4, alpha=0.75, zorder=4, label="EMA20")
+
+    # Direction arrow
+    last_close = closes[-1]
+    span = closes.max() - closes.min()
+    arrow_y = last_close + span * 0.18 * (1 if is_call else -1)
+    arrow_color = GREEN if is_call else RED
+    ax_price.annotate(
+        f"{direction}",
+        xy=(n - 1, last_close),
+        xytext=(n - 8, arrow_y),
+        color=arrow_color,
+        fontsize=20,
+        fontweight="bold",
+        arrowprops=dict(
+            arrowstyle="-|>",
+            color=arrow_color,
+            lw=2.0,
+            mutation_scale=20,
+        ),
+        zorder=5,
+    )
+    ax_price.axhline(last_close, color=GOLD, lw=0.8, ls="--", alpha=0.4)
+    ax_price.set_xlim(-1, n)
+    pad = span * 0.25
+    ax_price.set_ylim(closes.min() - pad, closes.max() + pad)
+    title = f"  {pair}   ·   {direction}   ·   conf {signal.confidence}%   ·   exp {signal.expiration}"
+    ax_price.set_title(title, color=GOLD, fontsize=16, fontweight="bold", loc="left", pad=14)
+    ax_price.legend(loc="upper left", facecolor=BG_1, edgecolor=BG_2, labelcolor=TEXT_2, fontsize=8)
+
+    # Volume bars
+    vol_colors = [GREEN if c >= o else RED for o, _, _, c in ohlc]
+    ax_vol.bar(np.arange(n), volume, color=vol_colors, width=0.7, alpha=0.7)
+    ax_vol.set_ylabel("VOL", color=TEXT_2, fontsize=8)
+
+    # RSI
+    ax_rsi.plot(np.arange(n), rsi, color=GOLD, lw=1.2)
+    ax_rsi.axhline(70, color=RED, lw=0.7, ls="--", alpha=0.55)
+    ax_rsi.axhline(30, color=GREEN, lw=0.7, ls="--", alpha=0.55)
+    ax_rsi.axhline(50, color=BG_2, lw=0.5, alpha=0.6)
+    ax_rsi.set_ylim(0, 100)
+    ax_rsi.set_ylabel("RSI(14)", color=TEXT_2, fontsize=8)
+
+    # MACD
+    bar_colors = [GREEN if h >= 0 else RED for h in hist]
+    ax_macd.bar(np.arange(n), hist, color=bar_colors, width=0.7, alpha=0.7)
+    ax_macd.plot(np.arange(n), macd_line, color=GOLD, lw=1.0, label="MACD")
+    ax_macd.plot(np.arange(n), signal_line, color=TEXT_2, lw=0.9, label="Signal")
+    ax_macd.axhline(0, color=BG_2, lw=0.5, alpha=0.6)
+    ax_macd.set_ylabel("MACD", color=TEXT_2, fontsize=8)
+    ax_macd.legend(
+        loc="upper left", facecolor=BG_1, edgecolor=BG_2, labelcolor=TEXT_2, fontsize=7
+    )
+
+    fig.text(
+        0.985,
+        0.012,
+        "SIGNAL · TRADE · GPT  ·  PRO ANALYSIS",
+        color=GOLD_SOFT,
+        fontsize=9,
+        ha="right",
+        va="bottom",
+        alpha=0.6,
+    )
+    plt.tight_layout()
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png", facecolor=fig.get_facecolor())
+    plt.close(fig)
+    return buf.getvalue()
+
+
 def make_tier_card(tier: int, deposit: float, next_threshold: int | None) -> bytes:
     """A small horizontal progress card image for /tier responses."""
     w, h = 1100, 380
