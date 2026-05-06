@@ -17,6 +17,8 @@ import {
   SITE_SETTING_TIER_THRESHOLDS,
   type TierThresholds,
 } from "@/lib/tier";
+import { fetchTraderInfo, isValidTraderIdFormat } from "@/lib/po-api";
+import type { POAccountStatus } from "@/generated/prisma/enums";
 
 export type RawPostback = {
   event: string;
@@ -296,17 +298,31 @@ export async function buildReferralLink(userId: string): Promise<string> {
 }
 
 /**
- * Manually attach an existing PO trader account to the current user
- * (fallback path when the user came in without our click_id).
+ * Manually attach an existing PO trader account to the current user.
  *
- * Status starts at `pending` until a matching postback bumps it.
+ * If PocketOption affiliate API credentials are configured, the trader id is
+ * verified live: only IDs that belong to OUR partner network are accepted.
+ * If creds are absent (e.g. local dev), we fall back to format-only check and
+ * mark the link as `pending` until a postback verifies it.
  */
 export async function manualAttachPoAccount(
   userId: string,
   poTraderId: string,
-): Promise<{ ok: boolean; reason?: string }> {
+): Promise<
+  | { ok: true; status: "verified" | "pending"; depositTotal: number }
+  | {
+      ok: false;
+      reason:
+        | "invalid_trader_id"
+        | "trader_id_taken"
+        | "not_in_our_network"
+        | "po_unreachable";
+    }
+> {
   const trimmed = poTraderId.trim();
-  if (!/^\d{4,12}$/.test(trimmed)) return { ok: false, reason: "invalid_trader_id" };
+  if (!isValidTraderIdFormat(trimmed)) {
+    return { ok: false, reason: "invalid_trader_id" };
+  }
 
   const conflict = await prisma.pocketOptionAccount.findUnique({
     where: { poTraderId: trimmed },
@@ -315,17 +331,61 @@ export async function manualAttachPoAccount(
     return { ok: false, reason: "trader_id_taken" };
   }
 
+  const verifyResult = await fetchTraderInfo(trimmed);
+  let status: POAccountStatus = "pending";
+  let depositTotal = 0;
+  let ftdAt: Date | null = null;
+
+  if (verifyResult.ok) {
+    status = "verified";
+    depositTotal = verifyResult.info.depositTotal;
+    if (verifyResult.info.ftdAt) {
+      const parsed = new Date(verifyResult.info.ftdAt);
+      if (!Number.isNaN(parsed.getTime())) ftdAt = parsed;
+    }
+  } else if (verifyResult.reason === "not_found") {
+    return { ok: false, reason: "not_in_our_network" };
+  } else if (verifyResult.reason === "auth_failed" || verifyResult.reason === "network_error") {
+    return { ok: false, reason: "po_unreachable" };
+  }
+  // "not_configured" | "invalid_response" → fall through with pending status.
+
   await prisma.pocketOptionAccount.upsert({
     where: { userId },
     create: {
       userId,
       poTraderId: trimmed,
-      status: "pending",
+      status,
       source: "manual",
+      totalDeposit: depositTotal,
+      ...(ftdAt ? { ftdAt } : {}),
     },
-    update: { poTraderId: trimmed, source: "manual" },
+    update: {
+      poTraderId: trimmed,
+      source: "manual",
+      ...(status === "verified" ? { status, totalDeposit: depositTotal } : {}),
+      ...(ftdAt ? { ftdAt } : {}),
+    },
   });
 
   await recomputeUserTier(userId);
-  return { ok: true };
+  return { ok: true, status, depositTotal };
+}
+
+/**
+ * Site-settings key + default for the public PocketOption referral URL shown
+ * during onboarding. Admin can override in /admin/settings.
+ */
+export const SITE_SETTING_PO_REFERRAL_URL = "po_referral_url";
+export const DEFAULT_PO_REFERRAL_URL =
+  "https://u3.shortink.io/smart/ojwEUtTw0lh1p0";
+
+export async function getPoReferralUrl(): Promise<string> {
+  const setting = await prisma.siteSettings.findUnique({
+    where: { key: SITE_SETTING_PO_REFERRAL_URL },
+  });
+  if (typeof setting?.value === "string" && setting.value.length > 0) {
+    return setting.value;
+  }
+  return DEFAULT_PO_REFERRAL_URL;
 }

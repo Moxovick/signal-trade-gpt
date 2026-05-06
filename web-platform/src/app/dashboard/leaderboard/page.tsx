@@ -11,6 +11,8 @@ import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { TIER_LABELS } from "@/lib/tier";
 import { Trophy, Medal, Award, Crown } from "lucide-react";
+import { LeaderboardFilters } from "./_components/LeaderboardFilters";
+import type { Prisma } from "@/generated/prisma/client";
 
 type Row = {
   id: string;
@@ -29,14 +31,37 @@ function displayName(u: {
   return u.firstName ?? u.username ?? (u.email ? u.email.split("@")[0] : "Аноним");
 }
 
-export default async function LeaderboardPage() {
+type PageProps = {
+  searchParams: Promise<{ period?: string; tier?: string }>;
+};
+
+export default async function LeaderboardPage({ searchParams }: PageProps) {
   const session = await auth();
   if (!session?.user?.id) return null;
   const userId = session.user.id;
 
+  const sp = await searchParams;
+  const period = sp.period ?? "all";
+  const tierFilter = Number.parseInt(sp.tier ?? "0", 10);
+  const minTier = Number.isFinite(tierFilter) && tierFilter > 0 ? tierFilter : 0;
+
+  const now = new Date();
+  const periodFrom =
+    period === "week"
+      ? new Date(now.getTime() - 7 * 24 * 3600 * 1000)
+      : period === "month"
+        ? new Date(now.getTime() - 30 * 24 * 3600 * 1000)
+        : null;
+
+  const where: Prisma.UserWhereInput = {
+    role: { not: "admin" },
+    ...(minTier > 0 ? { tier: { gte: minTier } } : {}),
+    ...(periodFrom ? { lastLogin: { gte: periodFrom } } : {}),
+  };
+
   const [topUsers, me, myStats] = await Promise.all([
     prisma.user.findMany({
-      where: { role: { not: "admin" } },
+      where,
       orderBy: [{ tier: "desc" }, { signalsReceived: "desc" }],
       take: 50,
       select: {
@@ -61,7 +86,7 @@ export default async function LeaderboardPage() {
         poAccount: { select: { totalDeposit: true } },
       },
     }),
-    prisma.user.count({ where: { role: { not: "admin" } } }),
+    prisma.user.count({ where }),
   ]);
 
   const rows: Row[] = topUsers.slice(0, 10).map((u, i) => ({
@@ -106,6 +131,8 @@ export default async function LeaderboardPage() {
           Обновляется в реальном времени.
         </p>
       </div>
+
+      <LeaderboardFilters />
 
       {/* Podium: top-3 */}
       {rows.length >= 3 && (

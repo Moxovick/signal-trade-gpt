@@ -130,10 +130,17 @@ model User {
   promoCodeUsedId       String?
   promoCodeUsed         PromoCode?       @relation("PromoUsedBy", fields: [promoCodeUsedId], references: [id])
   notificationSettings  Json             @default("{}")
+  /// Free-form user preferences: theme, language, timezone, favorite pairs,
+  /// mutedPairs, notification channel toggles. Reading/writing through
+  /// `lib/user-preferences.ts`.
+  preferences           Json             @default("{}")
+  emailVerifiedAt       DateTime?
   depositTotal          Decimal          @default(0)
   signalsReceived       Int              @default(0)
   eliteUnlocked         Boolean          @default(false)
   lastSignalAt          DateTime?
+  streakDays            Int              @default(0)
+  lastActivityDay       DateTime?
   createdAt             DateTime         @default(now())
   lastLogin             DateTime?
   utmSource             String?
@@ -152,6 +159,9 @@ model User {
   adminLogs          AdminLog[]
   activityLogs       ActivityLog[]
   botMessages        BotMessage[]
+  loginEvents        LoginEvent[]
+  emailOtps          EmailOtp[]
+  achievements       UserAchievement[]
 
   @@index([tier])
   @@index([subscriptionPlan])
@@ -524,4 +534,91 @@ model LegalPage {
   createdAt DateTime @default(now())
 
   @@map("legal_pages")
+}
+
+// ═══════════════════════════════════════
+// V3 — SECURITY, EMAIL OTP, ACHIEVEMENTS
+// ═══════════════════════════════════════
+
+enum LoginEventKind {
+  login_ok
+  login_fail
+  password_change
+  email_change
+  otp_sent
+  otp_verified
+  otp_expired
+}
+
+/// Audit trail of security-sensitive auth events. Not the same as
+/// ActivityLog, which records feature-level actions.
+model LoginEvent {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      LoginEventKind
+  ip        String?
+  userAgent String?
+  details   Json           @default("{}")
+  createdAt DateTime       @default(now())
+
+  @@index([userId, createdAt])
+  @@map("login_events")
+}
+
+enum OtpPurpose {
+  email_verify
+  email_change
+  password_reset
+  login_2fa
+}
+
+/// One-time codes sent via email. codeHash is sha256 of the plain code;
+/// we never store the plain code.
+model EmailOtp {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Destination email (for email_change stores the NEW address to confirm).
+  email     String
+  codeHash  String
+  purpose   OtpPurpose
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int        @default(0)
+  createdAt DateTime   @default(now())
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+  @@map("email_otps")
+}
+
+/// Static achievement catalogue, seeded once. Code is a stable identifier
+/// referenced by backend logic.
+model Achievement {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String
+  icon        String   @default("trophy")
+  /// Optional minimum tier to make this achievement meaningful.
+  minTier     Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  userUnlocks UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
 }

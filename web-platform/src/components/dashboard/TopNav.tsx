@@ -14,6 +14,7 @@ import {
   Shield,
   LogOut,
   ExternalLink,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
@@ -31,6 +32,7 @@ const NAV: NavItem[] = [
   { href: "/dashboard/giveaway", label: "Розыгрыш", icon: Gift },
   { href: "/dashboard/leaderboard", label: "Лидерборд", icon: Trophy },
   { href: "/dashboard/profile", label: "Профиль", icon: UserIcon },
+  { href: "/dashboard/settings", label: "Настройки", icon: SettingsIcon },
 ];
 
 const BOT_URL =

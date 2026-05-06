@@ -6,9 +6,17 @@ type Props = {
   delta?: { value: string; positive?: boolean };
   icon?: ReactNode;
   className?: string;
+  /** Optional semantic tint applied to the value. */
+  tone?: "positive" | "negative" | "neutral";
 };
 
-export function Stat({ value, label, delta, icon, className }: Props) {
+const TONE_COLOR: Record<NonNullable<Props["tone"]>, string> = {
+  positive: "var(--green)",
+  negative: "var(--red)",
+  neutral: "var(--t-1)",
+};
+
+export function Stat({ value, label, delta, icon, className, tone }: Props) {
   return (
     <div
       className={[
@@ -24,8 +32,11 @@ export function Stat({ value, label, delta, icon, className }: Props) {
         {icon && <div className="text-[var(--brand-gold)]">{icon}</div>}
       </div>
       <div
-        className="mt-3 text-3xl font-bold text-[var(--t-1)]"
-        style={{ fontFamily: "var(--font-jetbrains)" }}
+        className="mt-3 text-3xl font-bold"
+        style={{
+          fontFamily: "var(--font-jetbrains)",
+          color: tone ? TONE_COLOR[tone] : "var(--t-1)",
+        }}
       >
         {value}
       </div>

@@ -50,7 +50,8 @@ export function RegisterForm() {
         );
         return;
       }
-      router.push("/dashboard");
+      // Send to PO ID gate; layout will fast-forward to /dashboard if already verified.
+      router.push("/onboarding/po-id");
     })();
   }, [state.ok, state.email, state.password, router]);
 

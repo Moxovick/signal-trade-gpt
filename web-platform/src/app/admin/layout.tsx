@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Trophy,
   FileText,
+  Award,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -34,6 +35,7 @@ const adminNav: NavItem[] = [
   { href: "/admin/faq", label: "FAQ", icon: HelpCircle },
   { href: "/admin/reviews", label: "Отзывы", icon: MessageSquare },
   { href: "/admin/giveaway", label: "Розыгрыш", icon: Trophy },
+  { href: "/admin/achievements", label: "Достижения", icon: Award },
   { href: "/admin/legal", label: "Правовые", icon: FileText },
   { href: "/admin/settings", label: "Настройки", icon: SettingsIcon },
 ];

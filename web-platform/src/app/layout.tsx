@@ -38,8 +38,17 @@ export default function RootLayout({
     <html
       lang="ru"
       data-scroll-behavior="smooth"
+      data-theme="dark"
       className={`${manrope.variable} ${jetbrains.variable} ${bebas.variable} h-full`}
     >
+      <head>
+        {/* Inline theme loader — runs before body paints to avoid flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('stg_theme')||'dark';var eff=t==='auto'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.dataset.theme=eff;}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <AnimatedBackground />
         <ScrollProgress />

@@ -52,6 +52,32 @@
   --surface: var(--bg-1);
 }
 
+/* Light theme override — flipped palette. Users opt in via
+   /dashboard/settings. Default stays dark. */
+:root[data-theme="light"] {
+  --bg-0: #f7f3ea;
+  --bg-1: #fffaf0;
+  --bg-2: #f0e8d5;
+  --bg-3: #e6dcc3;
+  --bg-glass: rgba(212, 160, 23, 0.08);
+
+  --t-1: #1a1208;
+  --t-2: #5c4a2e;
+  --t-3: #8a785c;
+
+  --b-soft: rgba(180, 130, 0, 0.15);
+  --b-hard: rgba(180, 130, 0, 0.35);
+  --b-glow: rgba(180, 130, 0, 0.55);
+
+  --background: var(--bg-0);
+  --foreground: var(--t-1);
+  --card-bg: var(--bg-1);
+  --card-bg-hover: var(--bg-2);
+  --border: var(--b-soft);
+  --border-bright: var(--b-hard);
+  --surface: var(--bg-1);
+}
+
 @theme inline {
   --color-background: var(--bg-0);
   --color-foreground: var(--t-1);

@@ -19,7 +19,12 @@ export async function POST(req: NextRequest) {
 
   const result = await manualAttachPoAccount(session.user.id, traderId);
   if (!result.ok) {
-    return NextResponse.json({ ok: false, reason: result.reason }, { status: 400 });
+    const status = result.reason === "po_unreachable" ? 503 : 400;
+    return NextResponse.json({ ok: false, reason: result.reason }, { status });
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    status: result.status,
+    depositTotal: result.depositTotal,
+  });
 }

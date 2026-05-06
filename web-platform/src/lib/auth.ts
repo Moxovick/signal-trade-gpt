@@ -37,18 +37,47 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: { email: credentials.email as string },
         });
 
-        if (!user || user.status === "banned" || !user.passwordHash) return null;
+        if (!user || user.status === "banned" || !user.passwordHash) {
+          if (user?.id) {
+            await prisma.loginEvent
+              .create({
+                data: {
+                  userId: user.id,
+                  kind: "login_fail",
+                  details: { reason: "no_password_or_banned" },
+                },
+              })
+              .catch(() => undefined);
+          }
+          return null;
+        }
 
         const valid = await bcrypt.compare(
           credentials.password as string,
           user.passwordHash,
         );
-        if (!valid) return null;
+        if (!valid) {
+          await prisma.loginEvent
+            .create({
+              data: {
+                userId: user.id,
+                kind: "login_fail",
+                details: { reason: "bad_password" },
+              },
+            })
+            .catch(() => undefined);
+          return null;
+        }
 
         await prisma.user.update({
           where: { id: user.id },
           data: { lastLogin: new Date() },
         });
+        await prisma.loginEvent
+          .create({
+            data: { userId: user.id, kind: "login_ok" },
+          })
+          .catch(() => undefined);
 
         const legacyPlan =
           user.subscriptionPlan === "free" ||
@@ -122,6 +151,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             },
           });
         }
+        await prisma.loginEvent
+          .create({
+            data: {
+              userId: user.id,
+              kind: "login_ok",
+              details: { via: "telegram" },
+            },
+          })
+          .catch(() => undefined);
 
         return {
           id: user.id,

@@ -7,8 +7,11 @@
  */
 import { prisma } from "@/lib/prisma";
 import type { Signal, SignalDirection } from "@/generated/prisma/client";
-import { CreateSignalForm } from "./_components/CreateSignalForm";
 import { SignalRowActions } from "./_components/SignalRowActions";
+import { SignalsAdminTabs } from "./_components/SignalsAdminTabs";
+import { loadSchedule, loadTemplates } from "@/lib/signal-config";
+
+export const dynamic = "force-dynamic";
 
 const TIER_BADGE: Record<string, { label: string; color: string }> = {
   otc: { label: "OTC", color: "#8888ff" },
@@ -17,10 +20,14 @@ const TIER_BADGE: Record<string, { label: string; color: string }> = {
 };
 
 export default async function AdminSignalsPage() {
-  const signals = await prisma.signal.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  const [signals, templates, schedule] = await Promise.all([
+    prisma.signal.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+    loadTemplates(),
+    loadSchedule(),
+  ]);
 
   const directionColor: Record<SignalDirection, string> = {
     CALL: "#00e5a0",
@@ -39,7 +46,7 @@ export default async function AdminSignalsPage() {
         <span className="text-sm text-[#666]">Последние {signals.length}</span>
       </div>
 
-      <CreateSignalForm />
+      <SignalsAdminTabs initialTemplates={templates} initialSchedule={schedule} />
 
       <div
         className="rounded-2xl border overflow-hidden"
