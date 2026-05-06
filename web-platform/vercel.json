@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "_comment": "trigger redeploy",
   "buildCommand": "npm run vercel-build",
   "framework": "nextjs",
   "crons": [
