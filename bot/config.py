@@ -15,6 +15,13 @@ class Settings(BaseSettings):
 
     pocket_option_url: str = Field("https://pocketoption.com", env="POCKET_OPTION_URL")
 
+    # Public URL of the Telegram Mini App (root /tma route on the web platform).
+    # Empty disables Mini App buttons in the bot.
+    webapp_url: str = Field(
+        "https://signal-trade-gpt.vercel.app/tma",
+        env="WEBAPP_URL",
+    )
+
     # Phase J — sync with the web platform's PocketOption account state.
     # Both must be set or the tier-sync loop is disabled.
     platform_api_url: str = Field("", env="PLATFORM_API_URL")

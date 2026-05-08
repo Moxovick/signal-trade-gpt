@@ -61,11 +61,20 @@ function formatTimeAgo(iso: string): string {
   return `${d} д назад`;
 }
 
+type AssetMeta = {
+  symbol: string;
+  isOtc: boolean;
+  payoutPct: number;
+  provider: string;
+  providerSymbol: string | null;
+};
+
 export function LiveSignalsFeed({ initial, pollIntervalMs = POLL_DEFAULT }: Props) {
   const [signals, setSignals] = useState<Signal[]>(initial);
   const [soundOn, setSoundOn] = useState(false);
   const [notifOn, setNotifOn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [assets, setAssets] = useState<Record<string, AssetMeta>>({});
   const lastSeenRef = useRef<string | null>(initial[0]?.createdAt ?? null);
 
   useEffect(() => {
@@ -77,6 +86,20 @@ export function LiveSignalsFeed({ initial, pollIntervalMs = POLL_DEFAULT }: Prop
         typeof Notification !== "undefined" &&
         Notification.permission === "granted",
     );
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const r = await fetch("/api/assets", { cache: "no-store" });
+        const j = (await r.json()) as { assets?: AssetMeta[] };
+        const map: Record<string, AssetMeta> = {};
+        for (const a of j.assets ?? []) map[a.symbol] = a;
+        setAssets(map);
+      } catch {
+        // assets not loaded — cards just won't show payout/chart
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -176,7 +199,7 @@ export function LiveSignalsFeed({ initial, pollIntervalMs = POLL_DEFAULT }: Prop
       ) : (
         <div className="grid gap-2">
           {signals.slice(0, 12).map((s) => (
-            <SignalRow key={s.id} signal={s} />
+            <SignalRow key={s.id} signal={s} asset={assets[s.pair]} />
           ))}
         </div>
       )}
@@ -184,9 +207,10 @@ export function LiveSignalsFeed({ initial, pollIntervalMs = POLL_DEFAULT }: Prop
   );
 }
 
-function SignalRow({ signal }: { signal: Signal }) {
+function SignalRow({ signal, asset }: { signal: Signal; asset: AssetMeta | undefined }) {
   const isCall = signal.direction === "CALL";
   const band = TIER_BAND_LABELS[signal.tier];
+  const isOtc = asset?.isOtc ?? signal.tier === "otc";
   const resultColor =
     signal.result === "win"
       ? "text-[var(--green)]"
@@ -212,8 +236,14 @@ function SignalRow({ signal }: { signal: Signal }) {
           {isCall ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
         </span>
         <div className="min-w-0">
-          <div className="font-semibold truncate">
-            {signal.pair} <span className="text-[var(--t-3)]">·</span>{" "}
+          <div className="font-semibold truncate flex items-center gap-2">
+            <span>{signal.pair}</span>
+            {isOtc && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(136,136,255,0.15)] text-[#8888ff] uppercase tracking-wider">
+                OTC
+              </span>
+            )}
+            <span className="text-[var(--t-3)]">·</span>
             <span className={isCall ? "text-[var(--green)]" : "text-[var(--red)]"}>
               {signal.direction}
             </span>
@@ -222,6 +252,12 @@ function SignalRow({ signal }: { signal: Signal }) {
             <span className={band.cls}>{band.label}</span>
             <span>·</span>
             <span>{signal.expiration}</span>
+            {asset && asset.payoutPct > 0 && (
+              <>
+                <span>·</span>
+                <span className="text-[var(--brand-gold)] font-semibold">+{asset.payoutPct}%</span>
+              </>
+            )}
             <span>·</span>
             <span>{formatTimeAgo(signal.createdAt)}</span>
           </div>

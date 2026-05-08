@@ -23,7 +23,7 @@ from database.db import (
 )
 from database.models import User
 from services.imagegen import get_brand_card_path
-from services.keyboards import MAIN_MENU, open_po_inline
+from services.keyboards import MAIN_MENU, start_inline
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -104,14 +104,14 @@ async def cmd_start(message: Message) -> None:
             FSInputFile(card_path),
             caption=_format_welcome(first_name, user.referral_code, bot_info.username),
             parse_mode=ParseMode.HTML,
-            reply_markup=open_po_inline(settings.pocket_option_url),
+            reply_markup=start_inline(settings.pocket_option_url, settings.webapp_url),
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Could not render brand card: %s — falling back to text", exc)
         await message.answer(
             _format_welcome(first_name, user.referral_code, bot_info.username),
             parse_mode=ParseMode.HTML,
-            reply_markup=open_po_inline(settings.pocket_option_url),
+            reply_markup=start_inline(settings.pocket_option_url, settings.webapp_url),
         )
 
     # Activate persistent reply keyboard separately so it shows under the photo

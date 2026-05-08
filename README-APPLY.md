@@ -1,95 +1,109 @@
-# v4-accounts (без прокси/VPN) — как применить
+# v5-signals-and-miniapp — apply guide
 
-Из этого ZIP убраны все файлы про прокси и VPN. Если ты раньше применял
-`v4-accounts-MAX.zip`, дополнительно нужно удалить старые proxy-файлы
-вручную (см. секцию «Если ставил v4-accounts-MAX до этого» ниже).
+This bundle adds the **Asset whitelist + OTC vs real-market signals**
+infrastructure and the **Telegram Mini App** at `/tma`.
 
-## Применить с нуля (чистый вариант)
+It includes everything from the previous **v4-accounts-NO-PROXY** drop, so
+applying this on top of a fresh checkout is enough — you do not need to
+apply v4 first.
+
+## Apply
 
 ```powershell
 cd "C:\Users\Den\Desktop\LASTOFUS\Signal Trade GPT\1\signal-trade-gpt-"
 
-# 1) Распаковать ZIP поверх репо
-Expand-Archive -Path "v4-accounts-NO-PROXY.zip" -DestinationPath . -Force
+# 1. Unpack on top
+Expand-Archive -Path "v5-signals-and-miniapp.zip" -DestinationPath . -Force
 
-# 2) Прогнать миграцию БД (ВАЖНО — иначе фичи не поедут)
+# 2. Web — DB migrations + Prisma client
 cd web-platform
 npx prisma migrate deploy
 npx prisma generate
 cd ..
 
-# 3) Закоммитить и запушить
-git add web-platform
-git commit -m "feat(v4-accounts): settings hub, security, preferences, achievements, public profile"
+# 3. Bot — pip install (only one new aiogram type used; nothing new in requirements)
+#    No bot DB migration needed.
+
+# 4. Commit + push
+git add bot web-platform
+git commit -m "feat(v5): asset whitelist, OTC/real signals split, telegram mini app"
 git push
 ```
 
-## Если ставил v4-accounts-MAX до этого
+## What's new
 
-Удали старые proxy/VPN файлы перед коммитом:
+### Web
+- **`Asset` model + 137 PocketOption pairs** (currencies, crypto, commodities,
+  stocks, indices), all with payout %, OTC flag, signal-tier mapping, and
+  market-data provider (binance / twelvedata / none).
+- `/admin/assets` — full CRUD editor with search, category filter, reseed.
+- Signal-publisher form: dropdown of active assets (no more free-text typos),
+  payout % shown next to each pair, `Signal.tier` auto-fills from the asset.
+- `/api/assets` — public endpoint consumed by the live feed and the Mini App
+  to render OTC badges + payout % chips on signal cards.
+- `/api/market/candles` now picks the data provider per-asset:
+  - `binance` — public REST klines (no key needed, crypto)
+  - `twelvedata` — set `TWELVEDATA_API_KEY` in Vercel for FX / commodities /
+    indices / stocks
+  - synthetic fallback if neither is reachable (badge: `demo`)
+- **Telegram Mini App** at `/tma`:
+  - `/tma` — Home: live signal feed (OTC text-only, real with chart preview)
+  - `/tma/signal/[id]` — full card; non-OTC signals show an interactive
+    chart with the entry-price reference line
+  - `/tma/profile` — tier, deposit, streak, PO ID, ref code with copy
+  - `/tma/leaders` — leaderboard
+  - Bottom navigation, gold/dark site theme, Telegram WebApp SDK auto-init
+  - Auth via `Telegram.WebApp.initData` HMAC verification
+    (header `X-Telegram-Init-Data`)
+  - Onboarding: if a Telegram user has no website account yet, the Mini App
+    shows a "Зарегистрируйся на сайте сначала" CTA with `?from=tg` deep link
 
-```powershell
-cd "C:\Users\Den\Desktop\LASTOFUS\Signal Trade GPT\1\signal-trade-gpt-"
+### Bot
+- **OTC / demo signals: text-only** (no chart image) — both `/signal` and
+  the channel scheduler. Real-market signals keep the rendered chart.
+- New env var **`WEBAPP_URL`** (default
+  `https://signal-trade-gpt.vercel.app/tma`).
+- Welcome card now has a **"📱 Открыть приложение"** WebApp button.
+- The bot also **sets the chat MenuButton** to launch the Mini App on
+  startup (the blue button next to the input field).
 
-# 1) Удалить proxy/VPN директории и файлы
-Remove-Item -Recurse -Force web-platform\src\app\admin\proxy -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force web-platform\src\app\dashboard\settings\proxy -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force web-platform\src\app\api\admin\proxy -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force web-platform\src\app\api\admin\po-mirrors -ErrorAction SilentlyContinue
-Remove-Item -Force web-platform\src\lib\proxy-recommendations.ts -ErrorAction SilentlyContinue
-Remove-Item -Force web-platform\src\lib\po-mirrors.ts -ErrorAction SilentlyContinue
+## Required env
 
-# 2) Распаковать новый ZIP поверх (он перезапишет admin/layout.tsx,
-#    SettingsSidebar.tsx и settings/pocketoption/page.tsx — там убраны
-#    ссылки на удалённые страницы)
-Expand-Archive -Path "v4-accounts-NO-PROXY.zip" -DestinationPath . -Force
+### Vercel (web)
+- `TELEGRAM_LOGIN_BOT_TOKEN` — must be the same token the Mini App is
+  served under, otherwise initData verification will fail.
+- `TWELVEDATA_API_KEY` — optional, enables real candles for FX/commodities/
+  stocks/indices.
 
-# 3) Миграция (если ещё не делал)
-cd web-platform
-npx prisma migrate deploy
-npx prisma generate
-cd ..
+### Bot (.env)
+- `WEBAPP_URL` — the public URL of `/tma` on the web platform. Set to
+  empty if you want to disable Mini App buttons.
 
-# 4) Коммит + push
-git add -A web-platform
-git commit -m "feat(v4-accounts): remove proxy/VPN, keep account hub"
-git push
-```
+## Verification checklist
 
-## Что внутри (42 файла)
+- `/admin/assets` — 137 rows, edit/toggle/delete works, "Reseed" button
+  reports `inserted: 0` after the first run.
+- `/admin/signals` — Создать сигнал form: pair is a `<select>`, optgroup
+  per category, payout % visible, choosing a pair auto-fills the tier
+  band.
+- `/api/assets` — returns the active assets list (used by feed + Mini App).
+- `/dashboard` live feed — OTC signals show an `OTC` badge and payout %,
+  no chart; real signals show payout % and (in detail) a chart.
+- Mini App: open `https://signal-trade-gpt.vercel.app/tma` directly in a
+  browser → onboarding screen "Открой через Telegram". Open via the bot's
+  MenuButton → real authenticated home feed.
+- Bot `/signal` to a T1 user → text-only message (no image) for OTC.
+- Bot `/signal` to a T2 user with a real-market signal → chart image.
 
-**Кабинет / settings:**
-- `/dashboard/settings` — хаб с боковой навигацией
-- → Внешний вид: тема (свет/тёмн/системная), язык, таймзон
-- → Уведомления: матрица событий × каналов (email / TG / браузер)
-- → Безопасность: смена пароля, 2FA-email toggle, журнал входов
-- → PocketOption: ID, статус, история депозитов, оценочный P&L
-- → Достижения: streak + 10 бейджей, разблокируются автоматически
-- → Рефералы (линк в существующую страницу)
+## Known notes
 
-**Профиль:** аватар (URL → Gravatar → инициалы), статус email + OTP-верификация,
-редактирование ника / TG / аватара.
-
-**Публичный профиль:** `/u/:username` — тир, число сигналов, рефералов, достижения.
-
-**Админка:**
-- `/admin/achievements` — каталог + счётчики, кнопка «пересеять»
-- `/dashboard/leaderboard` — фильтры «период + тир»
-
-**Бэкенд:**
-- API `/api/account/{preferences,password,email/*}`
-- API `/api/admin/achievements/reseed`
-- `/api/cron/seed-content` — идемпотентный сид каталога достижений
-- NextAuth теперь пишет `login_ok / login_fail` в `LoginEvent`
-- Dashboard при каждой загрузке: `touchStreak` + `checkAndUnlockAchievements`
-  (тихо, ошибки игнорятся)
-- Email через Resend (если нет `RESEND_API_KEY` — пишет в лог, фичи работают)
-
-## Если хочешь реальные письма
-
-В Vercel env добавь:
-- `RESEND_API_KEY` (из resend.com)
-- `EMAIL_FROM` = `Signal Trade GPT <no-reply@твой-домен>`
-
-Без них всё работает, но OTP-коды пишутся в логи Vercel
-(Functions → logs).
+- Mini App authentication uses `initData` on every request (header
+  `X-Telegram-Init-Data`) instead of NextAuth cookies — Telegram's iframe
+  doesn't reliably round-trip cookies across mini-app boundaries.
+- The Mini App does not auto-create users. If a Telegram user has no web
+  account, the onboarding screen sends them to `/register?from=tg`.
+- After deploy, configure the Mini App in @BotFather → /mybots → Bot
+  Settings → Configure Mini App → set the URL to
+  `https://signal-trade-gpt.vercel.app/tma`. The bot itself already sets
+  the MenuButton on startup, but BotFather config also enables the
+  attachment-menu launch path.

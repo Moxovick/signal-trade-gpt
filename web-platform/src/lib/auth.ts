@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { verifyTelegramPayload } from "@/lib/telegram";
+import { verifyInitData } from "@/lib/telegram-initdata";
 import { authConfig } from "./auth.config";
 
 const TELEGRAM_FIELDS = [
@@ -165,6 +166,57 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           id: user.id,
           email: user.email ?? "",
           name: user.firstName ?? user.username ?? `tg:${verified.id}`,
+          role: user.role,
+          tier: user.tier,
+        };
+      },
+    }),
+    /**
+     * Telegram Mini App — initData credentials.
+     *
+     * The Mini App passes `Telegram.WebApp.initData` (URL-encoded). We verify
+     * with `WebAppData` HMAC, then resolve the user by `telegramId`.
+     *
+     * Important: we do NOT auto-create a user here. If the user has not
+     * registered on the website yet, we surface that as a hard `null` so the
+     * Mini App can show its onboarding screen instead of a session.
+     */
+    Credentials({
+      id: "tma",
+      name: "Telegram Mini App",
+      credentials: {
+        initData: { label: "initData", type: "text" },
+      },
+      async authorize(raw) {
+        const botToken = process.env["TELEGRAM_LOGIN_BOT_TOKEN"];
+        if (!botToken) return null;
+        const initData = (raw?.["initData"] as string | undefined) ?? "";
+        const verified = verifyInitData(initData, botToken);
+        if (!verified) return null;
+
+        const tgId = BigInt(verified.user.id);
+        const user = await prisma.user.findUnique({ where: { telegramId: tgId } });
+        if (!user) {
+          // No website account yet — Mini App will show onboarding.
+          return null;
+        }
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLogin: new Date() },
+        });
+        await prisma.loginEvent
+          .create({
+            data: {
+              userId: user.id,
+              kind: "login_ok",
+              details: { via: "tma" },
+            },
+          })
+          .catch(() => undefined);
+        return {
+          id: user.id,
+          email: user.email ?? "",
+          name: user.firstName ?? user.username ?? `tg:${verified.user.id}`,
           role: user.role,
           tier: user.tier,
         };

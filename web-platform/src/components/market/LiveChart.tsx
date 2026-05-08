@@ -21,14 +21,15 @@ import {
 
 type Candle = { t: number; o: number; h: number; l: number; c: number };
 
-type Response = { pair: string; source: "chipa" | "synthetic"; candles: Candle[] };
+type ChartSource = "binance" | "twelvedata" | "synthetic";
+type Response = { pair: string; source: ChartSource; candles: Candle[] };
 
 const PAIRS = ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "EUR/GBP", "USD/CHF"] as const;
 
 export function LiveChart() {
   const [pair, setPair] = useState<(typeof PAIRS)[number]>("EUR/USD");
   const [data, setData] = useState<Candle[]>([]);
-  const [source, setSource] = useState<"chipa" | "synthetic">("synthetic");
+  const [source, setSource] = useState<ChartSource>("synthetic");
 
   useEffect(() => {
     let alive = true;
@@ -85,11 +86,11 @@ export function LiveChart() {
             className="text-[10px] uppercase px-1.5 py-0.5 rounded"
             style={{
               background:
-                source === "chipa" ? "rgba(142,224,107,0.10)" : "rgba(212,160,23,0.10)",
-              color: source === "chipa" ? "var(--green)" : "var(--brand-gold)",
+                source === "synthetic" ? "rgba(212,160,23,0.10)" : "rgba(142,224,107,0.10)",
+              color: source === "synthetic" ? "var(--brand-gold)" : "var(--green)",
             }}
           >
-            {source === "chipa" ? "real" : "demo"}
+            {source === "synthetic" ? "demo" : "real"}
           </span>
         </div>
         <div className="flex flex-wrap gap-1">

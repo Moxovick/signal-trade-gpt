@@ -7,8 +7,14 @@
  */
 import { NextResponse } from "next/server";
 import { seedAchievementsIfMissing } from "@/lib/achievements";
+import { seedAssetsIfMissing } from "@/lib/assets";
 
 export async function GET(): Promise<Response> {
   await seedAchievementsIfMissing();
-  return NextResponse.json({ ok: true, seeded: "achievements" });
+  const assets = await seedAssetsIfMissing();
+  return NextResponse.json({
+    ok: true,
+    seeded: ["achievements", "assets"],
+    insertedAssets: assets.inserted,
+  });
 }

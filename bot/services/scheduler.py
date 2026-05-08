@@ -50,15 +50,24 @@ async def signal_loop(bot: Bot) -> None:
             sid = await save_signal(signal)
             signal.id = sid
 
-            chart_bytes = make_signal_chart(signal)
             caption = format_signal_caption(signal, settings.pocket_option_url)
 
-            await bot.send_photo(
-                chat_id=settings.channel_id,
-                photo=BufferedInputFile(chart_bytes, filename=f"signal_{sid}.png"),
-                caption=caption,
-                parse_mode=ParseMode.HTML,
-            )
+            # OTC channel posts: text-only, no chart.
+            if (signal.tier or "otc") in {"otc", "demo"}:
+                await bot.send_message(
+                    chat_id=settings.channel_id,
+                    text=caption,
+                    parse_mode=ParseMode.HTML,
+                    disable_web_page_preview=True,
+                )
+            else:
+                chart_bytes = make_signal_chart(signal)
+                await bot.send_photo(
+                    chat_id=settings.channel_id,
+                    photo=BufferedInputFile(chart_bytes, filename=f"signal_{sid}.png"),
+                    caption=caption,
+                    parse_mode=ParseMode.HTML,
+                )
             logger.info(
                 "Signal sent: %s %s exp=%s conf=%d%% kind=%s",
                 signal.pair,

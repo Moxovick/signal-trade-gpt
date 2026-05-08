@@ -12,6 +12,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     KeyboardButton,
     ReplyKeyboardMarkup,
+    WebAppInfo,
 )
 
 
@@ -47,6 +48,23 @@ def open_po_inline(pocket_option_url: str) -> InlineKeyboardMarkup:
             [InlineKeyboardButton(text="💎 Открыть PocketOption", url=pocket_option_url)],
         ]
     )
+
+
+def start_inline(pocket_option_url: str, webapp_url: str = "") -> InlineKeyboardMarkup:
+    """Welcome card buttons: PocketOption + (if configured) Mini App."""
+    rows: list[list[InlineKeyboardButton]] = [
+        [InlineKeyboardButton(text="💎 Открыть PocketOption", url=pocket_option_url)],
+    ]
+    if webapp_url:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text="📱 Открыть приложение",
+                    web_app=WebAppInfo(url=webapp_url),
+                )
+            ]
+        )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def signal_inline(pocket_option_url: str, signal_id: int | None) -> InlineKeyboardMarkup:

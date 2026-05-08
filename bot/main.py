@@ -7,6 +7,7 @@ from pathlib import Path
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.types import MenuButtonWebApp, WebAppInfo
 
 from config import settings
 from database.db import init_db
@@ -75,6 +76,21 @@ async def main() -> None:
 
     # Drop any active webhook so polling works without conflict
     await bot.delete_webhook(drop_pending_updates=True)
+
+    # Set the chat MenuButton (the blue button next to the input field)
+    # to launch the Telegram Mini App, if WEBAPP_URL is configured.
+    if settings.webapp_url:
+        try:
+            await bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(
+                    text="Открыть приложение",
+                    web_app=WebAppInfo(url=settings.webapp_url),
+                )
+            )
+            logger.info("MenuButton bound to Mini App: %s", settings.webapp_url)
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to set Mini App MenuButton")
+
     logger.info("Webhook cleared. Bot starting (polling mode), PID=%s", os.getpid())
     try:
         await dp.start_polling(bot)

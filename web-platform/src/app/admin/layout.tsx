@@ -17,6 +17,7 @@ import {
   Trophy,
   FileText,
   Award,
+  CandlestickChart,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -30,6 +31,7 @@ const adminNav: NavItem[] = [
   { href: "/admin/perks", label: "Перки бота", icon: Sparkles },
   { href: "/admin/users", label: "Пользователи", icon: Users },
   { href: "/admin/signals", label: "Сигналы", icon: Send },
+  { href: "/admin/assets", label: "Активы (пары)", icon: CandlestickChart },
   { href: "/admin/bot-config", label: "Конфиг бота", icon: Bot },
   { href: "/admin/deposits", label: "Депозиты", icon: Wallet },
   { href: "/admin/faq", label: "FAQ", icon: HelpCircle },

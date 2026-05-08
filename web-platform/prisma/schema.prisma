@@ -622,3 +622,45 @@ model UserAchievement {
   @@unique([userId, achievementId])
   @@map("user_achievements")
 }
+
+// ═══════════════════════════════════════
+// V4 — ASSET WHITELIST (PocketOption pairs)
+// ═══════════════════════════════════════
+
+enum AssetCategory {
+  currency
+  crypto
+  commodity
+  stock
+  index
+}
+
+/// Whitelist of tradable pairs. Editable in /admin/assets. Drives the
+/// signal publisher (admin selects from this list, no free-form input)
+/// and the per-pair behaviour (OTC = no chart, real = chart from provider).
+model Asset {
+  id              String        @id @default(cuid())
+  /// Normalised key, e.g. "EUR/USD" or "EUR/USD OTC". Unique.
+  symbol          String        @unique
+  /// What the user sees, e.g. "EUR/USD" (we strip the OTC suffix in UI).
+  displaySymbol   String
+  category        AssetCategory
+  isOtc           Boolean       @default(false)
+  /// Payout percent at PocketOption (e.g. 92 for "+92%"). Shown to users.
+  payoutPct       Int           @default(0)
+  /// Which Signal.tier this asset belongs to. Drives access control.
+  signalTier      SignalTier    @default(otc)
+  /// For NON-OTC assets only. "twelvedata" | "binance" | "yahoo" | "none".
+  provider        String        @default("none")
+  /// Provider-specific symbol, e.g. "BTCUSDT" for binance, "EUR/USD" for twelvedata.
+  providerSymbol  String?
+  /// Display order in admin/UI lists.
+  position        Int           @default(0)
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([category, isActive])
+  @@index([signalTier, isActive])
+  @@map("assets")
+}

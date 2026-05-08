@@ -1,19 +1,18 @@
 /**
- * Market-data adapter.
+ * Market-data adapter for NON-OTC assets only.
  *
- * Resolution order:
- *   1. If `CHIPA_API_KEY` is configured, hit Chipa's unofficial PocketOption
- *      candle endpoint.
- *   2. Otherwise, generate a deterministic synthetic series so the UI is
- *      always populated locally and during build.
+ * Resolution order, per Asset.provider:
+ *   • binance     → public REST klines (no key, crypto)
+ *   • twelvedata  → with TWELVEDATA_API_KEY (FX, commodities, indices, stocks)
+ *   • yahoo       → not yet implemented
+ *   • none / OTC  → caller MUST not call this; OTC has no chart data
  *
- * Chipa API reference: https://pocketoption-api.readme.io/
- *   GET https://api.chipa.tech/po/api/v1/candles?symbol=EURUSD&period=60&count=200
- *   Header: Authorization: Bearer <CHIPA_API_KEY>
+ * Falls back to a deterministic synthetic series so the UI never hard-fails.
  *
- * The shape we expose is OHLC + epoch-second timestamp, which works directly
- * with the recharts ComposedChart we render on the landing page.
+ * The shape we expose is OHLC + epoch-second timestamp.
  */
+
+import { findAssetBySymbol } from "@/lib/assets";
 
 export type Candle = {
   /** Unix epoch seconds. */
@@ -24,44 +23,97 @@ export type Candle = {
   c: number;
 };
 
-const CHIPA_BASE = "https://api.chipa.tech/po/api/v1";
-
-/**
- * Convert "EUR/USD" → "EURUSD". Chipa wants the bare symbol.
- */
-function chipaSymbol(pair: string): string {
-  return pair.replace(/[/\s]/g, "").toUpperCase();
-}
-
-/**
- * Try fetching real candles from Chipa. Returns null on any failure (caller
- * falls back to synthetic data so the UI never hard-fails).
- */
-async function fetchChipa(pair: string, count: number, periodSec: number): Promise<Candle[] | null> {
-  const apiKey = process.env["CHIPA_API_KEY"];
-  if (!apiKey) return null;
+// ───────────────────────────────────────
+// Binance public (no key)
+// ───────────────────────────────────────
+async function fetchBinance(
+  providerSymbol: string,
+  count: number,
+  periodSec: number,
+): Promise<Candle[] | null> {
+  // Map periodSec → Binance interval strings.
+  const interval =
+    periodSec <= 60
+      ? "1m"
+      : periodSec <= 300
+        ? "5m"
+        : periodSec <= 900
+          ? "15m"
+          : periodSec <= 1800
+            ? "30m"
+            : "1h";
   try {
-    const url = `${CHIPA_BASE}/candles?symbol=${chipaSymbol(pair)}&period=${periodSec}&count=${count}`;
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      next: { revalidate: 30 },
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { candles?: Array<{ t: number; o: number; h: number; l: number; c: number }> };
-    if (!Array.isArray(json.candles)) return null;
-    return json.candles.map((c) => ({ t: c.t, o: c.o, h: c.h, l: c.l, c: c.c }));
+    const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(providerSymbol)}&interval=${interval}&limit=${Math.min(count, 200)}`;
+    const r = await fetch(url, { next: { revalidate: 30 } });
+    if (!r.ok) return null;
+    const j = (await r.json()) as Array<
+      [number, string, string, string, string, string, number, string, number, string, string, string]
+    >;
+    return j.map((row) => ({
+      t: Math.floor(row[0] / 1000),
+      o: Number(row[1]),
+      h: Number(row[2]),
+      l: Number(row[3]),
+      c: Number(row[4]),
+    }));
   } catch {
     return null;
   }
 }
 
-/**
- * Deterministic-ish random walk seeded by the pair name. Good enough for
- * "the chart is moving" UX without leaking that the data is fake (we always
- * label it synthetic in the response).
- */
+// ───────────────────────────────────────
+// TwelveData (key required)
+// ───────────────────────────────────────
+async function fetchTwelveData(
+  providerSymbol: string,
+  count: number,
+  periodSec: number,
+): Promise<Candle[] | null> {
+  const apiKey = process.env["TWELVEDATA_API_KEY"];
+  if (!apiKey) return null;
+  const interval =
+    periodSec <= 60
+      ? "1min"
+      : periodSec <= 300
+        ? "5min"
+        : periodSec <= 900
+          ? "15min"
+          : periodSec <= 1800
+            ? "30min"
+            : "1h";
+  try {
+    const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(providerSymbol)}&interval=${interval}&outputsize=${Math.min(count, 200)}&apikey=${apiKey}`;
+    const r = await fetch(url, { next: { revalidate: 30 } });
+    if (!r.ok) return null;
+    const j = (await r.json()) as {
+      values?: Array<{
+        datetime: string;
+        open: string;
+        high: string;
+        low: string;
+        close: string;
+      }>;
+      status?: string;
+    };
+    if (!Array.isArray(j.values)) return null;
+    return j.values
+      .map((row) => ({
+        t: Math.floor(new Date(row.datetime + "Z").getTime() / 1000),
+        o: Number(row.open),
+        h: Number(row.high),
+        l: Number(row.low),
+        c: Number(row.close),
+      }))
+      .reverse(); // TwelveData returns newest-first; we want oldest-first.
+  } catch {
+    return null;
+  }
+}
+
+// ───────────────────────────────────────
+// Synthetic fallback (deterministic)
+// ───────────────────────────────────────
 function syntheticSeries(pair: string, count: number, periodSec: number): Candle[] {
-  // Anchor pricing per pair — purely cosmetic.
   const anchors: Record<string, number> = {
     "EUR/USD": 1.0856,
     "GBP/USD": 1.2685,
@@ -69,12 +121,11 @@ function syntheticSeries(pair: string, count: number, periodSec: number): Candle
     "AUD/USD": 0.6628,
     "EUR/GBP": 0.8553,
     "USD/CHF": 0.8784,
+    BTCUSDT: 67500,
   };
   const base = anchors[pair] ?? 1;
   const now = Math.floor(Date.now() / 1000);
   let price = base;
-
-  // Mulberry32 hash from the symbol so different pairs walk differently.
   let seed = 0;
   for (const ch of pair) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
   function rand(): number {
@@ -101,16 +152,31 @@ function syntheticSeries(pair: string, count: number, periodSec: number): Candle
 export async function getCandles(
   pair: string,
   options: { count?: number; periodSec?: number } = {},
-): Promise<{ pair: string; source: "chipa" | "synthetic"; candles: Candle[] }> {
+): Promise<{
+  pair: string;
+  source: "binance" | "twelvedata" | "synthetic";
+  candles: Candle[];
+}> {
   const count = options.count ?? 60;
   const periodSec = options.periodSec ?? 60;
-  const real = await fetchChipa(pair, count, periodSec);
-  if (real && real.length > 0) {
-    return { pair, source: "chipa", candles: real };
+
+  // Look up provider from Asset whitelist.
+  const asset = await findAssetBySymbol(pair).catch(() => null);
+  if (asset && !asset.isOtc && asset.provider !== "none") {
+    const providerSymbol = asset.providerSymbol ?? pair;
+    if (asset.provider === "binance") {
+      const real = await fetchBinance(providerSymbol, count, periodSec);
+      if (real && real.length > 0) return { pair, source: "binance", candles: real };
+    } else if (asset.provider === "twelvedata") {
+      const real = await fetchTwelveData(providerSymbol, count, periodSec);
+      if (real && real.length > 0) return { pair, source: "twelvedata", candles: real };
+    }
   }
+
   return { pair, source: "synthetic", candles: syntheticSeries(pair, count, periodSec) };
 }
 
+/** Legacy export — replaced by Asset whitelist; kept for the static landing chart. */
 export const SUPPORTED_PAIRS = [
   "EUR/USD",
   "GBP/USD",

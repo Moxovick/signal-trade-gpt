@@ -1,27 +1,36 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 const FIELD =
   "h-10 px-3 rounded-lg text-sm outline-none transition-colors bg-[#0a0a13] border border-white/[0.08] focus:border-white/20 text-white placeholder-[#555]";
 
-const COMMON_PAIRS = [
-  "EUR/USD",
-  "GBP/USD",
-  "USD/JPY",
-  "AUD/USD",
-  "EUR/USD-OTC",
-  "EUR/JPY-OTC",
-  "BTC/USDT",
-  "ETH/USDT",
-] as const;
-
 const EXPIRATIONS = ["60s", "2m", "3m", "5m", "10m", "15m", "30m"] as const;
+
+type AssetOption = {
+  id: string;
+  symbol: string;
+  displaySymbol: string;
+  category: "currency" | "crypto" | "commodity" | "stock" | "index";
+  isOtc: boolean;
+  payoutPct: number;
+  signalTier: "otc" | "exchange" | "elite";
+  isActive: boolean;
+};
+
+const CAT_LABEL: Record<AssetOption["category"], string> = {
+  currency: "Валюты",
+  crypto: "Крипта",
+  commodity: "Сырьевые",
+  stock: "Акции",
+  index: "Индексы",
+};
 
 export function CreateSignalForm() {
   const router = useRouter();
-  const [pair, setPair] = useState("EUR/USD");
+  const [assets, setAssets] = useState<AssetOption[]>([]);
+  const [pair, setPair] = useState("");
   const [direction, setDirection] = useState<"CALL" | "PUT">("CALL");
   const [expiration, setExpiration] = useState("3m");
   const [confidence, setConfidence] = useState(85);
@@ -32,6 +41,37 @@ export function CreateSignalForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    void (async () => {
+      const r = await fetch("/api/admin/assets", { cache: "no-store" });
+      const j = (await r.json()) as { assets?: AssetOption[] };
+      const active = (j.assets ?? []).filter((a) => a.isActive);
+      setAssets(active);
+      if (active.length > 0 && !pair) {
+        setPair(active[0].symbol);
+        setTier(active[0].signalTier);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const grouped = useMemo(() => {
+    const m: Record<string, AssetOption[]> = {};
+    for (const a of assets) (m[a.category] ??= []).push(a);
+    return m;
+  }, [assets]);
+
+  const selectedAsset = useMemo(
+    () => assets.find((a) => a.symbol === pair) ?? null,
+    [assets, pair],
+  );
+
+  function pickPair(symbol: string) {
+    setPair(symbol);
+    const a = assets.find((x) => x.symbol === symbol);
+    if (a) setTier(a.signalTier);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -92,19 +132,27 @@ export function CreateSignalForm() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <label className="text-xs text-[#777] flex flex-col gap-1">
-          Пара
-          <input
-            list="signal-pairs"
+          Пара {selectedAsset && (
+            <span className="text-[var(--brand-gold)] font-mono">
+              +{selectedAsset.payoutPct}%
+            </span>
+          )}
+          <select
             value={pair}
-            onChange={(e) => setPair(e.target.value)}
+            onChange={(e) => pickPair(e.target.value)}
             className={FIELD}
-            placeholder="EUR/USD"
-          />
-          <datalist id="signal-pairs">
-            {COMMON_PAIRS.map((p) => (
-              <option key={p} value={p} />
+          >
+            {assets.length === 0 && <option value="">— нет активных активов —</option>}
+            {Object.entries(grouped).map(([cat, list]) => (
+              <optgroup key={cat} label={CAT_LABEL[cat as AssetOption["category"]]}>
+                {list.map((a) => (
+                  <option key={a.id} value={a.symbol}>
+                    {a.symbol} · +{a.payoutPct}%
+                  </option>
+                ))}
+              </optgroup>
             ))}
-          </datalist>
+          </select>
         </label>
 
         <label className="text-xs text-[#777] flex flex-col gap-1">

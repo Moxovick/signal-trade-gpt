@@ -125,6 +125,19 @@ async def cmd_signal(message: Message) -> None:
     signal.id = signal_id
     await increment_signals_received(user.telegram_id)
 
+    # OTC and demo signals: text-only — there is no real-market price feed
+    # for synthetic PocketOption pairs, so a chart would be misleading.
+    is_otc_band = (signal.tier or "otc") in {"otc", "demo"}
+    if is_otc_band:
+        body = format_signal_caption(signal, settings.pocket_option_url, None)
+        await message.answer(
+            body,
+            parse_mode=ParseMode.HTML,
+            reply_markup=signal_inline(settings.pocket_option_url, signal_id),
+            disable_web_page_preview=True,
+        )
+        return
+
     features = web_sync.get_tier_features(user.tier)
     if features.get("chartIndicators"):
         chart_bytes = make_signal_chart_advanced(signal)
