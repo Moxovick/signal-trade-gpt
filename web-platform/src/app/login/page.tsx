@@ -1,17 +1,18 @@
 /**
- * /login — v2.
+ * /login — v3.
  *
- * Primary path: Telegram Login Widget (works only when
- * NEXT_PUBLIC_TELEGRAM_LOGIN_BOT is set + @BotFather domain is registered).
+ * Primary path: Telegram deep-link via bot. The user clicks a single button,
+ * the bot redeems a one-shot token, and NextAuth signs the user in via the
+ * `tg-deeplink` credentials provider once polling reports `linked`.
  *
- * Fallback: legacy email/password for v1 users that haven't migrated yet.
+ * Fallback: legacy email/password for v1 users that still have a password set.
  */
 import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { Card } from "@/components/ui/Card";
-import { TelegramLoginButton } from "@/components/auth/TelegramLoginButton";
+import { TelegramDeeplinkButton } from "@/components/auth/TelegramDeeplinkButton";
 import { LegacyEmailLoginForm } from "./_components/LegacyEmailLoginForm";
 
 export default function LoginPage() {
@@ -27,13 +28,13 @@ export default function LoginPage() {
         <Card padding="lg">
           <h1 className="text-2xl font-bold mb-2">Войти</h1>
           <p className="text-sm text-[var(--t-2)] mb-6">
-            Используй Telegram — это быстрее и безопаснее, чем пароль.
+            Один клик через Telegram-бота — без номера, без пароля.
           </p>
 
-          <div className="flex justify-center py-2">
+          <div className="py-2">
             {botUsername ? (
               <Suspense>
-                <TelegramLoginButton botUsername={botUsername} />
+                <TelegramDeeplinkButton purpose="login" />
               </Suspense>
             ) : (
               <div className="text-xs text-[var(--t-3)] text-center px-4 py-3 rounded-xl border border-dashed border-[var(--b-soft)]">

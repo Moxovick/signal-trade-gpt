@@ -670,7 +670,11 @@ model Asset {
 /// Tokens expire after 10 minutes and are single-use.
 model TelegramLinkToken {
   token       String    @id
-  userId      String
+  /// "link" — userId is set, token redeemed -> User.telegramId is updated.
+  /// "login" — userId starts null; bot redemption either matches an existing
+  /// user by telegramId or creates a fresh user, then attaches the userId.
+  purpose     String    @default("link")
+  userId      String?
   expiresAt   DateTime
   consumedAt  DateTime?
   telegramId  BigInt?

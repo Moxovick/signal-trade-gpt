@@ -1,25 +1,9 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { verifyTelegramPayload } from "@/lib/telegram";
 import { verifyInitData } from "@/lib/telegram-initdata";
 import { authConfig } from "./auth.config";
-
-const TELEGRAM_FIELDS = [
-  "id",
-  "first_name",
-  "last_name",
-  "username",
-  "photo_url",
-  "auth_date",
-  "hash",
-] as const;
-
-function generateReferralCode(): string {
-  return `STG${randomBytes(4).toString("hex").toUpperCase()}`;
-}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -98,74 +82,49 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
     /**
-     * Telegram Login Widget — primary v2 sign-in path.
+     * Telegram deep-link — bot-mediated sign-in / sign-up.
      *
-     * The widget POSTs `id, first_name, username, photo_url, auth_date, hash`
-     * which we re-verify with our bot token.  On success, find-or-create the
-     * user and proceed.
+     * The web client kicks off the flow with `start-link?purpose=login` →
+     * gets a one-shot token → opens `t.me/<bot>?start=link_<token>`. The bot
+     * redeems the token (creates or matches user) and writes back into the
+     * `telegram_link_tokens` row. The web then calls `signIn("tg-deeplink",
+     * { token })` once polling reports `linked`.
+     *
+     * Authorize:
+     *   - Token must exist, be consumed, not expired, and have a userId.
+     *   - That userId must resolve to a real, non-banned user.
      */
     Credentials({
-      id: "telegram",
-      name: "telegram",
-      credentials: Object.fromEntries(
-        TELEGRAM_FIELDS.map((f) => [f, { label: f, type: "text" }]),
-      ),
+      id: "tg-deeplink",
+      name: "telegram deeplink",
+      credentials: {
+        token: { label: "token", type: "text" },
+      },
       async authorize(raw) {
-        const botToken = process.env["TELEGRAM_LOGIN_BOT_TOKEN"];
-        if (!botToken) {
-          console.warn("[auth/telegram] TELEGRAM_LOGIN_BOT_TOKEN not set");
-          return null;
-        }
-        const payload = Object.fromEntries(
-          TELEGRAM_FIELDS.map((f) => [f, raw?.[f] as string | undefined]),
-        );
-        const verified = verifyTelegramPayload(payload, botToken);
-        if (!verified) return null;
-
-        const tgId = BigInt(verified.id);
-        const existing = await prisma.user.findUnique({
-          where: { telegramId: tgId },
+        const token = (raw?.["token"] as string | undefined)?.trim();
+        if (!token) return null;
+        const record = await prisma.telegramLinkToken.findUnique({ where: { token } });
+        if (!record || !record.consumedAt || !record.userId) return null;
+        if (record.expiresAt.getTime() < Date.now()) return null;
+        const user = await prisma.user.findUnique({ where: { id: record.userId } });
+        if (!user || user.status === "banned") return null;
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { lastLogin: new Date() },
         });
-
-        const user =
-          existing ??
-          (await prisma.user.create({
-            data: {
-              telegramId: tgId,
-              username: verified.username ?? null,
-              firstName: verified.first_name ?? null,
-              lastName: verified.last_name ?? null,
-              avatar: verified.photo_url ?? null,
-              referralCode: generateReferralCode(),
-            },
-          }));
-
-        if (existing) {
-          await prisma.user.update({
-            where: { id: existing.id },
-            data: {
-              lastLogin: new Date(),
-              username: verified.username ?? existing.username,
-              firstName: verified.first_name ?? existing.firstName,
-              lastName: verified.last_name ?? existing.lastName,
-              avatar: verified.photo_url ?? existing.avatar,
-            },
-          });
-        }
         await prisma.loginEvent
           .create({
             data: {
               userId: user.id,
               kind: "login_ok",
-              details: { via: "telegram" },
+              details: { via: "tg-deeplink" },
             },
           })
           .catch(() => undefined);
-
         return {
           id: user.id,
           email: user.email ?? "",
-          name: user.firstName ?? user.username ?? `tg:${verified.id}`,
+          name: user.firstName ?? user.username ?? `tg:${user.telegramId ?? user.id}`,
           role: user.role,
           tier: user.tier,
         };

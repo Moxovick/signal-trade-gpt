@@ -10,7 +10,7 @@ import { Suspense } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { Card } from "@/components/ui/Card";
-import { TelegramLoginButton } from "@/components/auth/TelegramLoginButton";
+import { TelegramDeeplinkButton } from "@/components/auth/TelegramDeeplinkButton";
 import { RegisterForm } from "./_components/RegisterForm";
 
 export default function RegisterPage() {
@@ -41,9 +41,12 @@ export default function RegisterPage() {
                 или быстро через telegram
                 <span className="flex-1 h-px bg-[var(--b-soft)]" />
               </div>
-              <div className="flex justify-center py-2">
+              <div className="py-2">
                 <Suspense>
-                  <TelegramLoginButton botUsername={botUsername} />
+                  <TelegramDeeplinkButton
+                    purpose="login"
+                    label="Зарегистрироваться через Telegram"
+                  />
                 </Suspense>
               </div>
             </>

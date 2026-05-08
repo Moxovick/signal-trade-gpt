@@ -5,16 +5,26 @@
  *
  * Auth: shared secret header `X-Bot-Secret` must equal env BOT_SYNC_SECRET.
  *
- * Body: { token: string, telegramId: string|number, username?, firstName?, lastName?, photoUrl? }
+ * Body: { token, telegramId, username?, firstName?, lastName?, photoUrl? }
  *
- * Effect:
- *   - Validates the token (exists, not consumed, not expired, belongs to a real user).
- *   - Refuses if the telegramId is already linked to a different user.
- *   - Sets User.telegramId on the linked account, updates profile fields.
- *   - Marks the token as consumed.
+ * Effect (depends on token.purpose):
+ *
+ *   purpose="link" (default):
+ *     - Refuses if telegramId is already on a different user.
+ *     - Updates User.telegramId on the token's owner; updates display fields.
+ *
+ *   purpose="login":
+ *     - If telegramId already maps to a User → reuses it.
+ *     - Otherwise creates a fresh User with telegramId set; emits a referral
+ *       code; assigns role=user, tier=0.
+ *     - Stores the resulting userId on the token so the web side can read it
+ *       through link-status and start a NextAuth session.
+ *
+ * Both branches mark the token consumed.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { generateReferralCode } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -63,26 +73,63 @@ export async function POST(req: NextRequest) {
   }
 
   const conflict = await prisma.user.findUnique({ where: { telegramId: tgId } });
-  if (conflict && conflict.id !== record.userId) {
-    return NextResponse.json({ ok: false, reason: "telegram_taken" }, { status: 409 });
+
+  if (record.purpose === "link") {
+    if (!record.userId) {
+      return NextResponse.json({ ok: false, reason: "invalid_token" }, { status: 400 });
+    }
+    if (conflict && conflict.id !== record.userId) {
+      return NextResponse.json({ ok: false, reason: "telegram_taken" }, { status: 409 });
+    }
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: record.userId },
+        data: {
+          telegramId: tgId,
+          username: body.username ?? undefined,
+          firstName: body.firstName ?? undefined,
+          lastName: body.lastName ?? undefined,
+          avatar: body.photoUrl ?? undefined,
+        },
+      }),
+      prisma.telegramLinkToken.update({
+        where: { token },
+        data: { consumedAt: new Date(), telegramId: tgId },
+      }),
+    ]);
+    return NextResponse.json({ ok: true });
   }
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: record.userId },
+  // purpose === "login"
+  let user = conflict;
+  if (!user) {
+    user = await prisma.user.create({
       data: {
         telegramId: tgId,
-        username: body.username ?? undefined,
-        firstName: body.firstName ?? undefined,
-        lastName: body.lastName ?? undefined,
-        avatar: body.photoUrl ?? undefined,
+        username: body.username ?? null,
+        firstName: body.firstName ?? null,
+        lastName: body.lastName ?? null,
+        avatar: body.photoUrl ?? null,
+        referralCode: generateReferralCode(),
       },
-    }),
-    prisma.telegramLinkToken.update({
-      where: { token },
-      data: { consumedAt: new Date(), telegramId: tgId },
-    }),
-  ]);
+    });
+  } else {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        username: body.username ?? user.username,
+        firstName: body.firstName ?? user.firstName,
+        lastName: body.lastName ?? user.lastName,
+        avatar: body.photoUrl ?? user.avatar,
+        lastLogin: new Date(),
+      },
+    });
+  }
 
-  return NextResponse.json({ ok: true });
+  await prisma.telegramLinkToken.update({
+    where: { token },
+    data: { consumedAt: new Date(), telegramId: tgId, userId: user.id },
+  });
+
+  return NextResponse.json({ ok: true, userId: user.id });
 }

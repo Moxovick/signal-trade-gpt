@@ -41,7 +41,7 @@ export default async function TelegramSettingsPage() {
             админом.
           </div>
         ) : (
-          <TelegramLinkSection botUsername={botUsername} initialLink={initialLink} />
+          <TelegramLinkSection initialLink={initialLink} />
         )}
       </Card>
     </div>

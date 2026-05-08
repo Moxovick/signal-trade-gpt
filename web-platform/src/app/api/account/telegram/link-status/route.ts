@@ -1,11 +1,16 @@
 /**
  * GET /api/account/telegram/link-status?token=...
  *
- * Polled by the web client during deep-link Telegram linking. Returns:
- *   - linked: true if the bot has consumed the token AND the current user's
- *     telegramId now matches the consumed value.
- *   - expired: true if the token has passed its expiresAt without consumption.
- *   - pending: otherwise (waiting for the user to tap Start in Telegram).
+ * Polled by the web client during deep-link Telegram flow.
+ *
+ * For purpose="link" tokens, requires the current session to own the token.
+ * For purpose="login" tokens, anonymous polling is allowed (no session yet).
+ *
+ * Returns:
+ *   - status: "linked" | "pending" | "expired"
+ *   - telegramId: bot-confirmed id (when linked)
+ *   - userId: when login token consumed, the resolved user.id (used by web
+ *     to call signIn("tg-deeplink", { token })).
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
@@ -15,19 +20,21 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ ok: false, reason: "unauthorized" }, { status: 401 });
-  }
-
   const token = req.nextUrl.searchParams.get("token");
   if (!token) {
     return NextResponse.json({ ok: false, reason: "missing_token" }, { status: 400 });
   }
 
   const record = await prisma.telegramLinkToken.findUnique({ where: { token } });
-  if (!record || record.userId !== session.user.id) {
+  if (!record) {
     return NextResponse.json({ ok: false, reason: "not_found" }, { status: 404 });
+  }
+
+  if (record.purpose === "link") {
+    const session = await auth();
+    if (!session?.user?.id || record.userId !== session.user.id) {
+      return NextResponse.json({ ok: false, reason: "not_found" }, { status: 404 });
+    }
   }
 
   if (record.consumedAt) {
@@ -35,6 +42,7 @@ export async function GET(req: NextRequest) {
       ok: true,
       status: "linked",
       telegramId: record.telegramId?.toString() ?? null,
+      userId: record.userId,
     });
   }
 

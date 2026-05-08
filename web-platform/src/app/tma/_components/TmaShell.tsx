@@ -6,7 +6,7 @@
  * authenticated children with the bottom navigation.
  */
 import { useEffect, useState } from "react";
-import { ExternalLink, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { TmaProvider, useTma } from "./TmaProvider";
 import { BottomNav } from "./BottomNav";
 
@@ -107,7 +107,27 @@ function Inner({
     return <Onboarding mode="external" />;
   }
   if (status.kind === "no_account") {
-    return <Onboarding mode="register" />;
+    return (
+      <Onboarding
+        mode="register"
+        onRegister={async () => {
+          const r = await tmaFetch("/api/tma/register", { method: "POST" });
+          if (!r.ok) {
+            const j = (await r.json().catch(() => ({}))) as { error?: string };
+            throw new Error(j.error ?? "register_failed");
+          }
+          // Re-run main flow.
+          setStatus({ kind: "loading" });
+          const me = await tmaFetch("/api/tma/me");
+          if (me.ok) {
+            const j = (await me.json()) as { user: TmaUser };
+            setStatus({ kind: "ok", user: j.user });
+          } else {
+            setStatus({ kind: "error", message: `HTTP ${me.status}` });
+          }
+        }}
+      />
+    );
   }
   if (status.kind === "error") {
     return (
@@ -126,7 +146,15 @@ function Inner({
   );
 }
 
-function Onboarding({ mode }: { mode: "external" | "register" }) {
+function Onboarding({
+  mode,
+  onRegister,
+}: {
+  mode: "external" | "register";
+  onRegister?: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
       <div className="size-16 rounded-2xl bg-[var(--brand-gold)]/15 text-[var(--brand-gold)] flex items-center justify-center mb-5">
@@ -141,20 +169,30 @@ function Onboarding({ mode }: { mode: "external" | "register" }) {
         </>
       ) : (
         <>
-          <h1 className="text-xl font-bold mb-2">Сначала зарегистрируйся</h1>
+          <h1 className="text-xl font-bold mb-2">Создать аккаунт</h1>
           <p className="text-sm text-[var(--t-3)] max-w-sm mb-6">
-            Чтобы получать сигналы, открой сайт, создай аккаунт и привяжи Telegram.
-            После этого вернись в Mini App.
+            Один тап — и аккаунт привязан к этому Telegram. Демо-сигналы доступны сразу,
+            без ввода email и пароля.
           </p>
-          <a
-            href="https://signal-trade-gpt.vercel.app/register?from=tg"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold"
+          <button
+            type="button"
+            onClick={() => {
+              if (!onRegister || busy) return;
+              setBusy(true);
+              setError(null);
+              try {
+                onRegister();
+              } catch (err) {
+                setError((err as Error).message);
+                setBusy(false);
+              }
+            }}
+            disabled={busy}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold disabled:opacity-60"
           >
-            Открыть сайт
-            <ExternalLink size={14} />
-          </a>
+            {busy ? "Создаём…" : "Зарегистрироваться"}
+          </button>
+          {error ? <p className="text-sm text-[var(--red)] mt-3">{error}</p> : null}
         </>
       )}
     </div>
