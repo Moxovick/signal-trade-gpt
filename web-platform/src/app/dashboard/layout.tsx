@@ -11,15 +11,17 @@ export default async function DashboardLayout({
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  // PO ID gate: every non-admin user must have a verified PO account before
-  // dashboard access is unlocked. Admins are exempt for ops/testing.
+  // PO ID gate: non-admin users must have a PO account attached. We accept
+  // both "verified" (postback or affiliate API confirmed) and "pending" (ID
+  // entered, awaiting confirmation) — pending users see demo/T0 perks until a
+  // postback upgrades them. Admins are exempt for ops/testing.
   const role = (session.user as { role?: string }).role ?? "user";
   if (role !== "admin") {
     const account = await prisma.pocketOptionAccount.findUnique({
       where: { userId: session.user.id },
       select: { status: true },
     });
-    if (!account || account.status !== "verified") {
+    if (!account) {
       redirect("/onboarding/po-id");
     }
   }
