@@ -664,3 +664,19 @@ model Asset {
   @@index([signalTier, isActive])
   @@map("assets")
 }
+
+/// One-shot token issued by the web app, redeemed by the bot to link a
+/// website account to a Telegram account via deep-link `/start link_<token>`.
+/// Tokens expire after 10 minutes and are single-use.
+model TelegramLinkToken {
+  token       String    @id
+  userId      String
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  telegramId  BigInt?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("telegram_link_tokens")
+}
