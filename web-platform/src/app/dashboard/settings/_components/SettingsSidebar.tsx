@@ -9,6 +9,7 @@ import {
   Link2,
   Trophy,
   Share2,
+  Send,
 } from "lucide-react";
 
 type Item = {
@@ -36,6 +37,12 @@ const ITEMS: Item[] = [
     label: "Безопасность",
     icon: Shield,
     description: "Пароль, 2FA, сессии",
+  },
+  {
+    href: "/dashboard/settings/telegram",
+    label: "Telegram",
+    icon: Send,
+    description: "Привязка аккаунта",
   },
   {
     href: "/dashboard/settings/pocketoption",
