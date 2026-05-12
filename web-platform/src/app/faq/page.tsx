@@ -9,11 +9,13 @@ const BOT_URL =
   process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/traitsignaltsest_bot";
 
 const CATEGORY_LABELS: Record<string, string> = {
-  general: "Общие вопросы",
-  tiers: "Тиры и доступ",
-  registration: "Регистрация и привязка",
+  registration: "Регистрация и депозит",
+  promocode: "Промокоды и бонусы",
+  signals: "Сигналы и работа бота",
+  tiers: "Уровни доступа",
   referral: "Реферальная программа",
   giveaway: "Розыгрыши и призы",
+  general: "Общие вопросы",
 };
 
 export const dynamic = "force-dynamic";

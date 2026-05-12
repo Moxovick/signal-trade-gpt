@@ -1,14 +1,10 @@
 /**
- * GET /api/signals  — list signals visible to the caller, filtered by tier-based perks.
+ * GET /api/signals  — list signals visible to the caller, filtered by tier.
  * POST /api/signals — admin-only signal creation.
  *
- * v2 access model:
- *  - T0 (no PO account / not verified): tagged "demo" signals only, hard-capped
- *    by `T0_LIFETIME_DEMO_LIMIT`.
- *  - T1: OTC.
- *  - T2: OTC + exchange.
- *  - T3: OTC + exchange + elite.
- *  - T4: same as T3, but with early-access window (handled at delivery).
+ * v6b access model (two-tier):
+ *  - T0 (Free): up to 3 OTC signals per day.
+ *  - T1+ (Pro): all bands, no daily cap.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -18,9 +14,8 @@ import { canReceiveSignal } from "@/lib/access";
 type SignalTier = "otc" | "exchange" | "elite";
 
 function tiersForUser(tier: number): SignalTier[] {
-  if (tier <= 0) return [];
-  if (tier === 1) return ["otc"];
-  if (tier === 2) return ["otc", "exchange"];
+  // T0 — OTC only; T1+ — all bands.
+  if (tier <= 0) return ["otc"];
   return ["otc", "exchange", "elite"];
 }
 
@@ -37,24 +32,6 @@ export async function GET(req: NextRequest) {
 
   const access = await canReceiveSignal(session.user.id);
   const allowedTiers = tiersForUser(access.report?.tier ?? 0);
-
-  // T0 path: demo signals only.
-  if ((access.report?.tier ?? 0) === 0) {
-    const remaining = access.report?.demoSignalsRemaining ?? 0;
-    const demoSignals = await prisma.signal.findMany({
-      where: { isActive: true, type: "demo" as never },
-      orderBy: { createdAt: "desc" },
-      take: Math.min(remaining, limit),
-    });
-    return NextResponse.json({
-      signals: demoSignals,
-      total: demoSignals.length,
-      page: 1,
-      limit,
-      allowedTiers: ["demo"],
-      access: { tier: 0, demoRemaining: remaining, dailyLimit: null, used: 0 },
-    });
-  }
 
   const tiersForQuery = tierFilter
     ? allowedTiers.filter((t) => t === tierFilter)

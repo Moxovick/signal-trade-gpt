@@ -1,79 +1,56 @@
 /**
- * Settings · PocketOption — show attached PO ID, deposit history, P&L.
+ * Settings · PocketOption — show attached PO ID and deposit history.
+ *
+ * Note: "Estimated P&L" card was removed in v6a — showing speculative dollar
+ * losses on the profile scared users. We keep tier + deposit info only.
  */
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
-import {
-  Link2,
-  TrendingUp,
-  Trophy,
-  AlertCircle,
-} from "lucide-react";
+import { Link2, TrendingUp, AlertCircle } from "lucide-react";
 import { TIER_LABELS } from "@/lib/tier";
 
 export default async function PocketOptionSettingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [user, recentSignals] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        id: true,
-        depositTotal: true,
-        tier: true,
-        poAccount: {
-          select: {
-            poTraderId: true,
-            status: true,
-            totalDeposit: true,
-            totalRevShare: true,
-            ftdAt: true,
-            ftdAmount: true,
-            registeredAt: true,
-            emailConfirmedAt: true,
-            postbacks: {
-              orderBy: { receivedAt: "desc" },
-              take: 20,
-              select: {
-                id: true,
-                eventType: true,
-                amount: true,
-                currency: true,
-                receivedAt: true,
-              },
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      depositTotal: true,
+      tier: true,
+      poAccount: {
+        select: {
+          poTraderId: true,
+          status: true,
+          totalDeposit: true,
+          totalRevShare: true,
+          ftdAt: true,
+          ftdAmount: true,
+          registeredAt: true,
+          emailConfirmedAt: true,
+          postbacks: {
+            orderBy: { receivedAt: "desc" },
+            take: 20,
+            select: {
+              id: true,
+              eventType: true,
+              amount: true,
+              currency: true,
+              receivedAt: true,
             },
           },
         },
       },
-    }),
-    // Small P&L estimate: last 50 signals, % of wins.
-    prisma.signal.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      select: { result: true },
-    }),
-  ]);
+    },
+  });
 
   if (!user) redirect("/login");
   const po = user.poAccount;
   const deposits = po?.postbacks.filter((p) => p.eventType === "ftd" || p.eventType === "redeposit") ?? [];
-
-  const closedSignals = recentSignals.filter(
-    (s) => s.result === "win" || s.result === "loss",
-  );
-  const wins = closedSignals.filter((s) => s.result === "win").length;
-  const losses = closedSignals.filter((s) => s.result === "loss").length;
-  const winrate =
-    closedSignals.length > 0
-      ? Math.round((wins / closedSignals.length) * 100)
-      : 0;
-  const avgPayout = 0.82;
-  const sessionStakes = 10;
-  const estimatedPnl = wins * sessionStakes * avgPayout - losses * sessionStakes;
 
   return (
     <div className="space-y-6">
@@ -179,32 +156,14 @@ export default async function PocketOptionSettingsPage() {
       </Card>
 
       <Card padding="lg">
-        <div className="flex items-center gap-2 mb-1">
-          <Trophy size={18} className="text-[var(--brand-gold)]" />
-          <h2 className="text-lg font-semibold">Оценочный P&L</h2>
+        <div className="text-xs uppercase tracking-widest text-[var(--t-3)] mb-1">
+          Текущий уровень
         </div>
-        <p className="text-sm text-[var(--t-3)] mb-6">
-          Приблизительная оценка на основе последних 50 сигналов, ставка
-          ${sessionStakes}, выплата {Math.round(avgPayout * 100)}%. Реальные
-          результаты зависят от твоих сделок.
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Stat label="Винрейт" value={`${winrate}%`} />
-          <Stat label="Побед" value={wins} tone="positive" />
-          <Stat label="Поражений" value={losses} tone="negative" />
-          <Stat
-            label="Оценочный P&L"
-            value={
-              estimatedPnl >= 0
-                ? `+$${estimatedPnl.toFixed(2)}`
-                : `-$${Math.abs(estimatedPnl).toFixed(2)}`
-            }
-            tone={estimatedPnl >= 0 ? "positive" : "negative"}
-          />
+        <div className="text-2xl font-bold">
+          T{user.tier} — {TIER_LABELS[user.tier] ?? ""}
         </div>
-        <div className="mt-4 text-[11px] text-[var(--t-3)]">
-          Текущий тир: <b>T{user.tier}</b> — {TIER_LABELS[user.tier] ?? ""}.
-          Депозит учтён: ${Number(user.depositTotal).toFixed(2)}.
+        <div className="text-sm text-[var(--t-2)] mt-1">
+          Засчитанный депозит: ${Number(user.depositTotal).toFixed(2)}
         </div>
       </Card>
     </div>

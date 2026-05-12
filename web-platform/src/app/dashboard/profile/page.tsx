@@ -255,6 +255,29 @@ export default async function ProfilePage() {
         <EmailVerificationCard email={user.email} />
       ) : null}
 
+      {/* Achievements link */}
+      <Card padding="lg">
+        <Link
+          href="/dashboard/achievements"
+          className="flex items-center justify-between gap-3 group"
+        >
+          <div className="flex items-center gap-3">
+            <Award size={20} className="text-[var(--brand-gold)]" />
+            <div>
+              <div className="text-base font-semibold group-hover:text-[var(--brand-gold)] transition-colors">
+                Мои достижения
+              </div>
+              <div className="text-xs text-[var(--t-3)]">
+                Бейджи за активность, сигналы, депозиты и рефералов
+              </div>
+            </div>
+          </div>
+          <span className="text-[var(--t-3)] group-hover:text-[var(--brand-gold)] transition-colors text-sm">
+            Открыть →
+          </span>
+        </Link>
+      </Card>
+
       {/* Edit form */}
       <Card padding="lg">
         <h2 className="text-lg font-semibold mb-4">Личные данные</h2>

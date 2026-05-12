@@ -15,8 +15,10 @@
  *
  *   purpose="login":
  *     - If telegramId already maps to a User → reuses it.
- *     - Otherwise creates a fresh User with telegramId set; emits a referral
- *       code; assigns role=user, tier=0.
+ *     - Otherwise: REFUSES with `po_required` (v6b). New users must complete
+ *       the PO-gated /register flow on the site first; we no longer auto-
+ *       create accounts purely from a Telegram tap because that bypasses the
+ *       deposit gate.
  *     - Stores the resulting userId on the token so the web side can read it
  *       through link-status and start a NextAuth session.
  *
@@ -24,7 +26,6 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generateReferralCode } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -101,35 +102,35 @@ export async function POST(req: NextRequest) {
   }
 
   // purpose === "login"
-  let user = conflict;
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        telegramId: tgId,
-        username: body.username ?? null,
-        firstName: body.firstName ?? null,
-        lastName: body.lastName ?? null,
-        avatar: body.photoUrl ?? null,
-        referralCode: generateReferralCode(),
-      },
+  if (!conflict) {
+    // v6b: Telegram-only signup is no longer allowed because it bypasses the
+    // PocketOption deposit gate. Tell the bot to redirect the user to the
+    // site's /register flow.
+    await prisma.telegramLinkToken.update({
+      where: { token },
+      data: { consumedAt: new Date(), telegramId: tgId },
     });
-  } else {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        username: body.username ?? user.username,
-        firstName: body.firstName ?? user.firstName,
-        lastName: body.lastName ?? user.lastName,
-        avatar: body.photoUrl ?? user.avatar,
-        lastLogin: new Date(),
-      },
-    });
+    return NextResponse.json(
+      { ok: false, reason: "po_required" },
+      { status: 403 },
+    );
   }
+
+  await prisma.user.update({
+    where: { id: conflict.id },
+    data: {
+      username: body.username ?? conflict.username,
+      firstName: body.firstName ?? conflict.firstName,
+      lastName: body.lastName ?? conflict.lastName,
+      avatar: body.photoUrl ?? conflict.avatar,
+      lastLogin: new Date(),
+    },
+  });
 
   await prisma.telegramLinkToken.update({
     where: { token },
-    data: { consumedAt: new Date(), telegramId: tgId, userId: user.id },
+    data: { consumedAt: new Date(), telegramId: tgId, userId: conflict.id },
   });
 
-  return NextResponse.json({ ok: true, userId: user.id });
+  return NextResponse.json({ ok: true, userId: conflict.id });
 }

@@ -3,18 +3,25 @@
 /**
  * Server actions for /register.
  *
- * Why server actions instead of fetch + client form? Because the client form
- * relies on React hydration to call `e.preventDefault()`. If anything on the
- * page breaks hydration (a third-party script, a stray hook, etc.) the form
- * silently degrades to a native browser GET submit and the page reloads.
+ * v6b: registration is now PO-gated.
+ *  - The form REQUIRES `poTraderId` (the client only submits the form after
+ *    the user picked the "Yes, I have a PO account" path).
+ *  - We validate the trader ID against the PocketOption Affiliate API. The
+ *    account must be in our network and have `depositTotal >= MIN_DEPOSIT`.
+ *  - Only then do we create the User row + bind a `PocketOptionAccount` so
+ *    `User.tier` jumps to T1 immediately on first login.
  *
- * Server actions run on the server even when JS is disabled or hydration
- * fails — Next.js wires `<form action={...}>` to a hidden POST endpoint,
- * processes the action, then redirects. This makes registration bullet-proof.
+ * Why server actions: native browsers can submit `<form action={...}>` even
+ * when JS hydration breaks, which makes signup more resilient.
  */
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { generateReferralCode } from "@/lib/utils";
+import { fetchTraderInfo, isValidTraderIdFormat } from "@/lib/po-api";
+import { recomputeUserTier } from "@/lib/pocketoption";
+
+/** USD threshold for Pro access. Sub-$20 deposits are rejected at registration. */
+export const REGISTER_MIN_DEPOSIT_USD = 20;
 
 export type RegisterActionResult = {
   ok: boolean;
@@ -37,6 +44,9 @@ export async function registerAction(
   const nickname = String(formData.get("nickname") ?? "")
     .trim()
     .slice(0, 32);
+  const promoCode = String(formData.get("promoCode") ?? "")
+    .trim()
+    .slice(0, 32);
   // telegramUsername: strip leading @, allow A-Za-z0-9_, max 32 chars.
   const telegramUsernameRaw = String(formData.get("telegramUsername") ?? "")
     .trim()
@@ -45,6 +55,7 @@ export async function registerAction(
   const telegramUsername = /^[A-Za-z0-9_]{0,32}$/.test(telegramUsernameRaw)
     ? telegramUsernameRaw
     : "";
+  const poTraderId = String(formData.get("poTraderId") ?? "").trim();
 
   if (!email.includes("@")) {
     return { ok: false, error: "Введи корректный email" };
@@ -54,6 +65,57 @@ export async function registerAction(
   }
   if (password !== confirm) {
     return { ok: false, error: "Пароли не совпадают" };
+  }
+  if (!poTraderId || !isValidTraderIdFormat(poTraderId)) {
+    return {
+      ok: false,
+      error:
+        "Введи корректный PocketOption Trader ID. Если аккаунта нет — нажми «Нет — покажи как зарегистрировать» и сначала зарегайся на PO.",
+    };
+  }
+
+  // ── PO gate ────────────────────────────────────────────────────────────
+  // (1) Trader ID must not be already attached to another user.
+  const conflict = await prisma.pocketOptionAccount.findUnique({
+    where: { poTraderId },
+  });
+  if (conflict) {
+    return {
+      ok: false,
+      error: "Этот Trader ID уже привязан к другому аккаунту на сайте.",
+    };
+  }
+
+  // (2) Verify against PocketOption affiliate API.
+  const verify = await fetchTraderInfo(poTraderId);
+  if (!verify.ok) {
+    if (verify.reason === "not_found") {
+      return {
+        ok: false,
+        error:
+          "PocketOption не видит этот Trader ID в нашей сети. Зарегистрируйся по нашей реф-ссылке и попробуй снова.",
+      };
+    }
+    if (verify.reason === "not_configured") {
+      return {
+        ok: false,
+        error:
+          "Проверка PO API временно недоступна. Напиши админу — мы привяжем вручную.",
+      };
+    }
+    return {
+      ok: false,
+      error: "PocketOption API сейчас не отвечает. Попробуй через минуту.",
+    };
+  }
+
+  // (3) Deposit must reach the Pro threshold.
+  const depositTotal = verify.info.depositTotal;
+  if (depositTotal < REGISTER_MIN_DEPOSIT_USD) {
+    return {
+      ok: false,
+      error: `Минимальный депозит для регистрации — $${REGISTER_MIN_DEPOSIT_USD}. Сейчас на твоём PO ${depositTotal.toFixed(2)} $. Пополни счёт и возвращайся.`,
+    };
   }
 
   try {
@@ -92,6 +154,32 @@ export async function registerAction(
       });
     }
 
+    // Bind the verified PO account immediately.
+    const ftdAt = verify.info.ftdAt ? new Date(verify.info.ftdAt) : null;
+    await prisma.pocketOptionAccount.create({
+      data: {
+        userId: user.id,
+        poTraderId,
+        status: "verified",
+        source: "manual",
+        totalDeposit: depositTotal,
+        ...(ftdAt && !Number.isNaN(ftdAt.getTime()) ? { ftdAt } : {}),
+      },
+    });
+    await recomputeUserTier(user.id);
+
+    if (promoCode) {
+      await prisma.activityLog
+        .create({
+          data: {
+            userId: user.id,
+            action: "promo_code_submitted",
+            details: { promoCode },
+          },
+        })
+        .catch(() => undefined);
+    }
+
     return { ok: true, email, password };
   } catch (err) {
     console.error("[register action] failed:", err);
@@ -99,5 +187,3 @@ export async function registerAction(
     return { ok: false, error: `Внутренняя ошибка: ${msg}` };
   }
 }
-
-

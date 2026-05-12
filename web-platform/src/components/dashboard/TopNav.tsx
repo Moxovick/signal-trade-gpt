@@ -4,10 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard,
   Send,
   Users,
-  Award,
   Gift,
   Trophy,
   User as UserIcon,
@@ -21,14 +19,12 @@ import { Logo } from "@/components/ui/Logo";
 type NavItem = {
   href: string;
   label: string;
-  icon: typeof LayoutDashboard;
+  icon: typeof Send;
 };
 
 const NAV: NavItem[] = [
-  { href: "/dashboard", label: "Обзор", icon: LayoutDashboard },
   { href: "/dashboard/signals", label: "Сигналы", icon: Send },
   { href: "/dashboard/referrals", label: "Рефералы", icon: Users },
-  { href: "/dashboard/achievements", label: "Достижения", icon: Award },
   { href: "/dashboard/giveaway", label: "Розыгрыш", icon: Gift },
   { href: "/dashboard/leaderboard", label: "Лидерборд", icon: Trophy },
   { href: "/dashboard/profile", label: "Профиль", icon: UserIcon },

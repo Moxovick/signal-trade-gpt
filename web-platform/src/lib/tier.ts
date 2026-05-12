@@ -21,11 +21,18 @@ export type TierThresholds = {
   4: number;
 };
 
+/**
+ * Effective deposit thresholds for each tier (USD).
+ *
+ * v6b: model collapsed to two practical levels — Free (T0) and Pro (T1, $20+).
+ * T2/T3/T4 retained in the schema for backward compatibility but pushed to
+ * unreachable values so they never trigger in production.
+ */
 export const DEFAULT_TIER_THRESHOLDS: TierThresholds = {
-  1: 100,
-  2: 1000,
-  3: 5000,
-  4: 10000,
+  1: 20,
+  2: Number.MAX_SAFE_INTEGER,
+  3: Number.MAX_SAFE_INTEGER,
+  4: Number.MAX_SAFE_INTEGER,
 };
 
 export const SITE_SETTING_TIER_THRESHOLDS = "tier_thresholds";
@@ -77,9 +84,9 @@ export function distanceToNextTier(
 }
 
 export const TIER_LABELS: Record<number, string> = {
-  0: "Демо",
-  1: "Базовый",
-  2: "Трейдер",
-  3: "Pro",
-  4: "Elite",
+  0: "Free",
+  1: "Pro",
+  2: "Pro+",
+  3: "Pro+",
+  4: "Pro+",
 };

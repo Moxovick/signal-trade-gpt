@@ -13,7 +13,15 @@ type Faq = {
   isActive: boolean;
 };
 
-const CATEGORIES = ["general", "tiers", "registration", "referral", "giveaway"];
+const CATEGORIES = [
+  "registration",
+  "promocode",
+  "signals",
+  "tiers",
+  "referral",
+  "giveaway",
+  "general",
+];
 
 export default function AdminFaqPage() {
   const [faqs, setFaqs] = useState<Faq[]>([]);

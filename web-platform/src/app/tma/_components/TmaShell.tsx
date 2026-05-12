@@ -148,13 +148,11 @@ function Inner({
 
 function Onboarding({
   mode,
-  onRegister,
 }: {
   mode: "external" | "register";
+  /** Legacy: kept for callers that still pass it; ignored in v6b. */
   onRegister?: () => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
       <div className="size-16 rounded-2xl bg-[var(--brand-gold)]/15 text-[var(--brand-gold)] flex items-center justify-center mb-5">
@@ -169,30 +167,20 @@ function Onboarding({
         </>
       ) : (
         <>
-          <h1 className="text-xl font-bold mb-2">Создать аккаунт</h1>
+          <h1 className="text-xl font-bold mb-2">Сначала зарегистрируйся на сайте</h1>
           <p className="text-sm text-[var(--t-3)] max-w-sm mb-6">
-            Один тап — и аккаунт привязан к этому Telegram. Демо-сигналы доступны сразу,
-            без ввода email и пароля.
+            Регистрация требует PocketOption Trader ID и подтверждённого депозита от $20.
+            Открой сайт, пройди регистрацию, потом возвращайся в Mini App — мы тебя
+            узнаем по Telegram.
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              if (!onRegister || busy) return;
-              setBusy(true);
-              setError(null);
-              try {
-                onRegister();
-              } catch (err) {
-                setError((err as Error).message);
-                setBusy(false);
-              }
-            }}
-            disabled={busy}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold disabled:opacity-60"
+          <a
+            href={(process.env["NEXT_PUBLIC_APP_URL"] ?? "") + "/register"}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold"
           >
-            {busy ? "Создаём…" : "Зарегистрироваться"}
-          </button>
-          {error ? <p className="text-sm text-[var(--red)] mt-3">{error}</p> : null}
+            Открыть регистрацию
+          </a>
         </>
       )}
     </div>

@@ -29,8 +29,8 @@ const BOT_URL =
 
 const TIER_ACCESS: Record<number, ("otc" | "exchange" | "elite")[]> = {
   0: ["otc"],
-  1: ["otc"],
-  2: ["otc", "exchange"],
+  1: ["otc", "exchange", "elite"],
+  2: ["otc", "exchange", "elite"],
   3: ["otc", "exchange", "elite"],
   4: ["otc", "exchange", "elite"],
 };
@@ -81,23 +81,25 @@ export default async function SignalsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-1">
-            Лента сигналов
-          </p>
-          <h1 className="text-3xl md:text-4xl font-bold">Сигналы</h1>
-          <p className="text-[var(--t-2)] mt-2 max-w-xl">
-            Доступ зависит от твоего тира. Открыто на твоём уровне:{" "}
+      <div className="text-center pt-2 pb-1">
+        <p className="text-[11px] uppercase tracking-[0.32em] text-[var(--brand-gold)] mb-2">
+          Главная функция
+        </p>
+        <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
+          Сигналы
+        </h1>
+        <p className="text-[var(--t-2)] mt-3 max-w-xl mx-auto text-sm">
+          Доступ зависит от твоего тира. Открыто:{" "}
+          <span className="text-[var(--t-1)] font-semibold">
             {allowedBands
               .map((b) => TIER_BAND_LABELS[b]?.label ?? b)
               .join(" · ")}
-            .
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <TierBadge tier={tier} size="md" />
-          <span className="text-sm text-[var(--t-2)]">{TIER_LABELS[tier]}</span>
+          </span>
+          .
+        </p>
+        <div className="flex items-center justify-center gap-2 mt-3">
+          <TierBadge tier={tier} size="sm" />
+          <span className="text-xs text-[var(--t-2)]">{TIER_LABELS[tier]}</span>
         </div>
       </div>
 
@@ -137,18 +139,18 @@ export default async function SignalsPage() {
         />
       </div>
 
-      {/* Tier upsell if T0/T1 */}
-      {tier < 2 && (
+      {/* Free → Pro upsell */}
+      {tier === 0 && (
         <Card padding="md" className="border-[var(--brand-gold)]/40">
           <div className="flex items-center gap-3">
             <Lock size={18} className="text-[var(--brand-gold)] shrink-0" />
             <div className="flex-1 text-sm">
               <span className="text-[var(--t-1)] font-semibold">
-                Биржевые и Elite-сигналы
+                Сейчас ты на Free — 3 OTC-сигнала в день.
               </span>{" "}
               <span className="text-[var(--t-2)]">
-                открываются с T2 ($500) и T3 ($2 000) соответственно. Внеси
-                депозит на PocketOption — тир пересчитается автоматически.
+                От $20 депозита на PocketOption откроется Pro — все сигналы без
+                лимита.
               </span>
             </div>
             <Link

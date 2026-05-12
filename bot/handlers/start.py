@@ -109,6 +109,10 @@ async def _redeem_link_token(message: Message, token: str) -> bool:
         "telegram_taken": "Этот Telegram уже привязан к другому аккаунту на сайте.",
         "bad_secret": "Внутренняя ошибка авторизации (BOT_SYNC_SECRET).",
         "not_configured": "Привязка не настроена на сервере.",
+        "po_required": (
+            "Для входа через Telegram сначала нужно зарегистрироваться на сайте — "
+            "там потребуется PocketOption Trader ID и подтверждённый депозит."
+        ),
     }
     await message.answer(
         f"⚠️ {copy_map.get(reason, 'Не удалось привязать. Попробуй позже.')}",
