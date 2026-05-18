@@ -169,7 +169,7 @@ function Onboarding({
         <>
           <h1 className="text-xl font-bold mb-2">Сначала зарегистрируйся на сайте</h1>
           <p className="text-sm text-[var(--t-3)] max-w-sm mb-6">
-            Регистрация требует PocketOption Trader ID и подтверждённого депозита от $20.
+            Зарегистрируйся на PocketOption по нашей ссылке и привяжи Trader ID.
             Открой сайт, пройди регистрацию, потом возвращайся в Mini App — мы тебя
             узнаем по Telegram.
           </p>

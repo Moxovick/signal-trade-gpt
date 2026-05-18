@@ -40,8 +40,8 @@ signal-trade-gpt/
 │   │   │   ├── ui/            # Button, Card, Stat, TierBadge, Logo, …
 │   │   │   └── auth/          # TelegramLoginButton
 │   │   └── lib/
-│   │       ├── tier.ts        # tier-engine (computeTier, distanceToNextTier)
-│   │       ├── access.ts      # access-engine (T0 demo cap, T1..T4 daily limits)
+│   │       ├── tier.ts        # tier-engine (computeTier, 2-тирная модель)
+│   │       ├── access.ts      # access-engine (T0: 3 OTC / day, T1+: безлимит)
 │   │       ├── pocketoption.ts# parse + HMAC verify + applyPostback (idempotent)
 │   │       ├── telegram.ts    # Telegram Login HMAC verification
 │   │       └── auth.ts        # NextAuth (Telegram + legacy credentials)
@@ -101,17 +101,22 @@ python main.py
 
 Шаблон редактируется в админке: `/admin/settings → po_referral_link_template`.
 
-## Модель доступа (tier)
+## Модель доступа (2-tier)
 
-| Tier | Депозит на PO | Лимит сигналов / день  | Перки                                   |
-|-----:|---------------|------------------------|-----------------------------------------|
-|  T0  | $0 / нет PO   | 2 demo за всё время    | пример формата                          |
-|  T1  | $100          | 5                      | OTC                                     |
-|  T2  | $500          | 15                     | OTC + биржа                             |
-|  T3  | $2000         | 25                     | + расширенная аналитика                 |
-|  T4  | $10000        | безлимит               | + ранний доступ за 60с, элитные пары    |
+| Tier | Депозит на PO   | Лимит сигналов             | Перки                                              |
+|-----:|-----------------|----------------------------|----------------------------------------------------|
+|  T0  | регистрация PO  | 3 OTC / день (бот: 2 demo) | личный кабинет, OTC-сигналы                        |
+|  T1  | от $20          | безлимит                   | OTC + биржа + Elite, индикаторы, ранний доступ     |
 
-Пороги редактируются в админке (`/admin/settings → tier_thresholds`).
+- T0 открывается регистрацией на PocketOption по нашей реф-ссылке — депозит
+  не требуется. Регистрация на сайте **не** блокируется по сумме депозита:
+  Trader ID опционален, его можно дозаполнить позже на `/onboarding/po-id`.
+- T1 (Pro) открывается автоматически при первом депозите ≥ $20 на
+  привязанном счёте (через postback PO).
+
+Порог T1 редактируется в админке (`/admin/settings → tier_thresholds`).
+Поля T2-T4 оставлены в схеме выставленными в `Number.MAX_SAFE_INTEGER` —
+возврат к многоуровневой модели делается без миграции кода.
 
 ## Дисклеймер
 

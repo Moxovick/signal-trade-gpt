@@ -28,8 +28,15 @@ from services.imagegen import make_tier_card
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = 60
-USER_TIER_DEPOSIT_THRESHOLDS = {1: 100, 2: 500, 3: 2000, 4: 10000}
-USER_TIER_NAMES = {0: "Демо", 1: "Starter", 2: "Active", 3: "Pro", 4: "VIP"}
+# 2-tier модель (см. web-platform/src/lib/tier.ts).
+_UNREACHABLE_THRESHOLD = 9_007_199_254_740_991
+USER_TIER_DEPOSIT_THRESHOLDS = {
+    1: 20,
+    2: _UNREACHABLE_THRESHOLD,
+    3: _UNREACHABLE_THRESHOLD,
+    4: _UNREACHABLE_THRESHOLD,
+}
+USER_TIER_NAMES = {0: "Демо", 1: "Pro", 2: "Pro", 3: "Pro", 4: "Pro"}
 
 
 async def _fetch_snapshot() -> list[dict[str, Any]]:

@@ -61,7 +61,8 @@ async def btn_tier(message: Message) -> None:
         await message.answer("Сначала /start.")
         return
     text = format_tier_info(user.tier, user.po_trader_id, user.signals_received)
-    next_threshold = {0: 100, 1: 100, 2: 500, 3: 2000, 4: None}[user.tier] if user.tier <= 4 else None
+    # 2-tier модель: следующая планка после T0 — $20 (T1). Дальше Pro уже максимальный.
+    next_threshold = {0: 20, 1: None, 2: None, 3: None, 4: None}[user.tier] if user.tier <= 4 else None
     try:
         card = make_tier_card(user.tier, user.deposit_total, next_threshold)
         await message.answer_photo(

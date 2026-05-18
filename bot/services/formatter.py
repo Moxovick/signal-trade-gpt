@@ -52,9 +52,16 @@ TIER_TAGS = {
     "elite": "#elite",
 }
 
-# Human label per user-tier (0..4).
-USER_TIER_NAMES = {0: "Демо", 1: "Starter", 2: "Active", 3: "Pro", 4: "VIP"}
-USER_TIER_DEPOSIT_THRESHOLDS = {1: 100, 2: 500, 3: 2000, 4: 10000}
+# 2-tier модель: T0 (Демо) и T1+ (Pro). Ключи T2-T4 сохраненыдля
+# бэк-компата (см. web-platform/src/lib/tier.ts) и отрисовки imagegenа.
+USER_TIER_NAMES = {0: "Демо", 1: "Pro", 2: "Pro", 3: "Pro", 4: "Pro"}
+_UNREACHABLE_THRESHOLD = 9_007_199_254_740_991
+USER_TIER_DEPOSIT_THRESHOLDS = {
+    1: 20,
+    2: _UNREACHABLE_THRESHOLD,
+    3: _UNREACHABLE_THRESHOLD,
+    4: _UNREACHABLE_THRESHOLD,
+}
 
 
 def format_signal_caption(signal: Signal, pocket_option_url: str, entry_price: float | None = None) -> str:
@@ -143,12 +150,10 @@ def format_stats(total_signals: int, total_users: int) -> str:
         f"<b>Пользователей:</b> {total_users:,}\n"
         f"<b>Режим работы:</b> 24/7 (OTC) / 08:00-22:00 UTC (биржа)\n"
         f"\n"
-        f"<b>Tier-перки (открываются депозитом на PocketOption):</b>\n"
-        f"  • T0 — 2 демо-сигнала за всё время\n"
-        f"  • T1 ≥ $100 — 5 сигналов/день, OTC\n"
-        f"  • T2 ≥ $500 — 15 сигналов/день, OTC + биржа\n"
-        f"  • T3 ≥ $2000 — 25 сигналов/день, аналитика\n"
-        f"  • T4 ≥ $10000 — безлимит, ранний доступ\n"
+        f"<b>Tier-перки:</b>\n"
+        f"  • <b>T0 · Демо</b> — 2 пробных сигнала за всё время, OTC\n"
+        f"  • <b>T1 · Pro ≥ $20</b> — безлимит, все типы (OTC + биржа + Elite),"
+        f" индикаторы и ранний доступ\n"
         f"\n"
         f"<i>Данные обновляются в режиме реального времени</i>"
     )
@@ -160,13 +165,13 @@ def format_welcome(first_name: str, referral_code: str, bot_username: str) -> st
         f"Привет, <b>{first_name}</b>!\n"
         f"\n"
         f"<b>Signal Trade GPT</b> — AI-сигналы для PocketOption.\n"
-        f"Доступ открывается твоим депозитом на бирже, не подпиской.\n"
+        f"Доступ открывается регистрацией по нашей ссылке, не подпиской.\n"
         f"\n"
         f"<b>Как начать:</b>\n"
         f"1. Открой счёт PocketOption по нашей реф-ссылке: /link\n"
-        f"   или пришли свой ID существующего счёта.\n"
-        f"2. Внеси депозит — tier откроется автоматически.\n"
-        f"3. Получай сигналы по своему лимиту.\n"
+        f"   и пришли свой PocketOption Trader ID.\n"
+        f"2. Сразу после привязки доступен базовый T0 (2 демо-сигнала).\n"
+        f"3. Внесёшь депозит ≥ $20 — автоматически откроется безлимит на все сигналы.\n"
         f"\n"
         f"<b>Команды:</b>\n"
         f"/tier — твой текущий уровень и лимиты\n"
@@ -186,15 +191,23 @@ def format_welcome(first_name: str, referral_code: str, bot_username: str) -> st
 
 def format_tier_info(tier: int, po_trader_id: str | None, signals_received: int) -> str:
     name = USER_TIER_NAMES.get(tier, "—")
-    next_tier = tier + 1 if tier < 4 else None
+
+    # 2-тирная модель: T0 → следующая планка $20 (T1). T1+ — максимум, апгрейда нет.
+    next_tier = 1 if tier == 0 else None
     next_threshold = USER_TIER_DEPOSIT_THRESHOLDS.get(next_tier) if next_tier else None
 
-    daily_limits = {0: "2 сигнала за всё время (демо)", 1: "5 в день", 2: "15 в день", 3: "25 в день", 4: "безлимит"}
+    daily_limits = {
+        0: "2 сигнала за всё время (демо)",
+        1: "безлимит",
+        2: "безлимит",
+        3: "безлимит",
+        4: "безлимит",
+    }
 
     lines = [
         f"<b>Твой tier: T{tier} · {name}</b>",
         "",
-        f"<b>Лимит сигналов:</b> {daily_limits[tier]}",
+        f"<b>Лимит сигналов:</b> {daily_limits.get(tier, 'безлимит')}",
         f"<b>Сигналов получено:</b> {signals_received}",
     ]
 
@@ -206,7 +219,7 @@ def format_tier_info(tier: int, po_trader_id: str | None, signals_received: int)
     if next_threshold:
         lines.append("")
         lines.append(
-            f"<i>До T{next_tier}: депозит ≥ ${next_threshold} на PocketOption.</i>"
+            f"<i>До T{next_tier} · Pro: первый депозит ≥ ${next_threshold} на PocketOption.</i>"
         )
 
     return "\n".join(lines)

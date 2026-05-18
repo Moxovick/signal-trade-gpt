@@ -3,12 +3,13 @@
 import { Activity, ChevronRight, Copy, Flame, Trophy, User2 } from "lucide-react";
 import { TmaShell, type TmaUser } from "../_components/TmaShell";
 
+// 2-tier model: T0 — Free (PO привязан), T1+ — Pro (депо ≥ $20).
 const TIER_NAMES: Record<number, string> = {
-  0: "Demo",
-  1: "Starter ($100)",
-  2: "Trader ($500)",
-  3: "Pro ($2000)",
-  4: "Elite ($10000)",
+  0: "Free",
+  1: "Pro ($20+)",
+  2: "Pro",
+  3: "Pro",
+  4: "Pro",
 };
 
 export default function TmaProfilePage() {

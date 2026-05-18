@@ -143,9 +143,13 @@ export async function recomputeUserTier(userId: string): Promise<number> {
   if (!user) return 0;
 
   const thresholds = await getTierThresholds();
-  const verified = user.poAccount?.status === "verified";
+  // T0 — любой привязанный PO-аккаунт (verified или pending).
+  // T1+ — привязан и totalDeposit прошёл порог.
+  // dashboard/layout.tsx уже отрезает юзеров без PO-аккаунта на /onboarding/po-id,
+  // так что "нет аккаунта" сюда обычно не доходит, но обрабатываем безопасно.
+  const hasAccount = user.poAccount != null;
   const total = user.poAccount?.totalDeposit ?? 0;
-  const tier = computeTier(total, verified, thresholds);
+  const tier = computeTier(total, hasAccount, thresholds);
 
   if (tier !== user.tier) {
     await prisma.user.update({ where: { id: userId }, data: { tier } });

@@ -1,19 +1,16 @@
 """
 /signal — manual signal request.
 
-Behaviour:
-  1. T0 users get demo signals (no real trade tag), with a hard lifetime cap of
-     2 across the user's lifetime.
-  2. T1+ get unlimited signals — no daily count cap. Tier model gates *features*
-     (chart indicators, early access), not signal count.
-  3. Higher tiers see admin-published signals first (queue from /api/bot/sync).
-  4. T2+ (or whichever tier admin enables `chartIndicators` for) get an
-     advanced chart: candles + EMA20 + RSI + MACD + volume.
-  5. If price-source is configured, we fetch the real entry price for the pair
-     and overlay it on the chart + caption.
+2-tier access model (mirrors the web platform):
+  - T0 (PO-аккаунт привязан, депо ниже порога): демо-сигналы с
+    lifetime cap (по умолчанию 2 сигнала).
+  - T1+ (депозит ≥ $20): безлимит + все банды (OTC + биржа + Elite),
+    расширенные графики (RSI/MACD/EMA/volume).
 
-Each signal renders a chart image (matplotlib) with direction overlay, plus
-inline buttons for Win/Loss feedback after expiration.
+Admin-published signals (очередь из /api/bot/sync) выдаются в первую
+очередь, если ничего нет — фоллбэк на локальный генератор. Если настроен
+price-feed, входная цена берётся из real-market data.
+Ключи T2/T3/T4 сохранены на случай возврата многоуровневой модели.
 """
 import logging
 
@@ -47,11 +44,13 @@ router = Router()
 
 T0_LIFETIME_DEMO_LIMIT = 2
 
+# T1+ видит все банды. T2/T3/T4 свёрнуты в T1, пока многоуровневые перки
+# отключены порогами (см. web-platform/src/lib/tier.ts).
 TIER_TO_KIND = {0: "demo", 1: "otc", 2: "exchange", 3: "elite", 4: "elite"}
 TIER_ALLOWED_BANDS = {
     0: ["demo"],
-    1: ["otc"],
-    2: ["otc", "exchange"],
+    1: ["otc", "exchange", "elite"],
+    2: ["otc", "exchange", "elite"],
     3: ["otc", "exchange", "elite"],
     4: ["otc", "exchange", "elite"],
 }
@@ -82,8 +81,9 @@ async def cmd_signal(message: Message) -> None:
     if user.tier == 0 and user.signals_received >= T0_LIFETIME_DEMO_LIMIT:
         await message.answer(
             "<b>Демо-лимит исчерпан</b>\n"
-            "Чтобы получать сигналы регулярно — привяжи PocketOption через /link "
-            "и внеси депозит ≥ $100 для перехода на T1.",
+            "На T0 (демо) доступно 2 пробных сигнала. Чтобы получать безлимит —"
+            " внеси первый депозит ≥ $20 на PocketOption (счёт, привязанный через /link)."
+            " Сразу откроется T1 — все типы сигналов без лимита.",
             parse_mode=ParseMode.HTML,
         )
         return

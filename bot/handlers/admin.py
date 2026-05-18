@@ -260,8 +260,9 @@ async def cmd_test_as(message: Message, command: CommandObject) -> None:
 
     from services.imagegen import make_stats_card, make_tier_card
 
+    # 2-tier модель: после T0 — $20 (T1), дальше потолок.
     next_threshold = (
-        {0: 100, 1: 100, 2: 500, 3: 2000, 4: None}[target.tier]
+        {0: 20, 1: None, 2: None, 3: None, 4: None}[target.tier]
         if target.tier <= 4
         else None
     )

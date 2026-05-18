@@ -36,10 +36,13 @@ export function SettingsForm({
       : {};
 
   const router = useRouter();
-  const [t1, setT1] = useState(asNumber(initialThresholds["1"], 100));
-  const [t2, setT2] = useState(asNumber(initialThresholds["2"], 500));
-  const [t3, setT3] = useState(asNumber(initialThresholds["3"], 2000));
-  const [t4, setT4] = useState(asNumber(initialThresholds["4"], 10000));
+  // 2-tier модель: редактируем только T1; T2-T4 выставлены недостижимыми.
+  const [t1, setT1] = useState(asNumber(initialThresholds["1"], 20));
+  // T2-T4 — фактически выключены. Храним MAX_SAFE_INTEGER, чтобы
+  // tier engine без хаков продолжал работать (см. lib/tier.ts).
+  const t2 = asNumber(initialThresholds["2"], Number.MAX_SAFE_INTEGER);
+  const t3 = asNumber(initialThresholds["3"], Number.MAX_SAFE_INTEGER);
+  const t4 = asNumber(initialThresholds["4"], Number.MAX_SAFE_INTEGER);
   const [refTpl, setRefTpl] = useState(asString(refLinkTemplate, ""));
   const [partner, setPartner] = useState(asString(partnerAccount, ""));
   const [subRate, setSubRate] = useState(asNumber(subAffiliateRate, 5));
@@ -74,30 +77,25 @@ export function SettingsForm({
       {/* Tiers */}
       <fieldset>
         <legend className="text-sm font-semibold mb-3">
-          Пороги депозита для tier-ов (USD)
+          Порог депозита для T1 · Pro (USD)
         </legend>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            { label: "T1 · Starter", value: t1, set: setT1 },
-            { label: "T2 · Active", value: t2, set: setT2 },
-            { label: "T3 · Pro", value: t3, set: setT3 },
-            { label: "T4 · VIP", value: t4, set: setT4 },
-          ].map((f) => (
-            <label key={f.label} className="block">
-              <span className="text-xs text-[var(--t-3)] uppercase tracking-wider">
-                {f.label}
-              </span>
-              <input
-                type="number"
-                min={0}
-                step={50}
-                value={f.value}
-                onChange={(e) => f.set(Number(e.target.value))}
-                className={`${FIELD} mt-1`}
-              />
-            </label>
-          ))}
-        </div>
+        <p className="text-xs text-[var(--t-3)] mb-3">
+          Сейчас работает 2-тирная модель: T0 — регистрация по нашей PO-ссылке,
+          T1 — депозит ≥ этого значения. T2/T3/T4 выключены.
+        </p>
+        <label className="block max-w-xs">
+          <span className="text-xs text-[var(--t-3)] uppercase tracking-wider">
+            T1 · Pro
+          </span>
+          <input
+            type="number"
+            min={0}
+            step={10}
+            value={t1}
+            onChange={(e) => setT1(Number(e.target.value))}
+            className={`${FIELD} mt-1`}
+          />
+        </label>
       </fieldset>
 
       {/* Ref link */}

@@ -27,6 +27,8 @@ import { LiveSignalHero, type LiveSignal } from "./_components/LiveSignalHero";
 const BOT_URL =
   process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/traitsignaltsest_bot";
 
+// 2-tier access map: T0 — только OTC (3/день, см. lib/access.ts).
+// T1+ — все типы безлимитом. Ключи про запас под случай возврата многоуровневой модели.
 const TIER_ACCESS: Record<number, ("otc" | "exchange" | "elite")[]> = {
   0: ["otc"],
   1: ["otc", "exchange", "elite"],

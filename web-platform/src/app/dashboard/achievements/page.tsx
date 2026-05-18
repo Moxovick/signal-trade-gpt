@@ -68,30 +68,9 @@ const CATALOG: AchievementDef[] = [
   {
     id: "tier_1",
     emoji: "🚀",
-    title: "Starter",
-    description: "Достигни тира T1",
+    title: "Pro-доступ",
+    description: "Открыл T1 — депозит от $20",
     unlocked: (s) => s.tier >= 1,
-  },
-  {
-    id: "tier_2",
-    emoji: "⚡",
-    title: "Active",
-    description: "Достигни тира T2",
-    unlocked: (s) => s.tier >= 2,
-  },
-  {
-    id: "tier_3",
-    emoji: "💎",
-    title: "Pro",
-    description: "Достигни тира T3",
-    unlocked: (s) => s.tier >= 3,
-  },
-  {
-    id: "tier_4",
-    emoji: "👑",
-    title: "VIP",
-    description: "Достигни тира T4 (максимум)",
-    unlocked: (s) => s.tier >= 4,
   },
   {
     id: "first_referral",

@@ -1,10 +1,21 @@
 /**
  * Tier engine — единственный источник истины о доступе пользователя к перкам.
  *
- * Tier рассчитывается из суммы депозита на PocketOption + факта, что аккаунт
- * привязан и верифицирован. Пороги хранятся в SiteSettings (key="tier_thresholds")
- * и редактируются в админке без релиза.
+ * Модель доступа (2 тира):
+ *   T0 — PocketOption-аккаунт привязан (любой статус), любой депозит.
+ *        Базовый доступ к кабинету и сигналам (с мягким дневным лимитом).
+ *   T1 — Привязан + общий депозит ≥ `tier_thresholds.1` (по умолчанию $20).
+ *        Полный доступ: безлимит, все типы сигналов.
+ *
+ * Доступ к /dashboard гейтится отдельно (см. `app/dashboard/layout.tsx`):
+ * пользователи без привязанного PO-аккаунта попадают на `/onboarding/po-id`.
+ *
+ * Старшие тиры (T2/T3/T4) на текущем этапе НЕ используются, но поля в
+ * `TierThresholds` оставлены для backward-compat: их можно поднять выше
+ * MAX_SAFE_INTEGER чтобы они никогда не срабатывали. Если потом понадобится
+ * расширить модель — достаточно поменять пороги через `/admin/settings`.
  */
+
 /**
  * Duck-typed Decimal: anything with `toNumber()` works (covers Prisma.Decimal,
  * decimal.js, and our own wrappers in tests).
@@ -24,9 +35,8 @@ export type TierThresholds = {
 /**
  * Effective deposit thresholds for each tier (USD).
  *
- * v6b: model collapsed to two practical levels — Free (T0) and Pro (T1, $20+).
- * T2/T3/T4 retained in the schema for backward compatibility but pushed to
- * unreachable values so they never trigger in production.
+ * Two-tier model: T1 at $20, остальные пороги выставлены недостижимыми, чтобы
+ * никогда не сработать (пока бизнес не решит вернуть 5-уровневую модель).
  */
 export const DEFAULT_TIER_THRESHOLDS: TierThresholds = {
   1: 20,
@@ -46,20 +56,25 @@ function toNumber(value: DepositLike): number {
 }
 
 /**
- * Compute tier 0..4 for a user.
+ * Compute the user's tier.
  *
- * - 0 — PocketOption account not yet attached/verified.
- * - 1..4 — by deposit amount.
+ * @param depositTotal     Сумма депозитов на PO (USD).
+ * @param hasPoAccount     Привязан ли PO-аккаунт (любой статус).
+ *                         Без привязки пользователь не должен попадать в
+ *                         /dashboard вообще (см. dashboard/layout.tsx), но
+ *                         для устойчивости движка считаем такого юзера T0.
+ * @param thresholds       Пороги (берутся из `SiteSettings.tier_thresholds`).
  *
- * T0 пользователи могут получить ограниченный набор демо-сигналов
- * (см. perk `signals_demo`).
+ * Возврат:
+ *   0 — нет PO-аккаунта ИЛИ депо < tier_thresholds[1].
+ *   1..4 — по сумме депо; в текущей 2-тирной модели реально достижим только T1.
  */
 export function computeTier(
   depositTotal: DepositLike,
-  hasVerifiedPoAccount: boolean,
+  hasPoAccount: boolean,
   thresholds: TierThresholds = DEFAULT_TIER_THRESHOLDS,
 ): number {
-  if (!hasVerifiedPoAccount) return 0;
+  if (!hasPoAccount) return 0;
   const total = toNumber(depositTotal);
   if (total >= thresholds[4]) return 4;
   if (total >= thresholds[3]) return 3;
@@ -70,7 +85,7 @@ export function computeTier(
 
 /**
  * Сколько ещё нужно довнести до следующего уровня.
- * Возвращает null, если уже T4 (максимум).
+ * Возвращает null, если выше уже некуда (тир ≥ максимальный достижимый).
  */
 export function distanceToNextTier(
   depositTotal: DepositLike,
@@ -79,14 +94,23 @@ export function distanceToNextTier(
 ): { nextTier: number; needed: number } | null {
   if (currentTier >= 4) return null;
   const next = (currentTier + 1) as 1 | 2 | 3 | 4;
+  const cap = thresholds[next];
+  // Скрываем тиры, у которых порог выставлен недостижимым.
+  if (cap >= Number.MAX_SAFE_INTEGER) return null;
   const total = toNumber(depositTotal);
-  return { nextTier: next, needed: Math.max(0, thresholds[next] - total) };
+  return { nextTier: next, needed: Math.max(0, cap - total) };
 }
 
+/**
+ * Человеко-читаемые названия тиров.
+ *
+ * В 2-тирной модели всё, что выше T0, — это «Pro». Если позже включим
+ * 5-уровневую модель, лейблы можно вернуть к Pro / Pro+ / VIP и т.п.
+ */
 export const TIER_LABELS: Record<number, string> = {
   0: "Free",
   1: "Pro",
-  2: "Pro+",
-  3: "Pro+",
-  4: "Pro+",
+  2: "Pro",
+  3: "Pro",
+  4: "Pro",
 };

@@ -1,9 +1,13 @@
 /**
  * Access engine — given a userId, decide which signals/perks they can see.
  *
- * v6b model (two-tier):
- *  - T0 (Free, no PO deposit): 3 OTC demo signals per day.
- *  - T1+ (Pro, deposit ≥ $20): all signal bands, no daily cap.
+ * Two-tier access model:
+ *  - T0 (PO привязан, депо < $20): мягкий кап 3 OTC-сигнала/день.
+ *  - T1+ (депо ≥ $20): полный доступ, без дневного капа.
+ *
+ * Доступ к /dashboard как таковой контролируется в `app/dashboard/layout.tsx`
+ * (требуется привязанный PO-аккаунт). Здесь мы уже считаем перки/лимиты для
+ * залогиненного юзера с привязкой.
  */
 import { prisma } from "@/lib/prisma";
 
@@ -18,23 +22,19 @@ export type AccessReport = {
     config: unknown;
     unlocked: boolean;
   }>;
-  /** Lifetime cap for T0; null for T1+. */
+  /** Сколько демо-сигналов осталось сегодня (для T0); null для T1+. */
   demoSignalsRemaining: number | null;
-  /** Daily soft cap (null = unlimited). */
+  /** Дневной мягкий кап (null — без лимита). */
   dailySignalLimit: number | null;
   signalsTodayUsed: number;
 };
 
-/**
- * @deprecated v6b switched T0 from a lifetime cap to a daily cap. Kept exported
- * so any straggling caller still compiles; new code should use
- * `TIER_DAILY_LIMITS[0]` instead.
- */
-export const T0_LIFETIME_DEMO_LIMIT = 0;
-
 const TIER_DAILY_LIMITS: Record<number, number | null> = {
-  0: 3, // Free: 3 OTC signals per day
-  1: null, // Pro: unlimited
+  0: 3, // T0 (Free): 3 OTC-сигнала в день
+  1: null, // T1+ (Pro): без лимита
+  // T2/T3/T4 — на текущем этапе не используются (см. lib/tier.ts), но
+  // оставлены здесь на случай возвращения многоуровневой модели через
+  // SiteSettings.tier_thresholds.
   2: null,
   3: null,
   4: null,

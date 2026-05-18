@@ -33,30 +33,9 @@ export const ACHIEVEMENT_CATALOGUE: AchievementDef[] = [
   {
     code: "first_deposit",
     name: "Первый депозит",
-    description: "Открыл T1 — депозит от $100",
+    description: "Открыл T1 — депозит от $20",
     icon: "trending-up",
     minTier: 1,
-  },
-  {
-    code: "tier_2",
-    name: "Трейдер",
-    description: "Депозит от $1000 — открыт T2",
-    icon: "award",
-    minTier: 2,
-  },
-  {
-    code: "tier_3",
-    name: "Pro",
-    description: "Депозит от $5000 — открыт T3",
-    icon: "crown",
-    minTier: 3,
-  },
-  {
-    code: "tier_4",
-    name: "Elite",
-    description: "Депозит от $10000 — открыт T4",
-    icon: "gem",
-    minTier: 4,
   },
   {
     code: "streak_7",
@@ -148,9 +127,6 @@ export async function checkAndUnlockAchievements(userId: string): Promise<string
   grant("first_signal", firstSignalReceived);
   grant("po_verified", user.poAccount?.status === "verified");
   grant("first_deposit", user.tier >= 1);
-  grant("tier_2", user.tier >= 2);
-  grant("tier_3", user.tier >= 3);
-  grant("tier_4", user.tier >= 4);
   grant("streak_7", (user.streakDays ?? 0) >= 7);
   grant("streak_30", (user.streakDays ?? 0) >= 30);
   grant("referral_1", referralsCount >= 1);

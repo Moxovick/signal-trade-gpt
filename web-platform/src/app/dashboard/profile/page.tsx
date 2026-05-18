@@ -41,10 +41,11 @@ export const dynamic = "force-dynamic";
 const SITE_URL =
   process.env["NEXT_PUBLIC_SITE_URL"] ?? "http://localhost:3000";
 
+// 2-tier model: T0 — OTC только, T1+ — всё безлимитом.
 const TIER_ACCESS: Record<number, ("otc" | "exchange" | "elite")[]> = {
   0: ["otc"],
-  1: ["otc"],
-  2: ["otc", "exchange"],
+  1: ["otc", "exchange", "elite"],
+  2: ["otc", "exchange", "elite"],
   3: ["otc", "exchange", "elite"],
   4: ["otc", "exchange", "elite"],
 };

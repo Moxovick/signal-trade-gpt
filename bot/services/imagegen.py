@@ -474,7 +474,8 @@ def make_tier_card(tier: int, deposit: float, next_threshold: int | None) -> byt
     img = _gradient_bg(w, h)
     draw = ImageDraw.Draw(img)
 
-    tier_names = {0: "DEMO", 1: "STARTER", 2: "ACTIVE", 3: "PRO", 4: "VIP"}
+    # 2-tier модель: T0 = DEMO, T1+ = PRO. T2-T4 на запас под возврат многоуровневой.
+    tier_names = {0: "DEMO", 1: "PRO", 2: "PRO", 3: "PRO", 4: "PRO"}
     name = tier_names.get(tier, "—")
 
     # Big tier label
@@ -506,14 +507,15 @@ def make_tier_card(tier: int, deposit: float, next_threshold: int | None) -> byt
     draw.text((bar_x, bar_y - 50), f"Депозит: ${deposit:,.0f}", font=txt_f, fill=TEXT_1)
     if next_threshold:
         remaining = max(0, next_threshold - int(deposit))
+        next_name = "Pro" if tier == 0 else f"T{tier + 1}"
         draw.text(
             (bar_x, bar_y + 30),
-            f"До T{tier + 1}: ещё ${remaining:,}",
+            f"До {next_name}: ещё ${remaining:,}",
             font=txt_f,
             fill=TEXT_2,
         )
     else:
-        draw.text((bar_x, bar_y + 30), "Максимальный уровень", font=txt_f, fill=GOLD_SOFT)
+        draw.text((bar_x, bar_y + 30), "Полный доступ открыт", font=txt_f, fill=GOLD_SOFT)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)

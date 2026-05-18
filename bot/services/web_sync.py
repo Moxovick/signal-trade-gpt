@@ -78,17 +78,19 @@ def get_tier_features(tier: int) -> dict[str, Any]:
     """
     Return per-tier feature flags from admin config.
 
-    Falls back to sensible defaults: T2+ get chart indicators, T3+ get 60s
-    early access, T4 gets elite pairs. Bot consumes:
+    2-тирные дефолты: T0 — только демо (без indicators / early-access / elite),
+    T1+ — полный Pro-пакет (indicators + early-access 60с + elite-пары).
+    Ключи T2/T3/T4 дублируют T1, чтобы admin-конфиг с устаревшими
+    tierFeatures-ключами продолжал работать. Бот использует:
       - chartIndicators: bool — render chart with RSI/MACD/volume overlay
       - earlyAccessSeconds: int — seconds of early access vs public release
       - elitePairs: bool — may receive 'elite' band signals
     """
     defaults: dict[str, dict[str, Any]] = {
         "0": {"chartIndicators": False, "earlyAccessSeconds": 0, "elitePairs": False},
-        "1": {"chartIndicators": False, "earlyAccessSeconds": 0, "elitePairs": False},
-        "2": {"chartIndicators": True, "earlyAccessSeconds": 0, "elitePairs": False},
-        "3": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": False},
+        "1": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": True},
+        "2": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": True},
+        "3": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": True},
         "4": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": True},
     }
     features = _state.config.get("tierFeatures")
@@ -106,8 +108,14 @@ def get_tier_features(tier: int) -> dict[str, Any]:
 
 
 def get_tier_thresholds() -> dict[str, int]:
-    """Return tier deposit thresholds from admin config (USD)."""
-    defaults = {"1": 100, "2": 1000, "3": 5000, "4": 10000}
+    """Return tier deposit thresholds from admin config (USD).
+
+    2-тирные дефолты: T1 = $20, T2/T3/T4 = недостижимые.
+    Совпадает с web-platform/src/lib/tier.ts DEFAULT_TIER_THRESHOLDS.
+    """
+    # 2**53 - 1, как Number.MAX_SAFE_INTEGER в JS — эффективно отключает T2-T4.
+    _UNREACHABLE = 9_007_199_254_740_991
+    defaults = {"1": 20, "2": _UNREACHABLE, "3": _UNREACHABLE, "4": _UNREACHABLE}
     thresholds = _state.config.get("tierThresholds")
     if not isinstance(thresholds, dict):
         return defaults

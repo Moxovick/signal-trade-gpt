@@ -59,12 +59,8 @@ async def _winrate_70(u: User) -> bool:
     return total >= 10 and (u.wins / total) >= 0.7
 
 
-async def _tier_t2(u: User) -> bool:
-    return u.tier >= 2
-
-
-async def _tier_t4(u: User) -> bool:
-    return u.tier >= 4
+async def _tier_pro(u: User) -> bool:
+    return u.tier >= 1
 
 
 async def _three_referrals(u: User) -> bool:
@@ -111,16 +107,10 @@ ACHIEVEMENTS: list[Achievement] = [
         _winrate_70,
     ),
     Achievement(
-        "tier_t2",
-        "📈 Active",
-        "Поднял тир до T2",
-        _tier_t2,
-    ),
-    Achievement(
-        "tier_t4",
-        "👑 VIP",
-        "Поднял тир до T4 — топ-уровень",
-        _tier_t4,
+        "tier_pro",
+        "🚀 Pro-доступ",
+        "Открыл T1 — депозит от $20 на PocketOption",
+        _tier_pro,
     ),
     Achievement(
         "three_referrals",

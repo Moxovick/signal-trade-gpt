@@ -10,11 +10,8 @@ const PERIODS = [
 ];
 
 const TIERS = [
-  { v: "all", l: "Все тиры" },
-  { v: "1", l: "T1+" },
-  { v: "2", l: "T2+" },
-  { v: "3", l: "T3+" },
-  { v: "4", l: "T4" },
+  { v: "all", l: "Все" },
+  { v: "1", l: "Pro (T1+)" },
 ];
 
 export function LeaderboardFilters() {
