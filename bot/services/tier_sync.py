@@ -36,7 +36,7 @@ USER_TIER_DEPOSIT_THRESHOLDS = {
     3: _UNREACHABLE_THRESHOLD,
     4: _UNREACHABLE_THRESHOLD,
 }
-USER_TIER_NAMES = {0: "Демо", 1: "Pro", 2: "Pro", 3: "Pro", 4: "Pro"}
+USER_TIER_NAMES = {0: "Обычный", 1: "Про", 2: "Про", 3: "Про", 4: "Про"}
 
 
 async def _fetch_snapshot() -> list[dict[str, Any]]:
@@ -75,15 +75,14 @@ async def _send_upgrade(bot: Bot, telegram_id: int, new_tier: int, deposit: floa
         card = None
 
     text = (
-        f"<b>🎉 Тир разблокирован: T{new_tier} · {name}</b>\n"
+        f"<b>🎉 Уровень разблокирован: {name}!</b>\n"
         f"\n"
         f"Депозит на PocketOption: <b>${deposit:,.2f}</b>\n"
         f"\n"
-        + (
-            f"Дальше — T{new_tier + 1} (≥${next_threshold:,}).\n" if next_threshold else "Это максимальный тир. 🏆\n"
-        )
-        + "\n"
-        "Новые перки уже активны — попробуй «📊 Сигнал» из меню."
+        "Теперь тебе доступны все типы сигналов — OTC, биржевые и Elite — "
+        "с полной аналитикой (RSI, MACD, EMA).\n"
+        "\n"
+        "Сигналы приходят автоматически — просто жди 📊"
     )
     if card:
         await bot.send_photo(

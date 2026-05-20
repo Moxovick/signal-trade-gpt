@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { DashboardTopNav } from "@/components/dashboard/TopNav";
+import { TelegramLinkBanner } from "@/components/dashboard/TelegramLinkBanner";
 
 export default async function DashboardLayout({
   children,
@@ -32,10 +33,19 @@ export default async function DashboardLayout({
     role,
   };
 
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { telegramId: true },
+  });
+  const hasTelegram = dbUser?.telegramId != null;
+
   return (
     <div className="min-h-screen">
       <DashboardTopNav user={user} />
-      <main className="max-w-6xl mx-auto px-6 py-8">{children}</main>
+      <main className="max-w-6xl mx-auto px-6 py-8">
+        {!hasTelegram && <TelegramLinkBanner />}
+        {children}
+      </main>
     </div>
   );
 }
