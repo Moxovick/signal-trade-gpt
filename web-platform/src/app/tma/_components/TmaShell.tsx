@@ -150,9 +150,13 @@ function Onboarding({
   mode,
 }: {
   mode: "external" | "register";
-  /** Legacy: kept for callers that still pass it; ignored in v6b. */
   onRegister?: () => void;
 }) {
+  const baseUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "";
+  // /login?from=tma uses the Telegram Login Widget which sets telegramId
+  // automatically — this is the only way to link site account ↔ Telegram.
+  const loginUrl = `${baseUrl}/login?from=tma`;
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
       <div className="size-16 rounded-2xl bg-[var(--brand-gold)]/15 text-[var(--brand-gold)] flex items-center justify-center mb-5">
@@ -162,25 +166,35 @@ function Onboarding({
         <>
           <h1 className="text-xl font-bold mb-2">Открой через Telegram</h1>
           <p className="text-sm text-[var(--t-3)] max-w-sm">
-            Этот экран — Mini App, его нужно открывать через нашего бота, а не в обычном браузере.
+            Этот экран работает только внутри Telegram. Открой Mini App через нашего бота.
           </p>
         </>
       ) : (
         <>
-          <h1 className="text-xl font-bold mb-2">Сначала зарегистрируйся на сайте</h1>
-          <p className="text-sm text-[var(--t-3)] max-w-sm mb-6">
-            Зарегистрируйся на PocketOption по нашей ссылке и привяжи Trader ID.
-            Открой сайт, пройди регистрацию, потом возвращайся в Mini App — мы тебя
-            узнаем по Telegram.
-          </p>
+          <h1 className="text-xl font-bold mb-2">Войди через Telegram</h1>
+          <div className="text-sm text-[var(--t-3)] max-w-sm mb-6 space-y-2">
+            <p>
+              1. Нажми кнопку ниже → войди через Telegram на нашем сайте.
+            </p>
+            <p>
+              2. Открой PocketOption по нашей реф-ссылке и привяжи Trader ID.
+            </p>
+            <p>
+              3. Вернись сюда — Mini App узнает тебя автоматически.
+            </p>
+          </div>
           <a
-            href={(process.env["NEXT_PUBLIC_APP_URL"] ?? "") + "/register"}
+            href={loginUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold text-sm"
           >
-            Открыть регистрацию
+            <Send size={16} />
+            Войти через Telegram
           </a>
+          <p className="text-[11px] text-[var(--t-3)] mt-4 max-w-xs">
+            После входа вернись в Telegram и снова открой Mini App.
+          </p>
         </>
       )}
     </div>
