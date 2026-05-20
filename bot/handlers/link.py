@@ -48,12 +48,26 @@ async def cmd_link(message: Message, state: FSMContext) -> None:
     await state.set_state(LinkPo.waiting_for_id)
 
 
+@router.message(LinkPo.waiting_for_id, Command("cancel"))
+async def cmd_cancel_in_link(message: Message, state: FSMContext) -> None:
+    """Handle /cancel while waiting for PO trader ID."""
+    await state.clear()
+    await message.answer("Привязка отменена. Вернись когда будет готов — /link.")
+
+
 @router.message(LinkPo.waiting_for_id, F.text)
 async def receive_id(message: Message, state: FSMContext) -> None:
     candidate = (message.text or "").strip()
+    # Catch any other command sent while in state (safety net)
+    if candidate.startswith("/"):
+        await state.clear()
+        await message.answer(
+            "Привязка отменена. Используй /link чтобы начать заново.",
+        )
+        return
     if not PO_ID_RE.match(candidate):
         await message.answer(
-            "Неверный формат. Жду только цифры, 4–12 знаков. /cancel чтобы отменить.",
+            "Жду только цифры (4–12 знаков). Нажми «❌ Отменить» или /cancel чтобы выйти.",
         )
         return
 
@@ -88,27 +102,25 @@ async def receive_id(message: Message, state: FSMContext) -> None:
         ref_code = user.referral_code if user else "??"
         ref_link = f"https://t.me/{bot_info.username}?start=ref_{ref_code}"
         await message.answer(
-            f"<b>✅ Готово — обучение пройдено</b>\n"
+            f"<b>✅ Готово — PocketOption привязан!</b>\n"
             f"\n"
-            f"PocketOption ID: <code>{candidate}</code>\n"
-            f"Текущий тир: <b>T0 · Обычная</b> — безлимит OTC-сигналов\n"
+            f"Trader ID: <code>{candidate}</code>\n"
+            f"Уровень: <b>Обычный</b> — OTC-сигналы\n"
             f"\n"
-            f"Как только PocketOption пришлёт нам postback о твоём первом депозите ≥ $20 — "
-            f"тир обновится до <b>T1 · Pro</b> (все типы + индикаторы) и я напишу сюда.\n"
+            f"Сигналы будут приходить сюда автоматически.\n"
+            f"Внесёшь депозит ≥ $20 — уровень поднимется до <b>Про</b> "
+            f"(OTC + биржа + Elite + графики с индикаторами).\n"
             f"\n"
-            f"Попробуй первый сигнал — нажми «📊 Сигнал» внизу.\n"
-            f"\n"
-            f"Реф-ссылка (5% sub-affiliate с FTD друзей):\n"
+            f"Реф-ссылка (5% с FTD приглашённых):\n"
             f"<code>{ref_link}</code>"
             + verified_msg,
             parse_mode=ParseMode.HTML,
         )
     else:
         await message.answer(
-            f"<b>Привязано.</b>\n\n"
+            f"<b>✅ Привязано.</b>\n\n"
             f"PocketOption ID: <code>{candidate}</code>\n"
-            f"Tier пересчитается, как только PocketOption пришлёт нам postback "
-            f"о депозите."
+            f"Уровень обновится автоматически после депозита на PocketOption."
             + verified_msg,
             parse_mode=ParseMode.HTML,
         )

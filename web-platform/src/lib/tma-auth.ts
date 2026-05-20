@@ -17,7 +17,8 @@ import { verifyInitData, type TmaUser } from "@/lib/telegram-initdata";
 
 export type TmaSession =
   | { ok: true; userId: string; tgId: number; tgUser: TmaUser }
-  | { ok: false; reason: "no_init_data" | "invalid_init_data" | "no_account"; tgId?: number };
+  | { ok: false; reason: "no_init_data" | "invalid_init_data" }
+  | { ok: false; reason: "no_account"; tgId: number; tgUser: TmaUser };
 
 export async function authTmaRequest(req: NextRequest): Promise<TmaSession> {
   const botToken = process.env["TELEGRAM_LOGIN_BOT_TOKEN"];
@@ -37,7 +38,7 @@ export async function authTmaRequest(req: NextRequest): Promise<TmaSession> {
     where: { telegramId: BigInt(tgId) },
     select: { id: true },
   });
-  if (!user) return { ok: false, reason: "no_account", tgId };
+  if (!user) return { ok: false, reason: "no_account", tgId, tgUser: verified.user };
 
   return { ok: true, userId: user.id, tgId, tgUser: verified.user };
 }

@@ -1,16 +1,15 @@
 /**
- * POST /api/tma/register — surface the current Mini App user.
+ * POST /api/tma/register — auto-register or return existing Mini App user.
  *
- * v6b: returns `po_required` when the Telegram-verified caller has no User
- * row yet, instead of silently creating one. New users must complete the
- * PO-gated /register flow on the website first; the Mini App is for already-
- * registered users.
+ * If no User row matches the Telegram ID, creates one from the verified
+ * Telegram profile so the Mini App works immediately without a separate
+ * website registration step.
  *
  * Returns:
- *   200 → { ok: true, userId }
+ *   200 → { ok: true, userId, isNew?: true }
  *   401 → { error: "invalid_init_data" | "no_init_data" | "not_configured" }
- *   403 → { error: "po_required" }
  */
+import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyInitData } from "@/lib/telegram-initdata";
@@ -44,5 +43,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, userId: existing.id, alreadyExisted: true });
   }
 
-  return NextResponse.json({ error: "po_required" }, { status: 403 });
+  // Auto-create from Telegram identity.
+  const referralCode = randomBytes(6).toString("base64url");
+  const tgUser = verified.user;
+  try {
+    const newUser = await prisma.user.create({
+      data: {
+        telegramId: tgId,
+        firstName: tgUser.first_name,
+        lastName: tgUser.last_name ?? null,
+        username: tgUser.username ?? null,
+        referralCode,
+        tier: 0,
+      },
+      select: { id: true },
+    });
+    return NextResponse.json({ ok: true, userId: newUser.id, isNew: true });
+  } catch {
+    const race = await prisma.user.findUnique({ where: { telegramId: tgId } });
+    if (race) return NextResponse.json({ ok: true, userId: race.id });
+    return NextResponse.json({ error: "create_failed" }, { status: 500 });
+  }
 }

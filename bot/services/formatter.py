@@ -67,15 +67,21 @@ USER_TIER_DEPOSIT_THRESHOLDS = {
 
 def format_otc_minimal(signal: Signal) -> str:
     """
-    Ultra-minimal OTC signal for Обычный users.
-    Only what matters: pair, direction, expiration.
+    OTC signal caption for Обычный users.
+    Clean and readable: pair, direction, expiry, confidence bar.
     """
     arrow = DIRECTION_ARROW[signal.direction]
+    conf_bar_full = round(signal.confidence / 10)
+    conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
     return (
-        f"<b>{signal.pair}</b>\n"
+        f"<b>OTC СИГНАЛ</b>\n"
         f"\n"
+        f"<b>{signal.pair}</b>\n"
         f"{arrow} <b>{signal.direction}</b>  ·  {signal.expiration}\n"
         f"\n"
+        f"Confidence: <b>{signal.confidence}%</b>  {conf_bar}\n"
+        f"\n"
+        f"Объём: 1–3% депозита\n"
         f"#otc #signal"
     )
 

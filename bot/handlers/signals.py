@@ -1,142 +1,26 @@
 """
-/signal — manual signal request.
-
-2-tier access model (mirrors the web platform, v2.2):
-  - T0 (PO-аккаунт привязан, депо ниже порога): безлим OTC-сигналов,
-    остальные банды и индикаторы недоступны.
-  - T1+ (депозит ≥ $20): безлимит + все банды (OTC + биржа + Elite),
-    расширенные графики (RSI/MACD/EMA/volume).
-
-Admin-published signals (очередь из /api/bot/sync) выдаются в первую
-очередь, если ничего нет — фоллбэк на локальный генератор. Если настроен
-price-feed, входная цена берётся из real-market data.
-Ключи T2/T3/T4 сохранены на случай возврата многоуровневой модели.
+Signal result feedback callbacks (Win/Loss buttons on signal messages).
+The /signal command is removed — signals are delivered automatically by scheduler.
 """
 import logging
 
 from aiogram import F, Router
 from aiogram.filters import Command
-from aiogram.types import (
-    BufferedInputFile,
-    CallbackQuery,
-    Message,
-)
-from aiogram.enums import ParseMode
+from aiogram.types import CallbackQuery, Message
 
-from config import settings
-from database.db import (
-    get_user,
-    increment_signals_received,
-    record_signal_result,
-    save_signal,
-)
-from database.models import Signal
-from services import web_sync
+from database.db import get_user, record_signal_result
 from services.achievements import check_and_award
-from services.formatter import format_signal_caption
-from services.imagegen import make_signal_chart, make_signal_chart_advanced
-from services.keyboards import signal_inline
-from services.price_feed import fetch_price
-from services.signal_generator import generate_signal
 
 logger = logging.getLogger(__name__)
 router = Router()
 
-# T0 видит только OTC-сигналы (никаких индикаторов / биржи / Elite).
-# T1+ видит все банды. T2/T3/T4 свёрнуты в T1, пока многоуровневые перки
-# отключены порогами (см. web-platform/src/lib/tier.ts).
-TIER_TO_KIND = {0: "otc", 1: "otc", 2: "exchange", 3: "elite", 4: "elite"}
-TIER_ALLOWED_BANDS = {
-    0: ["otc"],
-    1: ["otc", "exchange", "elite"],
-    2: ["otc", "exchange", "elite"],
-    3: ["otc", "exchange", "elite"],
-    4: ["otc", "exchange", "elite"],
-}
-
-
-def _admin_signal_to_local(payload: dict) -> Signal:
-    """Map the JSON payload from /api/bot/sync.signals[*] to a local Signal."""
-    return Signal(
-        pair=payload.get("pair", ""),
-        direction=payload.get("direction", "CALL"),
-        expiration=payload.get("expiration", "1m"),
-        confidence=int(payload.get("confidence", 80)),
-        signal_type=payload.get("type", "manual"),
-        tier=payload.get("tier", "otc"),
-        analysis=payload.get("analysis"),
-        result="pending",
-    )
-
 
 @router.message(Command("signal"))
 async def cmd_signal(message: Message) -> None:
-    user = await get_user(message.from_user.id)
-    if user is None:
-        await message.answer("Сначала /start.")
-        return
-
-    # Безлим: T0 даёт OTC-сигналы без капа, T1+ — всё без капа.
-    # Админ может временно приостановить любой тир, выставив daily limit = 0
-    # в /admin/bot-config (back-compat с legacy `dailyLimits`).
-    daily_limit = web_sync.get_daily_limit(user.tier)
-    if daily_limit == 0:
-        await message.answer(
-            "<b>Сигналы временно приостановлены</b>\n"
-            "Админ выставил паузу для твоего тира. Попробуй позже.",
-            parse_mode=ParseMode.HTML,
-        )
-        return
-
-    # 1) Try admin-published signal first.
-    allowed_bands = TIER_ALLOWED_BANDS.get(user.tier, ["otc"])
-    admin_payload = web_sync.next_pending_admin_signal(allowed_bands)
-    if admin_payload is not None:
-        signal = _admin_signal_to_local(admin_payload)
-        admin_entry = admin_payload.get("entryPrice")
-        entry_price = float(admin_entry) if admin_entry is not None else None
-        if entry_price is None:
-            entry_price = await fetch_price(signal.pair)
-        logger.info(
-            "Sending ADMIN signal to user %s: %s %s",
-            message.from_user.id, signal.pair, signal.direction,
-        )
-    else:
-        # 2) Fall back to local random generator.
-        kind = TIER_TO_KIND.get(user.tier, "otc")
-        signal = generate_signal(kind)
-        entry_price = await fetch_price(signal.pair)
-
-    signal_id = await save_signal(signal)
-    signal.id = signal_id
-    await increment_signals_received(user.telegram_id)
-
-    # OTC signals: text-only — there is no real-market price feed
-    # for synthetic PocketOption pairs, so a chart would be misleading.
-    # `demo` принимаем для обратной совместимости со старыми сигналами в очереди.
-    is_otc_band = (signal.tier or "otc") in {"otc", "demo"}
-    if is_otc_band:
-        body = format_signal_caption(signal, settings.pocket_option_url, None)
-        await message.answer(
-            body,
-            parse_mode=ParseMode.HTML,
-            reply_markup=signal_inline(settings.pocket_option_url, signal_id),
-            disable_web_page_preview=True,
-        )
-        return
-
-    features = web_sync.get_tier_features(user.tier)
-    if features.get("chartIndicators"):
-        chart_bytes = make_signal_chart_advanced(signal)
-    else:
-        chart_bytes = make_signal_chart(signal)
-    caption = format_signal_caption(signal, settings.pocket_option_url, entry_price)
-
-    await message.answer_photo(
-        BufferedInputFile(chart_bytes, filename=f"signal_{signal_id}.png"),
-        caption=caption,
-        parse_mode=ParseMode.HTML,
-        reply_markup=signal_inline(settings.pocket_option_url, signal_id),
+    """Signals are delivered automatically — inform the user."""
+    await message.answer(
+        "Сигналы приходят автоматически — ничего нажимать не нужно.\n"
+        "Просто жди: как только появится хороший вход, я пришлю его сюда 📊",
     )
 
 
