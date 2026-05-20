@@ -232,14 +232,14 @@ async def get_referral_count(telegram_id: int) -> int:
 
 
 async def get_top_users(limit: int = 10) -> list[User]:
-    """Top users by win rate (min 5 signals)."""
+    """Top users by tier then signals received (matches web leaderboard ranking)."""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             """
             SELECT * FROM users
-            WHERE (wins + losses) >= 5
-            ORDER BY (CAST(wins AS REAL) / (wins + losses)) DESC, wins DESC
+            WHERE signals_received > 0
+            ORDER BY tier DESC, signals_received DESC
             LIMIT ?
             """,
             (limit,),

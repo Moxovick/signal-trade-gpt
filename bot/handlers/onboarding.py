@@ -133,8 +133,8 @@ async def cb_cancel(query: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     if query.message:
         await query.message.edit_text(
-            "Обучение отложено. Запустишь заново — /onboard.\n"
-            "Доступно меню снизу: получить демо-сигнал, посмотреть тир, привязать позже.",
+            "Обучение отложено. Запустишь заново командой /onboard.\n"
+            "Привязать ID можно в любой момент — /link.",
         )
     await query.answer()
 

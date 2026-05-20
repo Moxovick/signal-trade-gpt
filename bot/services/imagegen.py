@@ -474,8 +474,8 @@ def make_tier_card(tier: int, deposit: float, next_threshold: int | None) -> byt
     img = _gradient_bg(w, h)
     draw = ImageDraw.Draw(img)
 
-    # 2-tier модель: T0 = DEMO, T1+ = PRO. T2-T4 на запас под возврат многоуровневой.
-    tier_names = {0: "DEMO", 1: "PRO", 2: "PRO", 3: "PRO", 4: "PRO"}
+    # 2-tier модель: T0 = Обычный, T1+ = Про.
+    tier_names = {0: "ОБЫЧНЫЙ", 1: "ПРО", 2: "ПРО", 3: "ПРО", 4: "ПРО"}
     name = tier_names.get(tier, "—")
 
     # Big tier label
@@ -507,7 +507,7 @@ def make_tier_card(tier: int, deposit: float, next_threshold: int | None) -> byt
     draw.text((bar_x, bar_y - 50), f"Депозит: ${deposit:,.0f}", font=txt_f, fill=TEXT_1)
     if next_threshold:
         remaining = max(0, next_threshold - int(deposit))
-        next_name = "Pro" if tier == 0 else f"T{tier + 1}"
+        next_name = "Про" if tier == 0 else f"T{tier + 1}"
         draw.text(
             (bar_x, bar_y + 30),
             f"До {next_name}: ещё ${remaining:,}",
@@ -798,26 +798,26 @@ def make_leaderboard_table(
     d.text((60, 50), "ЛИДЕРБОРД", font=f_sub, fill=GOLD_SOFT)
     d.text((60, 80), "ТОП ТРЕЙДЕРОВ", font=f_title, fill=GOLD)
 
-    # Header
+    # Header — tier + signals ranking (mirrors web leaderboard)
     cols = [
         ("#", 60, 70),
-        ("ТРЕЙДЕР", 130, 380),
-        ("ВИНРЕЙТ", 510, 160),
-        ("СДЕЛКИ", 670, 160),
-        ("ТИР", 830, 100),
+        ("ТРЕЙДЕР", 130, 500),
+        ("СИГНАЛОВ", 640, 200),
+        ("УРОВЕНЬ", 850, 200),
     ]
     head_y = 200
     for label, x, _w in cols:
         d.text((x, head_y), label, font=f_head, fill=TEXT_2)
     d.line([(60, head_y + 30), (w - 60, head_y + 30)], fill=_hex(GOLD_SOFT), width=1)
 
+    tier_labels = {0: "Обычный", 1: "Про", 2: "Про", 3: "Про", 4: "Про"}
     rank_marks = {1: "Ⅰ", 2: "Ⅱ", 3: "Ⅲ"}  # roman numerals as medal stand-in
     row_y = head_y + 50
     row_h = 44
     # alpha-capable layer for highlight
     hl = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     hd = ImageDraw.Draw(hl)
-    for rank, name, wr, wins, losses, tier in rows[:10]:
+    for rank, name, _wr, signals, _losses, tier in rows[:10]:
         is_me = highlight_rank is not None and rank == highlight_rank
         if is_me:
             hd.rounded_rectangle(
@@ -829,13 +829,12 @@ def make_leaderboard_table(
             )
         rank_lbl = rank_marks.get(rank, f"{rank}")
         d.text((cols[0][1], row_y), rank_lbl, font=f_rank, fill=GOLD if rank <= 3 else TEXT_1)
-        if len(name) > 22:
-            name = name[:21] + "…"
+        if len(name) > 28:
+            name = name[:27] + "…"
         d.text((cols[1][1], row_y + 4), name, font=f_row, fill=TEXT_1)
-        wr_color = GREEN if wr >= 55 else RED if wr < 45 else GOLD
-        d.text((cols[2][1], row_y + 4), f"{wr:.1f}%", font=f_row, fill=wr_color)
-        d.text((cols[3][1], row_y + 4), f"{wins}/{wins + losses}", font=f_row, fill=TEXT_2)
-        d.text((cols[4][1], row_y + 4), f"T{tier}", font=f_row, fill=GOLD)
+        d.text((cols[2][1], row_y + 4), str(signals), font=f_row, fill=GOLD)
+        tier_lbl = tier_labels.get(tier, "Про")
+        d.text((cols[3][1], row_y + 4), tier_lbl, font=f_row, fill=GOLD if tier >= 1 else TEXT_2)
         row_y += row_h
 
     img = Image.alpha_composite(img.convert("RGBA"), hl).convert("RGB")
@@ -866,9 +865,11 @@ def make_settings_card(
     d.text((60, 80), "ПРОФИЛЬ", font=f_title, fill=GOLD)
     d.text((60, 160), name, font=f_val, fill=TEXT_1)
 
+    _tier_names = {0: "Обычный", 1: "Про", 2: "Про", 3: "Про", 4: "Про"}
+    tier_label = _tier_names.get(tier, "Про")
     # Rows
     rows = [
-        ("Текущий тир", f"T{tier}", GOLD),
+        ("Уровень доступа", tier_label, GOLD),
         (
             "PocketOption ID",
             po_trader_id if po_trader_id else "не привязан",

@@ -259,7 +259,7 @@ async def cmd_leaderboard(message: Message) -> None:
     top = await get_top_users(limit=10)
     if not top:
         await message.answer(
-            "Лидерборд пока пуст — нужно минимум 5 сигналов с результатом, "
+            "Лидерборд пока пуст — нужно хотя бы 1 полученный сигнал, "
             "чтобы попасть в рейтинг.",
             parse_mode=ParseMode.HTML,
         )
@@ -267,14 +267,13 @@ async def cmd_leaderboard(message: Message) -> None:
     my_rank: int | None = None
     rows = []
     for i, u in enumerate(top, start=1):
-        total = u.wins + u.losses
-        wr = u.wins / total * 100 if total else 0.0
         name = u.username or u.first_name
-        rows.append((i, name, wr, u.wins, u.losses, u.tier))
+        # Pass signals_received as "wins" slot; losses/wr unused in new rendering.
+        rows.append((i, name, 0.0, u.signals_received, 0, u.tier))
         if u.telegram_id == message.from_user.id:
             my_rank = i
 
-    caption = "<b>🏆 Лидерборд — топ по винрейту</b>"
+    caption = "<b>🏆 Лидерборд — топ по активности</b>"
     if my_rank:
         caption += f"\n\nТы на <b>{my_rank} месте</b>."
     try:
@@ -288,10 +287,9 @@ async def cmd_leaderboard(message: Message) -> None:
         logger.warning("Could not render leaderboard: %s", exc)
         lines = [caption, ""]
         medals = ["🥇", "🥈", "🥉"]
-        for rank, name, wr, w, _l, t in rows:
+        tier_names = {0: "Обычный", 1: "Про"}
+        for rank, name, _wr, w, _l, t in rows:
             prefix = medals[rank - 1] if rank <= 3 else f"{rank}."
-            total = w + _l
-            lines.append(
-                f"{prefix} <b>{name}</b> · <code>{wr:.1f}%</code> ({w}/{total}) · T{t}"
-            )
+            tier_label = tier_names.get(t, "Про")
+            lines.append(f"{prefix} <b>{name}</b> · {tier_label}")
         await message.answer("\n".join(lines), parse_mode=ParseMode.HTML)
