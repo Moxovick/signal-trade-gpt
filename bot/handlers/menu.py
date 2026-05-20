@@ -14,7 +14,6 @@ from aiogram.types import Message
 from aiogram.enums import ParseMode
 
 from database.db import get_referral_count, get_user, toggle_notifications
-from services.formatter import format_tier_info
 from services.imagegen import (
     make_achievements_grid,
     make_help_sheet,
@@ -22,16 +21,13 @@ from services.imagegen import (
     make_referral_card,
     make_settings_card,
     make_stats_card,
-    make_tier_card,
 )
 from services.keyboards import (
     BTN_HELP,
     BTN_LINK,
     BTN_REF,
     BTN_SETTINGS,
-    BTN_SIGNAL,
     BTN_STATS,
-    BTN_TIER,
     MAIN_MENU,
     referral_inline,
 )
@@ -40,39 +36,7 @@ from aiogram.types import BufferedInputFile
 logger = logging.getLogger(__name__)
 router = Router()
 
-
-# Each button forwards to /command equivalents using bot.send_message-like flows.
-# We reuse the underlying handler logic by importing them.
-
-from handlers.signals import cmd_signal as do_signal  # noqa: E402
-from handlers.stats import cmd_stats as do_stats  # noqa: E402
 from handlers.link import cmd_link as do_link  # noqa: E402
-
-
-@router.message(F.text == BTN_SIGNAL)
-async def btn_signal(message: Message) -> None:
-    await do_signal(message)
-
-
-@router.message(F.text == BTN_TIER)
-async def btn_tier(message: Message) -> None:
-    user = await get_user(message.from_user.id)
-    if user is None:
-        await message.answer("Сначала /start.")
-        return
-    text = format_tier_info(user.tier, user.po_trader_id, user.signals_received)
-    # 2-tier модель: следующая планка после T0 — $20 (T1). Дальше Pro уже максимальный.
-    next_threshold = {0: 20, 1: None, 2: None, 3: None, 4: None}[user.tier] if user.tier <= 4 else None
-    try:
-        card = make_tier_card(user.tier, user.deposit_total, next_threshold)
-        await message.answer_photo(
-            BufferedInputFile(card, filename=f"tier_{user.tier}.png"),
-            caption=text,
-            parse_mode=ParseMode.HTML,
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Could not render tier card: %s", exc)
-        await message.answer(text, parse_mode=ParseMode.HTML)
 
 
 @router.message(F.text == BTN_LINK)
@@ -125,14 +89,15 @@ async def btn_ref(message: Message) -> None:
 async def btn_stats(message: Message) -> None:
     user = await get_user(message.from_user.id)
     if user is None:
-        await do_stats(message)
+        await message.answer("Сначала /start.")
         return
     total = user.wins + user.losses
     winrate = (user.wins / total * 100) if total else 0.0
+    level = "Про" if user.tier >= 1 else "Обычный"
     caption = (
         "<b>📊 Твоя статистика</b>\n"
         "\n"
-        f"<b>Тир:</b> T{user.tier}  ·  <b>Депозит:</b> ${user.deposit_total:,.0f}\n"
+        f"<b>Уровень:</b> {level}  ·  <b>Депозит:</b> ${user.deposit_total:,.0f}\n"
         f"<b>Сигналов получено:</b> {user.signals_received}\n"
         f"<b>Wins / Losses:</b> {user.wins} / {user.losses}\n"
         f"<b>Винрейт:</b> {winrate:.1f}%"
@@ -153,7 +118,7 @@ async def btn_stats(message: Message) -> None:
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Could not render stats card: %s", exc)
-        await do_stats(message)
+        await message.answer(caption, parse_mode=ParseMode.HTML)
 
 
 @router.message(F.text == BTN_SETTINGS)
@@ -187,17 +152,14 @@ async def btn_settings(message: Message) -> None:
 
 
 HELP_COMMANDS: list[tuple[str, str]] = [
-    ("/start", "приветствие и онбординг"),
-    ("/signal", "получить торговый сигнал"),
-    ("/tier", "твой тир и прогресс"),
-    ("/stats", "личная статистика"),
-    ("/ref", "реферальная ссылка + QR"),
+    ("/start", "приветствие и меню"),
     ("/link", "привязать PocketOption ID"),
+    ("/ref", "реферальная ссылка + QR"),
     ("/achievements", "коллекция достижений"),
     ("/leaderboard", "топ-10 трейдеров"),
     ("/calc", "калькулятор сделки"),
     ("/notifications", "вкл/выкл уведомлений"),
-    ("/settings", "настройки профиля"),
+    ("/help", "эта справка"),
 ]
 
 

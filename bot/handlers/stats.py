@@ -1,6 +1,9 @@
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
+from aiogram.enums import ParseMode
+
+from database.db import get_user
 
 router = Router()
 
@@ -16,7 +19,8 @@ async def cmd_ref(message: Message) -> None:
         return
 
     bot_info = await message.bot.get_me()
-    referral_link = f"https://t.me/{bot_info.username}?start={user.referral_code}"
+    # Must use ref_ prefix so /start handler parses it correctly.
+    referral_link = f"https://t.me/{bot_info.username}?start=ref_{user.referral_code}"
     await message.answer(
         f"<b>Твоя реферальная ссылка:</b>\n"
         f"<code>{referral_link}</code>\n"
