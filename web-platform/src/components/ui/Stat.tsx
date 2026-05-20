@@ -20,19 +20,26 @@ export function Stat({ value, label, delta, icon, className, tone }: Props) {
   return (
     <div
       className={[
-        "rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-5",
-        "transition-all duration-300 hover:border-[var(--b-hard)] hover:shadow-[var(--glow-gold-soft)]",
+        "rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] px-4 py-4",
+        "transition-all duration-200 hover:border-[var(--b-hard)]",
         className ?? "",
       ].join(" ")}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="text-xs uppercase tracking-wider text-[var(--t-3)]">
+      {/* Label + icon row */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="text-[12px] font-medium text-[var(--t-2)] leading-tight">
           {label}
         </div>
-        {icon && <div className="text-[var(--brand-gold)]">{icon}</div>}
+        {icon && (
+          <div className="text-[var(--brand-gold)] opacity-80 shrink-0">
+            {icon}
+          </div>
+        )}
       </div>
+
+      {/* Value */}
       <div
-        className="mt-3 text-3xl font-bold"
+        className="text-2xl font-bold leading-none"
         style={{
           fontFamily: "var(--font-jetbrains)",
           color: tone ? TONE_COLOR[tone] : "var(--t-1)",
@@ -40,10 +47,14 @@ export function Stat({ value, label, delta, icon, className, tone }: Props) {
       >
         {value}
       </div>
+
+      {/* Delta */}
       {delta && (
         <div
-          className="mt-2 text-xs font-semibold"
-          style={{ color: delta.positive === false ? "var(--red)" : "var(--green)" }}
+          className="mt-2 text-[12px] font-medium"
+          style={{
+            color: delta.positive === false ? "var(--red)" : "var(--green)",
+          }}
         >
           {delta.positive === false ? "▼" : "▲"} {delta.value}
         </div>

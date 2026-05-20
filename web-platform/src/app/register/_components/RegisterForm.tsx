@@ -31,6 +31,16 @@ export function RegisterForm() {
   const refFromUrl = params.get("ref") ?? "";
   const errFromUrl = params.get("err");
 
+  // Also read stg_ref cookie as fallback (set by /r/[code] short-link)
+  const refFromCookie =
+    typeof document !== "undefined"
+      ? document.cookie
+          .split("; ")
+          .find((r) => r.startsWith("stg_ref="))
+          ?.split("=")[1] ?? ""
+      : "";
+  const initialRef = refFromUrl || refFromCookie;
+
   const [state, action, isPending] = useActionState(registerAction, INITIAL);
   const [autoLoginError, setAutoLoginError] = useState<string | null>(null);
   const lastHandledRef = useRef<string | null>(null);
@@ -152,7 +162,7 @@ export function RegisterForm() {
       <input
         type="text"
         name="referralCode"
-        defaultValue={refFromUrl}
+        defaultValue={initialRef}
         placeholder="Реферальный код (если кто-то пригласил)"
         className={FIELD}
       />

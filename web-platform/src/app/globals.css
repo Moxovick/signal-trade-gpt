@@ -22,17 +22,17 @@
 
   /* Foreground / text */
   --t-1: #f5ecd9;
-  --t-2: #b6a586;
-  --t-3: #6e604c;
+  --t-2: #c4b496;
+  --t-3: #8a7a68;
 
   /* Status — warm-tinted to harmonise with gold */
   --green: #8ee06b;
   --red: #ff6b3d;
 
   /* Borders */
-  --b-soft: rgba(212, 160, 23, 0.08);
-  --b-hard: rgba(212, 160, 23, 0.30);
-  --b-glow: rgba(212, 160, 23, 0.55);
+  --b-soft: rgba(212, 160, 23, 0.12);
+  --b-hard: rgba(212, 160, 23, 0.35);
+  --b-glow: rgba(212, 160, 23, 0.60);
 
   /* Shadows / glow */
   --glow-gold: 0 0 32px rgba(212, 160, 23, 0.35);

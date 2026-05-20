@@ -12,6 +12,10 @@ import {
   CircleDollarSign,
   Activity,
   ArrowRight,
+  UserPlus,
+  Mail,
+  Wallet,
+  Crown,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
@@ -29,6 +33,9 @@ export default async function AdminDashboard() {
     totalSignals,
     poAccounts,
     poVerified,
+    poEmailConfirmed,
+    poRegistered,
+    poProUsers,
     revShareAggregate,
     postbacksLast24,
     tierDist,
@@ -38,6 +45,13 @@ export default async function AdminDashboard() {
     prisma.signal.count(),
     prisma.pocketOptionAccount.count(),
     prisma.pocketOptionAccount.count({ where: { status: "verified" } }),
+    prisma.pocketOptionAccount.count({
+      where: { emailConfirmedAt: { not: null } },
+    }),
+    prisma.pocketOptionAccount.count({
+      where: { registeredAt: { not: null } },
+    }),
+    prisma.user.count({ where: { tier: { gte: 1 } } }),
     prisma.pocketOptionAccount.aggregate({
       _sum: { totalRevShare: true, totalDeposit: true },
     }),
@@ -84,6 +98,98 @@ export default async function AdminDashboard() {
           value={postbacksLast24.toString()}
         />
       </div>
+
+      <Card padding="lg">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold">Воронка PocketOption</h2>
+          <span className="text-xs text-[var(--t-3)]">
+            от лида до Pro
+          </span>
+        </div>
+        {(() => {
+          const stages: Array<{
+            label: string;
+            icon: typeof UserPlus;
+            count: number;
+          }> = [
+            { label: "Лидов всего", icon: Users, count: totalUsers },
+            { label: "Регистрация в PO", icon: UserPlus, count: poRegistered },
+            { label: "Подтвердили email", icon: Mail, count: poEmailConfirmed },
+            { label: "Первый депозит", icon: Wallet, count: poVerified },
+            { label: "Тир Pro (T1+)", icon: Crown, count: poProUsers },
+          ];
+          const max = stages.reduce((m, s) => Math.max(m, s.count), 0);
+          return (
+            <div className="space-y-2">
+              {stages.map((stage, i) => {
+                const prev = i === 0 ? null : stages[i - 1];
+                const conv =
+                  prev && prev.count > 0
+                    ? Math.round((stage.count / prev.count) * 100)
+                    : null;
+                const pct = max > 0 ? (stage.count / max) * 100 : 0;
+                const Icon = stage.icon;
+                return (
+                  <div key={stage.label} className="flex items-center gap-3">
+                    <div className="w-44 shrink-0 flex items-center gap-2 text-sm text-[var(--t-2)]">
+                      <Icon
+                        size={14}
+                        className="text-[var(--brand-gold)] shrink-0"
+                      />
+                      <span className="truncate">{stage.label}</span>
+                    </div>
+                    <div className="flex-1 h-6 rounded-lg bg-[var(--bg-2)] overflow-hidden relative">
+                      <div
+                        className="h-full transition-all duration-500"
+                        style={{
+                          width: `${pct}%`,
+                          background:
+                            i === stages.length - 1
+                              ? "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))"
+                              : "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold))",
+                          opacity: 0.85,
+                        }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-end pr-3">
+                        <span
+                          className="text-xs font-semibold tabular-nums text-[var(--t-1)] mix-blend-screen"
+                          style={{ fontFamily: "var(--font-jetbrains)" }}
+                        >
+                          {stage.count}
+                        </span>
+                      </div>
+                    </div>
+                    <div
+                      className="w-14 shrink-0 text-right text-xs tabular-nums"
+                      style={{ fontFamily: "var(--font-jetbrains)" }}
+                    >
+                      {conv != null ? (
+                        <span
+                          className={
+                            conv >= 50
+                              ? "text-[var(--green)]"
+                              : conv >= 20
+                              ? "text-[var(--brand-gold)]"
+                              : "text-[var(--t-3)]"
+                          }
+                        >
+                          {conv}%
+                        </span>
+                      ) : (
+                        <span className="text-[var(--t-3)]">—</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <p className="text-[11px] text-[var(--t-3)] pt-2">
+                Конверсия — отношение к предыдущему шагу. Шаги PO заполняются
+                по приходу постбэков (registration → email_confirm → ftd).
+              </p>
+            </div>
+          );
+        })()}
+      </Card>
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card padding="lg">

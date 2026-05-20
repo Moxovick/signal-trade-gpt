@@ -43,7 +43,6 @@ export function TierBadge({ tier, size = "md", showLabel = true, className }: Pr
       style={{ background: c.bg, color: c.fg, border: `1px solid ${c.border}` }}
       data-tier={tier}
     >
-      <span style={{ fontFamily: "var(--font-jetbrains)" }}>T{tier}</span>
       {showLabel && <span>{label}</span>}
     </span>
   );

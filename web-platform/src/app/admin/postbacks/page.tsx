@@ -6,6 +6,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
+import { BindUnmatched } from "./_components/BindUnmatched";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ const EVENT_COLOR: Record<string, { bg: string; fg: string }> = {
   ftd: { bg: "rgba(142,224,107,0.10)", fg: "var(--green)" },
   redeposit: { bg: "rgba(245,232,192,0.10)", fg: "var(--t-1)" },
   commission: { bg: "rgba(212,160,23,0.18)", fg: "var(--brand-gold-bright)" },
+  withdrawal: { bg: "rgba(220,90,90,0.10)", fg: "var(--red)" },
 };
 
 export default async function PostbacksPage() {
@@ -49,48 +51,56 @@ export default async function PostbacksPage() {
             const user = p.poAccount?.user;
             const userLabel = user?.firstName ?? user?.username ?? user?.email;
             const colors = EVENT_COLOR[p.eventType] ?? { bg: "var(--bg-2)", fg: "var(--t-2)" };
+            const isUnmatched = !p.poAccountId;
             return (
-              <div
-                key={p.id}
-                className="px-5 py-3 grid grid-cols-12 gap-4 items-center text-sm"
-              >
-                <div
-                  className="col-span-2 text-xs text-[var(--t-3)]"
-                  style={{ fontFamily: "var(--font-jetbrains)" }}
-                >
-                  {new Date(p.receivedAt).toLocaleString("ru-RU")}
-                </div>
-                <div className="col-span-2">
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full"
-                    style={{ background: colors.bg, color: colors.fg }}
+              <div key={p.id} className="px-5 py-3 space-y-2">
+                <div className="grid grid-cols-12 gap-4 items-center text-sm">
+                  <div
+                    className="col-span-2 text-xs text-[var(--t-3)]"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
                   >
-                    {p.eventType}
-                  </span>
+                    {new Date(p.receivedAt).toLocaleString("ru-RU")}
+                  </div>
+                  <div className="col-span-2">
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-full"
+                      style={{ background: colors.bg, color: colors.fg }}
+                    >
+                      {p.eventType}
+                    </span>
+                  </div>
+                  <div
+                    className="col-span-2 text-[var(--brand-gold)]"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
+                    #{p.poTraderId ?? "—"}
+                  </div>
+                  <div className="col-span-3 truncate">
+                    {userLabel ?? (
+                      <span className="text-[var(--red)] text-xs">unmatched</span>
+                    )}
+                  </div>
+                  <div
+                    className="col-span-2 text-right tabular-nums"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
+                    {p.amount ? `$${Number(p.amount).toLocaleString("en-US")}` : "—"}
+                  </div>
+                  <div
+                    className="col-span-1 text-right text-xs text-[var(--t-3)] truncate"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
+                    {p.clickId ? p.clickId.slice(0, 6) : "—"}
+                  </div>
                 </div>
-                <div
-                  className="col-span-2 text-[var(--brand-gold)]"
-                  style={{ fontFamily: "var(--font-jetbrains)" }}
-                >
-                  #{p.poTraderId ?? "—"}
-                </div>
-                <div className="col-span-3 truncate">
-                  {userLabel ?? (
-                    <span className="text-[var(--red)] text-xs">unmatched</span>
-                  )}
-                </div>
-                <div
-                  className="col-span-2 text-right tabular-nums"
-                  style={{ fontFamily: "var(--font-jetbrains)" }}
-                >
-                  {p.amount ? `$${Number(p.amount).toLocaleString("en-US")}` : "—"}
-                </div>
-                <div
-                  className="col-span-1 text-right text-xs text-[var(--t-3)] truncate"
-                  style={{ fontFamily: "var(--font-jetbrains)" }}
-                >
-                  {p.clickId ? p.clickId.slice(0, 6) : "—"}
-                </div>
+                {isUnmatched && (
+                  <div className="pl-[16.6667%]">
+                    <BindUnmatched
+                      postbackId={p.id}
+                      defaultTraderId={p.poTraderId}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}

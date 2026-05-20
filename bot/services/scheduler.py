@@ -19,9 +19,10 @@ from aiogram.enums import ParseMode
 from aiogram.types import BufferedInputFile
 
 from config import settings
-from database.db import get_total_signals, save_signal
-from services.formatter import format_signal_caption
-from services.imagegen import make_signal_chart
+from database.db import get_total_signals, get_users_with_notifications, save_signal
+from database.models import Signal
+from services.formatter import format_otc_minimal, format_pro_signal_caption, format_signal_caption
+from services.imagegen import make_signal_chart_advanced
 from services.signal_generator import generate_signal, random_interval_seconds
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,52 @@ logger = logging.getLogger(__name__)
 def _is_working_hours() -> bool:
     now_utc = datetime.now(timezone.utc)
     return settings.working_hours_start <= now_utc.hour < settings.working_hours_end
+
+
+async def _broadcast_to_users(bot: Bot, signal: Signal, chart_bytes: bytes | None) -> None:
+    """
+    Push signal to every opted-in user, tier-filtered.
+
+    - OTC signals  → all users (Обычный + Про), minimal text format.
+    - Pro signals  → only Про users (tier >= 1), rich caption + advanced chart.
+    """
+    try:
+        users = await get_users_with_notifications()
+    except Exception:  # noqa: BLE001
+        logger.exception("Failed to fetch users for broadcast")
+        return
+
+    tier = signal.tier or "otc"
+    is_pro_signal = tier not in {"otc", "demo"}
+
+    sent = 0
+    for user in users:
+        # Про signals are exclusive to Про users.
+        if is_pro_signal and user.tier == 0:
+            continue
+        try:
+            if chart_bytes is not None and user.tier >= 1:
+                caption = format_pro_signal_caption(signal, settings.pocket_option_url)
+                await bot.send_photo(
+                    chat_id=user.telegram_id,
+                    photo=BufferedInputFile(chart_bytes, filename="signal.png"),
+                    caption=caption,
+                    parse_mode=ParseMode.HTML,
+                )
+            else:
+                text = format_otc_minimal(signal)
+                await bot.send_message(
+                    chat_id=user.telegram_id,
+                    text=text,
+                    parse_mode=ParseMode.HTML,
+                    disable_web_page_preview=True,
+                )
+            sent += 1
+        except Exception:  # noqa: BLE001
+            # User may have blocked the bot — skip silently.
+            logger.debug("Cannot deliver to telegram_id=%s", user.telegram_id)
+
+    logger.info("Broadcast complete: %d/%d users reached", sent, len(users))
 
 
 async def signal_loop(bot: Bot) -> None:
@@ -50,32 +97,42 @@ async def signal_loop(bot: Bot) -> None:
             sid = await save_signal(signal)
             signal.id = sid
 
-            caption = format_signal_caption(signal, settings.pocket_option_url)
+            tier = signal.tier or "otc"
+            is_otc = tier in {"otc", "demo"}
 
-            # OTC channel posts: text-only, no chart.
-            if (signal.tier or "otc") in {"otc", "demo"}:
+            if is_otc:
+                # OTC → channel: minimal text, no chart.
+                channel_text = format_signal_caption(signal, settings.pocket_option_url)
                 await bot.send_message(
                     chat_id=settings.channel_id,
-                    text=caption,
+                    text=channel_text,
                     parse_mode=ParseMode.HTML,
                     disable_web_page_preview=True,
                 )
+                chart_bytes: bytes | None = None
             else:
-                chart_bytes = make_signal_chart(signal)
+                # Pro signal → channel: advanced chart + rich caption.
+                chart_bytes = make_signal_chart_advanced(signal)
+                channel_caption = format_signal_caption(signal, settings.pocket_option_url)
                 await bot.send_photo(
                     chat_id=settings.channel_id,
                     photo=BufferedInputFile(chart_bytes, filename=f"signal_{sid}.png"),
-                    caption=caption,
+                    caption=channel_caption,
                     parse_mode=ParseMode.HTML,
                 )
+
             logger.info(
-                "Signal sent: %s %s exp=%s conf=%d%% kind=%s",
+                "Signal sent to channel: %s %s exp=%s conf=%d%% kind=%s",
                 signal.pair,
                 signal.direction,
                 signal.expiration,
                 signal.confidence,
                 kind,
             )
+
+            # Push directly to individual users (tier-filtered).
+            await _broadcast_to_users(bot, signal, chart_bytes)
+
         except Exception:  # noqa: BLE001
             logger.exception("Failed to send signal")
 

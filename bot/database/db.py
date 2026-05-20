@@ -246,3 +246,14 @@ async def get_top_users(limit: int = 10) -> list[User]:
         ) as cursor:
             rows = await cursor.fetchall()
             return [_row_to_user(r) for r in rows]
+
+
+async def get_users_with_notifications() -> list[User]:
+    """All users that have notifications enabled — used for per-user signal broadcast."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute(
+            "SELECT * FROM users WHERE notifications_enabled = 1"
+        ) as cursor:
+            rows = await cursor.fetchall()
+            return [_row_to_user(r) for r in rows]

@@ -1,46 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import {
-  ArrowLeft,
-  BarChart3,
-  Bot,
-  Layers,
-  Send,
-  Sparkles,
-  Activity,
-  Settings as SettingsIcon,
-  Users,
-  Wallet,
-  HelpCircle,
-  MessageSquare,
-  Trophy,
-  FileText,
-  Award,
-  CandlestickChart,
-  type LucideIcon,
-} from "lucide-react";
-import { Logo } from "@/components/ui/Logo";
-
-type NavItem = { href: string; label: string; icon: LucideIcon };
-
-const adminNav: NavItem[] = [
-  { href: "/admin", label: "Обзор", icon: BarChart3 },
-  { href: "/admin/po-accounts", label: "PO-аккаунты", icon: Layers },
-  { href: "/admin/postbacks", label: "Postbacks", icon: Activity },
-  { href: "/admin/perks", label: "Перки бота", icon: Sparkles },
-  { href: "/admin/users", label: "Пользователи", icon: Users },
-  { href: "/admin/signals", label: "Сигналы", icon: Send },
-  { href: "/admin/assets", label: "Активы (пары)", icon: CandlestickChart },
-  { href: "/admin/bot-config", label: "Конфиг бота", icon: Bot },
-  { href: "/admin/deposits", label: "Депозиты", icon: Wallet },
-  { href: "/admin/faq", label: "FAQ", icon: HelpCircle },
-  { href: "/admin/reviews", label: "Отзывы", icon: MessageSquare },
-  { href: "/admin/giveaway", label: "Розыгрыш", icon: Trophy },
-  { href: "/admin/achievements", label: "Достижения", icon: Award },
-  { href: "/admin/legal", label: "Правовые", icon: FileText },
-  { href: "/admin/settings", label: "Настройки", icon: SettingsIcon },
-];
+import { prisma } from "@/lib/prisma";
+import { AdminSidebar } from "./_components/AdminSidebar";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -48,39 +9,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/dashboard");
   }
 
+  // Live counter for the "Postback-лог" badge — unmatched rows need attention.
+  const unmatched = await prisma.postback.count({
+    where: { poAccountId: null },
+  });
+
   return (
     <div className="flex min-h-screen relative z-10">
-      <aside className="w-60 shrink-0 border-r border-[var(--b-soft)] flex flex-col glass">
-        <div className="p-5 border-b border-[var(--b-soft)]">
-          <Logo size="sm" />
-          <div
-            className="text-xs text-[var(--brand-gold)] font-semibold mt-3 tracking-widest"
-            style={{ fontFamily: "var(--font-bebas)" }}
-          >
-            ADMIN PANEL
-          </div>
-        </div>
-        <nav className="p-3 space-y-0.5 flex-1">
-          {adminNav.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-[var(--t-2)] hover:text-[var(--brand-gold)] hover:bg-[var(--bg-2)] transition-colors"
-            >
-              <Icon size={16} />
-              {label}
-            </Link>
-          ))}
-        </nav>
-        <div className="p-3 border-t border-[var(--b-soft)]">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-[var(--t-3)] hover:text-[var(--t-1)] transition-colors"
-          >
-            <ArrowLeft size={14} /> Назад к кабинету
-          </Link>
-        </div>
-      </aside>
+      <AdminSidebar badges={{ unmatched }} />
       <main className="flex-1 p-6 md:p-8 overflow-y-auto">{children}</main>
     </div>
   );

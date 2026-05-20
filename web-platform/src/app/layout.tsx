@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope, JetBrains_Mono, Bebas_Neue } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { AnimatedBackground } from "@/components/effects/AnimatedBackground";
 import { Preloader } from "@/components/effects/Preloader";
@@ -42,8 +43,10 @@ export default function RootLayout({
       className={`${manrope.variable} ${jetbrains.variable} ${bebas.variable} h-full`}
     >
       <head>
-        {/* Inline theme loader — runs before body paints to avoid flash */}
-        <script
+        {/* Theme initializer — before-interactive so no flash on load */}
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('stg_theme')||'dark';var eff=t==='auto'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.dataset.theme=eff;}catch(e){}})();`,
           }}

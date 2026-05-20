@@ -108,9 +108,9 @@ export function distanceToNextTier(
  * 5-уровневую модель, лейблы можно вернуть к Pro / Pro+ / VIP и т.п.
  */
 export const TIER_LABELS: Record<number, string> = {
-  0: "Free",
-  1: "Pro",
-  2: "Pro",
-  3: "Pro",
-  4: "Pro",
+  0: "Обычный",
+  1: "Про",
+  2: "Про",
+  3: "Про",
+  4: "Про",
 };

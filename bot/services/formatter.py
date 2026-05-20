@@ -32,29 +32,30 @@ def _render_admin_template(template: str, signal: Signal, entry_price: float | N
     )
 
 TIER_HEADERS = {
-    "demo": "<b>ДЕМО-СИГНАЛ</b>",
+    # `demo` остаётся для обратной совместимости со старыми сигналами в очереди.
+    "demo": "<b>OTC СИГНАЛ</b>",
     "otc": "<b>OTC СИГНАЛ</b>",
     "exchange": "<b>БИРЖЕВОЙ СИГНАЛ</b>",
     "elite": "<b>ELITE СИГНАЛ</b>",
 }
 
 TIER_BADGES = {
-    "demo": "DEMO",
+    "demo": "OTC",
     "otc": "OTC",
     "exchange": "EXCHANGE",
     "elite": "ELITE",
 }
 
 TIER_TAGS = {
-    "demo": "#demo",
+    "demo": "#otc",
     "otc": "#otc",
     "exchange": "#exchange",
     "elite": "#elite",
 }
 
-# 2-tier модель: T0 (Демо) и T1+ (Pro). Ключи T2-T4 сохраненыдля
-# бэк-компата (см. web-platform/src/lib/tier.ts) и отрисовки imagegenа.
-USER_TIER_NAMES = {0: "Демо", 1: "Pro", 2: "Pro", 3: "Pro", 4: "Pro"}
+# 2-tier модель v2.2: T0 (Обычный, безлим OTC) и T1+ (Про, безлим всё).
+# Ключи T2-T4 сохранены для бэк-компата (см. web-platform/src/lib/tier.ts).
+USER_TIER_NAMES = {0: "Обычный", 1: "Про", 2: "Про", 3: "Про", 4: "Про"}
 _UNREACHABLE_THRESHOLD = 9_007_199_254_740_991
 USER_TIER_DEPOSIT_THRESHOLDS = {
     1: 20,
@@ -64,13 +65,30 @@ USER_TIER_DEPOSIT_THRESHOLDS = {
 }
 
 
-def format_signal_caption(signal: Signal, pocket_option_url: str, entry_price: float | None = None) -> str:
+def format_otc_minimal(signal: Signal) -> str:
     """
-    Compact caption to attach under a signal-chart image.
-    Telegram captions are capped at 1024 chars; we keep it well under.
+    Ultra-minimal OTC signal for Обычный users.
+    Only what matters: pair, direction, expiration.
+    """
+    arrow = DIRECTION_ARROW[signal.direction]
+    return (
+        f"<b>{signal.pair}</b>\n"
+        f"\n"
+        f"{arrow} <b>{signal.direction}</b>  ·  {signal.expiration}\n"
+        f"\n"
+        f"#otc #signal"
+    )
 
-    If admin has set a custom signal template via /admin/bot-config, we render
-    it instead of the legacy hard-coded layout.
+
+def format_pro_signal_caption(
+    signal: Signal,
+    pocket_option_url: str,
+    entry_price: float | None = None,
+) -> str:
+    """
+    Full rich caption for Про users (exchange / elite signals).
+    Attaches under the advanced chart image.
+    Telegram captions are capped at 1024 chars; we stay well under.
     """
     admin_template = web_sync.get_signal_template()
     if admin_template:
@@ -79,32 +97,44 @@ def format_signal_caption(signal: Signal, pocket_option_url: str, entry_price: f
     arrow = DIRECTION_ARROW[signal.direction]
     pair_tag = signal.pair.replace("/", "").replace(" ", "").lower()
     dir_tag = DIRECTION_TAG[signal.direction]
-    tier = signal.tier or "otc"
-    badge = TIER_BADGES.get(tier, "OTC")
-    tier_tag = TIER_TAGS.get(tier, "#otc")
+    tier = signal.tier or "exchange"
+    header = TIER_HEADERS.get(tier, TIER_HEADERS["exchange"])
+    tier_tag = TIER_TAGS.get(tier, "#exchange")
     conf_bar_full = round(signal.confidence / 10)
     conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
 
     lines = [
-        f"<b>{signal.pair}</b>  ·  {signal.direction} {arrow}  ·  <code>{badge}</code>",
+        f"{header}",
         "",
-        f"<b>Экспирация:</b> {signal.expiration}",
-        f"<b>AI Confidence:</b> {signal.confidence}%  {conf_bar}",
+        f"<b>{signal.pair}</b>  ·  {arrow} {signal.direction}  ·  {signal.expiration}",
+        "",
+        f"Confidence: <b>{signal.confidence}%</b>  {conf_bar}",
     ]
+    if entry_price is not None:
+        lines.append(f"Вход: <code>{entry_price:.5f}</code>")
     if signal.analysis:
-        lines.append(f"<b>Анализ:</b> <i>{signal.analysis}</i>")
-    lines.extend(
-        [
-            "",
-            "Объём: 1–3% депозита",
-            "",
-            f"#signal #{pair_tag} #{dir_tag} {tier_tag}",
-        ]
-    )
+        lines.extend(["", f"<i>{signal.analysis}</i>"])
+    lines.extend([
+        "",
+        "Объём: 1–3% депозита",
+        f"#{pair_tag} #{dir_tag} {tier_tag} #signal",
+    ])
     return "\n".join(lines)
 
 
+def format_signal_caption(signal: Signal, pocket_option_url: str, entry_price: float | None = None) -> str:
+    """
+    Auto-selects format: minimal for OTC, rich Pro caption for exchange/elite.
+    Used when posting to the channel (all tiers see it there).
+    """
+    tier = signal.tier or "otc"
+    if tier in {"otc", "demo"}:
+        return format_otc_minimal(signal)
+    return format_pro_signal_caption(signal, pocket_option_url, entry_price)
+
+
 def format_signal(signal: Signal, pocket_option_url: str) -> str:
+    """Legacy full-text format (used by /signal command fallback)."""
     arrow = DIRECTION_ARROW[signal.direction]
     pair_tag = signal.pair.replace("/", "").replace(" ", "").lower()
     dir_tag = DIRECTION_TAG[signal.direction]
@@ -113,6 +143,12 @@ def format_signal(signal: Signal, pocket_option_url: str) -> str:
     badge = TIER_BADGES.get(tier, "OTC")
     tier_tag = TIER_TAGS.get(tier, "#otc")
 
+    if tier in {"otc", "demo"}:
+        return format_otc_minimal(signal)
+
+    conf_bar_full = round(signal.confidence / 10)
+    conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
+
     lines = [
         f"{header}",
         "━━━━━━━━━━━━━━━",
@@ -120,21 +156,21 @@ def format_signal(signal: Signal, pocket_option_url: str) -> str:
         f"<b>Пара:</b> {signal.pair}",
         f"<b>Направление:</b> {signal.direction} {arrow}",
         f"<b>Экспирация:</b> {signal.expiration}",
-        f"<b>AI Confidence:</b> {signal.confidence}%",
+        f"<b>Confidence:</b> {signal.confidence}%  {conf_bar}",
         f"<b>Тип:</b> {badge}",
     ]
 
     if signal.analysis:
         lines.append("")
-        lines.append(f"<b>Анализ:</b> {signal.analysis}")
+        lines.append(f"<b>Анализ:</b> <i>{signal.analysis}</i>")
 
     lines.extend([
         "",
         "━━━━━━━━━━━━━━━",
-        "Рекомендуемый объём: 1-3% депозита",
-        f'<a href="{pocket_option_url}">Открыть Pocket Option →</a>',
+        "Объём: 1–3% депозита",
+        f'<a href="{pocket_option_url}">Открыть PocketOption →</a>',
         "",
-        f"#signal #{pair_tag} #{dir_tag} {tier_tag}",
+        f"#{pair_tag} #{dir_tag} {tier_tag} #signal",
     ])
 
     return "\n".join(lines)
@@ -150,9 +186,9 @@ def format_stats(total_signals: int, total_users: int) -> str:
         f"<b>Пользователей:</b> {total_users:,}\n"
         f"<b>Режим работы:</b> 24/7 (OTC) / 08:00-22:00 UTC (биржа)\n"
         f"\n"
-        f"<b>Tier-перки:</b>\n"
-        f"  • <b>T0 · Демо</b> — 2 пробных сигнала за всё время, OTC\n"
-        f"  • <b>T1 · Pro ≥ $20</b> — безлимит, все типы (OTC + биржа + Elite),"
+        f"<b>Уровни доступа:</b>\n"
+        f"  • <b>Обычный</b> — OTC-сигналы, личный кабинет\n"
+        f"  • <b>Про</b> (депозит ≥ $20) — всё: OTC + биржа + Elite,"
         f" индикаторы и ранний доступ\n"
         f"\n"
         f"<i>Данные обновляются в режиме реального времени</i>"
@@ -168,15 +204,16 @@ def format_welcome(first_name: str, referral_code: str, bot_username: str) -> st
         f"Доступ открывается регистрацией по нашей ссылке, не подпиской.\n"
         f"\n"
         f"<b>Как начать:</b>\n"
-        f"1. Открой счёт PocketOption по нашей реф-ссылке: /link\n"
+        f"1. Открой счёт PocketOption по нашей реф-ссылке (/link)\n"
         f"   и пришли свой PocketOption Trader ID.\n"
-        f"2. Сразу после привязки доступен базовый T0 (2 демо-сигнала).\n"
-        f"3. Внесёшь депозит ≥ $20 — автоматически откроется безлимит на все сигналы.\n"
+        f"2. Сразу после привязки ты получаешь уровень <b>Обычный</b> — OTC-сигналы.\n"
+        f"3. Внесёшь депозит ≥ $20 — автоматически откроется уровень <b>Про</b>:\n"
+        f"   OTC + биржа + Elite, индикаторы и ранний доступ.\n"
         f"\n"
         f"<b>Команды:</b>\n"
-        f"/tier — твой текущий уровень и лимиты\n"
+        f"/tier — твой текущий уровень\n"
         f"/link — привязать аккаунт PocketOption\n"
-        f"/signal — запросить демо-сигнал (T0)\n"
+        f"/signal — запросить сигнал\n"
         f"/stats — статистика платформы\n"
         f"/ref — реферальная программа\n"
         f"\n"
@@ -191,35 +228,29 @@ def format_welcome(first_name: str, referral_code: str, bot_username: str) -> st
 
 def format_tier_info(tier: int, po_trader_id: str | None, signals_received: int) -> str:
     name = USER_TIER_NAMES.get(tier, "—")
+    is_pro = tier >= 1
 
-    # 2-тирная модель: T0 → следующая планка $20 (T1). T1+ — максимум, апгрейда нет.
-    next_tier = 1 if tier == 0 else None
-    next_threshold = USER_TIER_DEPOSIT_THRESHOLDS.get(next_tier) if next_tier else None
+    # 2-тирная модель: tier 0 → следующая планка $20. tier 1+ — максимум.
+    next_threshold = USER_TIER_DEPOSIT_THRESHOLDS.get(1) if not is_pro else None
 
-    daily_limits = {
-        0: "2 сигнала за всё время (демо)",
-        1: "безлимит",
-        2: "безлимит",
-        3: "безлимит",
-        4: "безлимит",
-    }
+    signal_access = "OTC + биржа + Elite" if is_pro else "только OTC"
 
     lines = [
-        f"<b>Твой tier: T{tier} · {name}</b>",
+        f"<b>Твой уровень: {name}</b>",
         "",
-        f"<b>Лимит сигналов:</b> {daily_limits.get(tier, 'безлимит')}",
+        f"<b>Доступные сигналы:</b> {signal_access}",
         f"<b>Сигналов получено:</b> {signals_received}",
     ]
 
     if po_trader_id:
         lines.append(f"<b>PocketOption ID:</b> <code>{po_trader_id}</code>")
     else:
-        lines.append("<b>PocketOption:</b> не привязан — пришли /link")
+        lines.append("<b>PocketOption:</b> не привязан — /link")
 
     if next_threshold:
         lines.append("")
         lines.append(
-            f"<i>До T{next_tier} · Pro: первый депозит ≥ ${next_threshold} на PocketOption.</i>"
+            f"<i>До уровня Про: первый депозит ≥ ${next_threshold} на PocketOption.</i>"
         )
 
     return "\n".join(lines)

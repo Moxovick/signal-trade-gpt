@@ -9,10 +9,9 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAccessReport } from "@/lib/access";
-import { TIER_LABELS } from "@/lib/tier";
 import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
-import { TierBadge } from "@/components/ui/TierBadge";
+import { buildReferralLink } from "@/lib/pocketoption";
 import {
   TrendingUp,
   TrendingDown,
@@ -23,12 +22,11 @@ import {
   Activity,
 } from "lucide-react";
 import { LiveSignalHero, type LiveSignal } from "./_components/LiveSignalHero";
+import { TierHero } from "./_components/TierHero";
 
 const BOT_URL =
   process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/traitsignaltsest_bot";
 
-// 2-tier access map: T0 — только OTC (3/день, см. lib/access.ts).
-// T1+ — все типы безлимитом. Ключи про запас под случай возврата многоуровневой модели.
 const TIER_ACCESS: Record<number, ("otc" | "exchange" | "elite")[]> = {
   0: ["otc"],
   1: ["otc", "exchange", "elite"],
@@ -37,30 +35,40 @@ const TIER_ACCESS: Record<number, ("otc" | "exchange" | "elite")[]> = {
   4: ["otc", "exchange", "elite"],
 };
 
-const TIER_BAND_LABELS: Record<string, { label: string; color: string }> = {
-  otc: { label: "OTC", color: "#8888ff" },
-  exchange: { label: "Биржа", color: "#00e5a0" },
-  elite: { label: "Elite", color: "#f5c518" },
+const TIER_BAND_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+  otc:      { label: "OTC",   color: "#8888ff", bg: "rgba(136,136,255,0.10)" },
+  exchange: { label: "Биржа", color: "#8ee06b", bg: "rgba(142,224,107,0.10)" },
+  elite:    { label: "Elite", color: "#d4a017", bg: "rgba(212,160,23,0.10)"  },
 };
+
+const PRO_THRESHOLD = 20;
 
 export default async function SignalsPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
   const userId = session.user.id;
 
-  const report = await getAccessReport(userId);
+  const [report, poAccount, referralUrl] = await Promise.all([
+    getAccessReport(userId),
+    prisma.pocketOptionAccount.findUnique({ where: { userId } }),
+    buildReferralLink(userId),
+  ]);
   if (!report) return null;
   const tier = report.tier;
   const allowedBands = TIER_ACCESS[tier] ?? ["otc"];
 
   const signals = await prisma.signal.findMany({
-    where: { tier: { in: allowedBands }, isActive: true },
+    where: { isActive: true },
     orderBy: { createdAt: "desc" },
     take: 60,
   });
 
   const liveSignal: LiveSignal | null = (() => {
-    const pending = signals.find((s) => s.result === "pending");
+    const pending = signals.find(
+      (s) =>
+        s.result === "pending" &&
+        allowedBands.includes(s.tier as "otc" | "exchange" | "elite"),
+    );
     if (!pending) return null;
     return {
       id: pending.id,
@@ -69,50 +77,64 @@ export default async function SignalsPage() {
       expiration: pending.expiration,
       confidence: pending.confidence,
       tier: pending.tier,
-      entryPrice:
-        pending.entryPrice == null ? null : Number(pending.entryPrice),
+      entryPrice: pending.entryPrice == null ? null : Number(pending.entryPrice),
       analysis: pending.analysis,
       createdAtIso: pending.createdAt.toISOString(),
     };
   })();
 
-  const wins = signals.filter((s) => s.result === "win").length;
-  const losses = signals.filter((s) => s.result === "loss").length;
+  const visibleSignals = signals.filter((s) =>
+    allowedBands.includes(s.tier as "otc" | "exchange" | "elite"),
+  );
+  const wins = visibleSignals.filter((s) => s.result === "win").length;
+  const losses = visibleSignals.filter((s) => s.result === "loss").length;
   const completed = wins + losses;
   const winrate = completed > 0 ? Math.round((wins / completed) * 100) : 0;
 
+  const depositTotal = poAccount?.totalDeposit
+    ? Number(poAccount.totalDeposit)
+    : 0;
+
   return (
     <div className="space-y-6">
-      <div className="text-center pt-2 pb-1">
-        <p className="text-[11px] uppercase tracking-[0.32em] text-[var(--brand-gold)] mb-2">
-          Главная функция
-        </p>
-        <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
-          Сигналы
-        </h1>
-        <p className="text-[var(--t-2)] mt-3 max-w-xl mx-auto text-sm">
-          Доступ зависит от твоего тира. Открыто:{" "}
-          <span className="text-[var(--t-1)] font-semibold">
-            {allowedBands
-              .map((b) => TIER_BAND_LABELS[b]?.label ?? b)
-              .join(" · ")}
-          </span>
-          .
-        </p>
-        <div className="flex items-center justify-center gap-2 mt-3">
-          <TierBadge tier={tier} size="sm" />
-          <span className="text-xs text-[var(--t-2)]">{TIER_LABELS[tier]}</span>
+      {/* Page title */}
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--brand-gold)] mb-1">
+            Торговые сигналы
+          </p>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Лента</h1>
         </div>
+        <Link
+          href={BOT_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs text-[var(--t-2)] hover:text-[var(--brand-gold)] transition-colors border border-[var(--b-soft)] hover:border-[var(--b-hard)] rounded-lg px-3 py-2"
+        >
+          <Send size={12} />
+          Telegram
+          <ExternalLink size={10} />
+        </Link>
       </div>
 
-      {/* Live signal hero */}
+      {/* Tier hero */}
+      <TierHero
+        tier={tier}
+        poTraderId={poAccount?.poTraderId ?? null}
+        poStatus={poAccount?.status ?? null}
+        referralUrl={referralUrl}
+        depositTotal={depositTotal}
+        proThreshold={PRO_THRESHOLD}
+      />
+
+      {/* Live signal */}
       <LiveSignalHero signal={liveSignal} />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat
-          icon={<Activity size={18} />}
-          label="Сегодня получено"
+          icon={<Activity size={16} />}
+          label="Сегодня"
           value={
             report.dailySignalLimit == null
               ? `${report.signalsTodayUsed}`
@@ -120,7 +142,7 @@ export default async function SignalsPage() {
           }
         />
         <Stat
-          icon={<TrendingUp size={18} />}
+          icon={<TrendingUp size={16} />}
           label="Винрейт"
           value={completed > 0 ? `${winrate}%` : "—"}
           delta={
@@ -130,154 +152,185 @@ export default async function SignalsPage() {
           }
         />
         <Stat
-          icon={<Send size={18} />}
+          icon={<Send size={16} />}
           label="Всего в ленте"
           value={signals.length.toString()}
         />
         <Stat
-          icon={<CircleDot size={18} />}
+          icon={<CircleDot size={16} />}
           label="В работе"
           value={signals.filter((s) => s.result === "pending").length.toString()}
         />
       </div>
 
-      {/* Free → Pro upsell */}
-      {tier === 0 && (
-        <Card padding="md" className="border-[var(--brand-gold)]/40">
-          <div className="flex items-center gap-3">
-            <Lock size={18} className="text-[var(--brand-gold)] shrink-0" />
-            <div className="flex-1 text-sm">
-              <span className="text-[var(--t-1)] font-semibold">
-                Сейчас ты на Free — 3 OTC-сигнала в день.
-              </span>{" "}
-              <span className="text-[var(--t-2)]">
-                От $20 депозита на PocketOption откроется Pro — все сигналы без
-                лимита.
-              </span>
-            </div>
-            <Link
-              href="/po/refer"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-semibold text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] inline-flex items-center gap-1 shrink-0"
-            >
-              Открыть PO <ExternalLink size={12} />
-            </Link>
-          </div>
-        </Card>
-      )}
-
-      {/* Feed */}
-      <Card padding="lg">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Последние 60</h2>
-          <Link
-            href={BOT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] inline-flex items-center gap-1"
-          >
-            Получать в Telegram <ExternalLink size={12} />
-          </Link>
+      {/* Signal feed */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-[var(--t-1)]">
+            Последние сигналы
+          </h2>
+          <span className="text-xs text-[var(--t-3)]">
+            {signals.length} записей
+          </span>
         </div>
+
         {signals.length === 0 ? (
-          <p className="text-[var(--t-2)] text-center py-12">
-            На твоём тире пока нет активных сигналов. Скоро будут!
-          </p>
+          <Card padding="lg">
+            <p className="text-[var(--t-2)] text-center py-8">
+              Пока нет активных сигналов. Скоро будут!
+            </p>
+          </Card>
         ) : (
-          <div className="divide-y divide-[var(--b-soft)]">
+          <div className="space-y-2">
             {signals.map((s) => {
+              const locked = !allowedBands.includes(
+                s.tier as "otc" | "exchange" | "elite",
+              );
               const isCall = s.direction === "CALL";
               const conf = Number(s.confidence ?? 0);
-              const resultColor =
-                s.result === "win"
-                  ? "var(--green)"
-                  : s.result === "loss"
-                  ? "var(--red)"
-                  : "var(--t-3)";
+              const band = TIER_BAND_LABELS[s.tier];
+
               const resultLabel =
                 s.result === "win"
                   ? "WIN"
                   : s.result === "loss"
                   ? "LOSS"
                   : "...";
-              const band = TIER_BAND_LABELS[s.tier];
+
+              const resultColor =
+                s.result === "win"
+                  ? "var(--green)"
+                  : s.result === "loss"
+                  ? "var(--red)"
+                  : "var(--t-3)";
+
+              const directionColor = locked
+                ? "var(--t-3)"
+                : isCall
+                ? "var(--green)"
+                : "var(--red)";
+
+              const directionBg = locked
+                ? "var(--bg-2)"
+                : isCall
+                ? "rgba(142,224,107,0.10)"
+                : "rgba(255,107,61,0.10)";
+
               return (
                 <div
                   key={s.id}
-                  className="grid grid-cols-12 items-center gap-3 py-3"
+                  className="flex items-center gap-3 rounded-xl border border-[var(--b-soft)] bg-[var(--bg-1)] px-4 py-3 transition-colors hover:border-[var(--b-hard)] hover:bg-[var(--bg-2)]"
+                  style={{
+                    opacity: locked ? 0.6 : 1,
+                    borderLeft: `3px solid ${locked ? "transparent" : directionColor}`,
+                  }}
+                  title={locked ? "Открой Pro — депозит от $20 на PocketOption" : undefined}
                 >
-                  {/* Direction */}
-                  <div className="col-span-1">
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center"
-                      style={{
-                        background: isCall
-                          ? "rgba(0, 229, 160, 0.12)"
-                          : "rgba(255, 107, 61, 0.12)",
-                        color: isCall ? "var(--green)" : "var(--red)",
-                      }}
-                    >
-                      {isCall ? (
-                        <TrendingUp size={16} />
-                      ) : (
-                        <TrendingDown size={16} />
-                      )}
-                    </div>
+                  {/* Direction icon */}
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: directionBg, color: directionColor }}
+                  >
+                    {locked ? (
+                      <Lock size={14} />
+                    ) : isCall ? (
+                      <TrendingUp size={16} />
+                    ) : (
+                      <TrendingDown size={16} />
+                    )}
                   </div>
-                  {/* Pair + tier band */}
-                  <div className="col-span-4 min-w-0">
+
+                  {/* Pair + band */}
+                  <div className="flex-1 min-w-0">
                     <div
                       className="text-sm font-semibold truncate"
-                      style={{ fontFamily: "var(--font-jetbrains)" }}
+                      style={{
+                        fontFamily: "var(--font-jetbrains)",
+                        filter: locked ? "blur(4px)" : undefined,
+                        userSelect: locked ? "none" : undefined,
+                      }}
                     >
                       {s.pair}
                     </div>
-                    {band && (
-                      <div
-                        className="text-xs"
-                        style={{ color: band.color }}
-                      >
-                        {band.label}
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {band && (
+                        <span
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md uppercase tracking-wide"
+                          style={{ color: band.color, background: band.bg }}
+                        >
+                          {band.label}
+                        </span>
+                      )}
+                      {locked && (
+                        <span className="text-[10px] uppercase tracking-wider text-[var(--brand-gold)]">
+                          Pro
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {/* Confidence bar */}
-                  <div className="col-span-4">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-[var(--bg-2)]">
-                        <div
-                          className="h-full"
-                          style={{
-                            width: `${conf}%`,
-                            background:
-                              conf >= 90
-                                ? "var(--brand-gold)"
-                                : conf >= 80
-                                ? "var(--green)"
-                                : "var(--t-2)",
-                          }}
-                        />
-                      </div>
+
+                  {/* Confidence */}
+                  <div className="hidden sm:flex flex-col gap-1 w-24 shrink-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-[var(--t-3)]">Сила</span>
                       <span
-                        className="text-xs font-mono w-9 text-right"
-                        style={{ fontFamily: "var(--font-jetbrains)" }}
+                        className="text-[11px] font-semibold tabular-nums"
+                        style={{
+                          fontFamily: "var(--font-jetbrains)",
+                          filter: locked ? "blur(4px)" : undefined,
+                          color:
+                            conf >= 90
+                              ? "var(--brand-gold)"
+                              : conf >= 80
+                              ? "var(--green)"
+                              : "var(--t-2)",
+                        }}
                       >
                         {conf}%
                       </span>
                     </div>
+                    <div className="h-1 rounded-full bg-[var(--bg-3)] overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: locked ? "100%" : `${conf}%`,
+                          background: locked
+                            ? "var(--bg-3)"
+                            : conf >= 90
+                            ? "var(--brand-gold)"
+                            : conf >= 80
+                            ? "var(--green)"
+                            : "var(--t-2)",
+                        }}
+                      />
+                    </div>
                   </div>
-                  {/* Result */}
-                  <div className="col-span-2 text-right">
-                    <span
-                      className="text-xs font-semibold"
-                      style={{ color: resultColor }}
-                    >
-                      {resultLabel}
-                    </span>
+
+                  {/* Result / lock CTA */}
+                  <div className="shrink-0 w-16 text-right">
+                    {locked ? (
+                      <Link
+                        href={referralUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] uppercase tracking-wider text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] inline-flex items-center gap-0.5 transition-colors"
+                      >
+                        Открыть <ExternalLink size={9} />
+                      </Link>
+                    ) : (
+                      <span
+                        className="text-xs font-bold"
+                        style={{ color: resultColor }}
+                      >
+                        {resultLabel}
+                      </span>
+                    )}
                   </div>
+
                   {/* Time */}
-                  <div className="col-span-1 text-right text-xs text-[var(--t-3)]">
+                  <div className="shrink-0 w-10 text-right text-[11px] text-[var(--t-3)] tabular-nums hidden md:block"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
                     {new Date(s.createdAt).toLocaleTimeString("ru", {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -288,7 +341,7 @@ export default async function SignalsPage() {
             })}
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 }

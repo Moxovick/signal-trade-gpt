@@ -3,23 +3,13 @@
 /**
  * Server actions for /register.
  *
- * Access model:
- *  - Email + password are required to create the user row.
- *  - PocketOption Trader ID is optional. If supplied, we validate that the
- *    trader belongs to our partner network (via the Affiliate API) and bind
- *    the PO account immediately. Deposit size does NOT gate access — any
- *    trader registered through our referral link is admitted.
- *  - Users who skip the PO ID at signup are routed to /onboarding/po-id and
- *    must attach there before the dashboard layout lets them in.
- *
- * Tier semantics after this action:
- *  - T0 — PO account attached (any deposit, including $0). Demo / OTC access.
- *  - T1 — PO account attached AND totalDeposit >= TIER1_DEPOSIT_USD ($20).
- *
- * Why server actions: native browsers can submit `<form action={...}>` even
- * when JS hydration breaks, which makes signup more resilient.
+ * Referral attribution order:
+ *  1. Form field `referralCode` (pre-filled from ?ref= URL param or typed manually)
+ *  2. Cookie `stg_ref` (set by /r/[code] short-link, survives 30 days)
+ * After successful registration, the stg_ref cookie is cleared.
  */
 import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { generateReferralCode } from "@/lib/utils";
 import { fetchTraderInfo, isValidTraderIdFormat } from "@/lib/po-api";
@@ -44,7 +34,11 @@ export async function registerAction(
     .toLowerCase();
   const password = String(formData.get("password") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
-  const referralCode = String(formData.get("referralCode") ?? "").trim();
+  const formReferralCode = String(formData.get("referralCode") ?? "").trim();
+  // Cookie fallback: if form field is empty, try the stg_ref cookie (set by /r/[code])
+  const cookieStore = await cookies();
+  const cookieRef = cookieStore.get("stg_ref")?.value?.trim() ?? "";
+  const referralCode = formReferralCode || cookieRef;
   const nickname = String(formData.get("nickname") ?? "")
     .trim()
     .slice(0, 32);
@@ -189,6 +183,11 @@ export async function registerAction(
           },
         })
         .catch(() => undefined);
+    }
+
+    // Clear referral cookie after successful attribution
+    if (cookieRef) {
+      cookieStore.delete("stg_ref");
     }
 
     return {

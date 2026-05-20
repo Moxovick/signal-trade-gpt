@@ -1,13 +1,25 @@
 /**
  * PocketOption integration helpers.
  *
- * Reference docs:
- * - PocketOption Affiliate Postback 2.0 (delivered via partner UI):
- *   events = registration | email_confirm | ftd | redeposit | commission
+ * Postback flow (Pocket Partners → us):
+ *   PO sends a GET request to `/api/po/postback?...` with macro-substituted
+ *   query params. Supported macros (per Pocket Partners docs):
+ *     event       → registration | email_confirm | ftd | redeposit |
+ *                   commission | withdrawal
+ *     click_id    → User.id we placed into the ref link
+ *     trader_id   → PocketOption trader ID
+ *     sumdep      → deposit amount in USD (FTD/redeposit)
+ *     commission  → commission amount in USD
+ *     wdr_sum     → withdrawal amount in USD
+ *     status      → withdrawal status: new | processed | cancelled
+ *     site_id, cid, ac, sub_id1..5, country, device_type, os_version,
+ *     browser, promo, link_type, date_time — attribution / analytics.
  *
  * The integration is configured via SiteSettings (`po_referral_link_template`,
  * `po_partner_account`) so admins can change the ref link or sub-affiliate
- * percent without a redeploy.
+ * percent without a redeploy. The secret used to authenticate incoming
+ * postbacks lives in SiteSettings.po_postback_secret (preferred) or env
+ * POCKETOPTION_POSTBACK_SECRET (fallback).
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
@@ -18,104 +30,278 @@ import {
   type TierThresholds,
 } from "@/lib/tier";
 import { fetchTraderInfo, isValidTraderIdFormat } from "@/lib/po-api";
-import type { POAccountStatus } from "@/generated/prisma/enums";
+import { getPostbackSecret } from "@/lib/po-config";
+import type { POAccountStatus, WithdrawalStatus } from "@/generated/prisma/enums";
 
-export type RawPostback = {
-  event: string;
-  click_id?: string;
-  trader_id?: string;
-  amount?: string | number;
-  currency?: string;
-  email_confirmed?: boolean | string;
-  is_first_deposit?: boolean | string;
-  signature?: string;
-  /** Original raw body for re-hashing in tests. */
-  __raw?: string;
-};
+/** Canonical event types after alias normalisation. */
+export type PostbackEventName =
+  | "registration"
+  | "email_confirm"
+  | "ftd"
+  | "redeposit"
+  | "commission"
+  | "withdrawal";
 
 export type ParsedPostback = {
-  event: "registration" | "email_confirm" | "ftd" | "redeposit" | "commission";
+  event: PostbackEventName;
   clickId: string | null;
   poTraderId: string | null;
+  /** Normalised USD amount: sumdep (deposit) / commission / wdr_sum / amount. */
   amount: number | null;
   currency: string | null;
   isFirstDeposit: boolean;
+  /** PO doesn't actually sign requests, but kept for backward-compat tests. */
   signature: string | null;
-  /** dedupe key: SHA-256 of event+trader_id+amount+timestamp_minute. */
+  /** dedupe key: HMAC of event+trader_id+amount+click_id+minute_bucket. */
   dedupeKey: string;
   receivedAt: Date;
-  raw: unknown;
+  /** Original full query map, persisted to Postback.rawPayload. */
+  raw: Record<string, string>;
+  // Attribution / analytics fields.
+  siteId: string | null;
+  campaignId: string | null;
+  campaignName: string | null;
+  subId1: string | null;
+  subId2: string | null;
+  subId3: string | null;
+  subId4: string | null;
+  subId5: string | null;
+  country: string | null;
+  deviceType: string | null;
+  osVersion: string | null;
+  browser: string | null;
+  promo: string | null;
+  linkType: string | null;
+  eventDate: string | null;
+  withdrawalStatus: WithdrawalStatus | null;
 };
 
-const ALLOWED_EVENTS: ParsedPostback["event"][] = [
+const ALLOWED_EVENTS: readonly PostbackEventName[] = [
   "registration",
   "email_confirm",
   "ftd",
   "redeposit",
   "commission",
+  "withdrawal",
 ];
+
+/** Aliases PocketOption uses for event names. */
+const EVENT_ALIASES: Record<string, PostbackEventName> = {
+  registration: "registration",
+  reg: "registration",
+  register: "registration",
+  signup: "registration",
+  email_confirm: "email_confirm",
+  email: "email_confirm",
+  email_verified: "email_confirm",
+  ftd: "ftd",
+  first_deposit: "ftd",
+  firstdeposit: "ftd",
+  redeposit: "redeposit",
+  repeat_deposit: "redeposit",
+  repeated_deposit: "redeposit",
+  deposit: "redeposit",
+  commission: "commission",
+  comm: "commission",
+  withdrawal: "withdrawal",
+  withdraw: "withdrawal",
+  wdr: "withdrawal",
+};
+
+function normaliseEvent(input: string | null | undefined): PostbackEventName | null {
+  const key = String(input ?? "").trim().toLowerCase();
+  if (!key) return null;
+  const mapped = EVENT_ALIASES[key];
+  return mapped && ALLOWED_EVENTS.includes(mapped) ? mapped : null;
+}
+
+function nonEmpty(s: string | null | undefined): string | null {
+  if (s == null) return null;
+  const t = String(s).trim();
+  return t.length > 0 ? t : null;
+}
+
+function parseAmount(...candidates: Array<string | null | undefined>): number | null {
+  for (const raw of candidates) {
+    if (raw == null) continue;
+    const s = String(raw).trim();
+    if (!s) continue;
+    // PO sends amounts with `.` decimals. Strip any currency suffix just in case.
+    const cleaned = s.replace(/[^0-9.\-]/g, "");
+    if (!cleaned) continue;
+    const n = Number(cleaned);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+const VALID_WITHDRAWAL_STATUSES: Record<string, WithdrawalStatus> = {
+  new: "new",
+  pending: "new",
+  not_processed: "new",
+  unprocessed: "new",
+  processed: "processed",
+  paid: "processed",
+  done: "processed",
+  complete: "processed",
+  completed: "processed",
+  cancelled: "cancelled",
+  canceled: "cancelled",
+  rejected: "cancelled",
+  declined: "cancelled",
+};
+
+function parseWithdrawalStatus(raw: string | null | undefined): WithdrawalStatus | null {
+  if (!raw) return null;
+  return VALID_WITHDRAWAL_STATUSES[String(raw).trim().toLowerCase()] ?? null;
+}
 
 function hashDedupe(parts: Array<string | number | null | undefined>): string {
   const input = parts.map((p) => (p == null ? "" : String(p))).join("|");
   return createHmac("sha256", "stg-dedupe").update(input).digest("hex");
 }
 
-export function parsePostback(rawBody: string): ParsedPostback | null {
-  let payload: RawPostback;
-  try {
-    payload = JSON.parse(rawBody) as RawPostback;
-  } catch {
-    return null;
-  }
-  const event = (payload.event ?? "").toLowerCase() as ParsedPostback["event"];
-  if (!ALLOWED_EVENTS.includes(event)) return null;
+/** Read either a URLSearchParams or a plain Record<string,string>. */
+export type PostbackParamsLike =
+  | URLSearchParams
+  | Record<string, string | string[] | undefined>;
 
-  const amount =
-    payload.amount != null && payload.amount !== "" ? Number(payload.amount) : null;
+function readParam(params: PostbackParamsLike, ...keys: string[]): string | null {
+  for (const k of keys) {
+    if (params instanceof URLSearchParams) {
+      const v = params.get(k);
+      if (v != null && v !== "") return v;
+    } else {
+      const v = params[k];
+      if (Array.isArray(v)) {
+        const first = v.find((x) => x != null && x !== "");
+        if (first) return first;
+      } else if (v != null && v !== "") {
+        return v;
+      }
+    }
+  }
+  return null;
+}
+
+function paramsToRecord(params: PostbackParamsLike): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (params instanceof URLSearchParams) {
+    for (const [k, v] of params.entries()) out[k] = v;
+  } else {
+    for (const [k, v] of Object.entries(params)) {
+      if (v == null) continue;
+      out[k] = Array.isArray(v) ? (v[0] ?? "") : v;
+    }
+  }
+  return out;
+}
+
+/**
+ * Parse a GET-postback URL into a normalised ParsedPostback shape.
+ *
+ * Returns null when the event is missing/unknown — caller should respond
+ * with 400 in that case so PocketOption logs the misconfig.
+ */
+export function parsePostbackQuery(params: PostbackParamsLike): ParsedPostback | null {
+  const eventRaw = readParam(params, "event", "type");
+  const event = normaliseEvent(eventRaw);
+  if (!event) return null;
+
+  const clickId = nonEmpty(readParam(params, "click_id", "clickid", "subid", "sub_id"));
+  const poTraderId = nonEmpty(readParam(params, "trader_id", "traderid", "user_id", "userid"));
+
+  // PocketOption sends DIFFERENT amount macros depending on event:
+  //  - ftd / redeposit → {sumdep}
+  //  - commission      → {commission}
+  //  - withdrawal      → {wdr_sum}
+  // We also accept a generic {amount} for forward compatibility.
+  const amount = parseAmount(
+    readParam(params, "sumdep"),
+    readParam(params, "commission"),
+    readParam(params, "wdr_sum", "wdr", "withdrawal_sum"),
+    readParam(params, "amount", "sum"),
+  );
+
   const isFirstDeposit =
-    String(payload.is_first_deposit ?? "").toLowerCase() === "true" ||
-    payload.is_first_deposit === true ||
-    event === "ftd";
+    event === "ftd" ||
+    String(readParam(params, "is_first_deposit") ?? "").toLowerCase() === "true";
+
+  const withdrawalStatus =
+    event === "withdrawal" ? parseWithdrawalStatus(readParam(params, "status")) : null;
 
   const now = new Date();
-  // Minute-bucket so duplicate retries within 60s collapse.
   const minuteBucket = Math.floor(now.getTime() / 60_000);
+
+  const raw = paramsToRecord(params);
+  // Don't persist the URL secret in raw payload.
+  delete raw["secret"];
+  delete raw["signature"];
 
   return {
     event,
-    clickId: payload.click_id ?? null,
-    poTraderId: payload.trader_id ?? null,
+    clickId,
+    poTraderId,
     amount,
-    currency: payload.currency ?? null,
+    currency: nonEmpty(readParam(params, "currency")),
     isFirstDeposit,
-    signature: payload.signature ?? null,
-    dedupeKey: hashDedupe([event, payload.trader_id, amount, payload.click_id, minuteBucket]),
+    signature: nonEmpty(readParam(params, "signature")),
+    dedupeKey: hashDedupe([
+      event,
+      poTraderId,
+      amount,
+      clickId,
+      // For withdrawal events, status is part of identity (a wd can move
+      // new → processed → ... and each transition is its own postback).
+      withdrawalStatus,
+      minuteBucket,
+    ]),
     receivedAt: now,
-    raw: payload,
+    raw,
+    siteId: nonEmpty(readParam(params, "site_id", "siteid", "subsource")),
+    campaignId: nonEmpty(readParam(params, "cid", "campaign_id")),
+    campaignName: nonEmpty(readParam(params, "ac", "campaign", "campaign_name")),
+    subId1: nonEmpty(readParam(params, "sub_id1", "subid1")),
+    subId2: nonEmpty(readParam(params, "sub_id2", "subid2")),
+    subId3: nonEmpty(readParam(params, "sub_id3", "subid3")),
+    subId4: nonEmpty(readParam(params, "sub_id4", "subid4")),
+    subId5: nonEmpty(readParam(params, "sub_id5", "subid5")),
+    country: nonEmpty(readParam(params, "country", "geo")),
+    deviceType: nonEmpty(readParam(params, "device_type", "device")),
+    osVersion: nonEmpty(readParam(params, "os_version", "os")),
+    browser: nonEmpty(readParam(params, "browser")),
+    promo: nonEmpty(readParam(params, "promo", "promo_code")),
+    linkType: nonEmpty(readParam(params, "link_type", "linktype")),
+    eventDate: nonEmpty(readParam(params, "date_time", "datetime")),
+    withdrawalStatus,
   };
 }
 
 /**
- * Verify HMAC-SHA256 signature against POCKETOPTION_POSTBACK_SECRET.
- *
- * If no secret is configured we **fail open** but log a warning — useful in
- * dev/staging. Production must always set the secret.
+ * Constant-time string compare to authenticate the `?secret=...` URL param
+ * against the configured postback secret (SiteSettings preferred, env
+ * fallback). Returns:
+ *   true  — secret matches OR no secret configured AND not in production
+ *           (dev/staging fail-open).
+ *   false — secret mismatch OR no secret configured in production.
  */
-export function verifyPostbackSignature(rawBody: string, providedSig: string | null): boolean {
-  const secret = process.env["POCKETOPTION_POSTBACK_SECRET"];
-  if (!secret) {
+export async function verifyPostbackSecret(provided: string | null): Promise<boolean> {
+  const expected = await getPostbackSecret();
+  if (!expected) {
     if (process.env["NODE_ENV"] === "production") {
-      console.warn("[postback] POCKETOPTION_POSTBACK_SECRET not set; rejecting signature.");
+      console.warn(
+        "[postback] po_postback_secret not configured; rejecting requests in production.",
+      );
       return false;
     }
     return true;
   }
-  if (!providedSig) return false;
-
-  const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
-  if (expected.length !== providedSig.length) return false;
+  if (!provided) return false;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(provided);
+  if (a.length !== b.length) return false;
   try {
-    return timingSafeEqual(Buffer.from(expected), Buffer.from(providedSig));
+    return timingSafeEqual(a, b);
   } catch {
     return false;
   }
@@ -231,6 +417,22 @@ export async function applyPostback(parsed: ParsedPostback): Promise<{
       receivedAt: parsed.receivedAt,
       signature: parsed.signature,
       dedupeKey: parsed.dedupeKey,
+      siteId: parsed.siteId,
+      campaignId: parsed.campaignId,
+      campaignName: parsed.campaignName,
+      subId1: parsed.subId1,
+      subId2: parsed.subId2,
+      subId3: parsed.subId3,
+      subId4: parsed.subId4,
+      subId5: parsed.subId5,
+      country: parsed.country,
+      deviceType: parsed.deviceType,
+      osVersion: parsed.osVersion,
+      browser: parsed.browser,
+      promo: parsed.promo,
+      linkType: parsed.linkType,
+      eventDate: parsed.eventDate,
+      withdrawalStatus: parsed.withdrawalStatus,
     },
   });
 
@@ -238,13 +440,26 @@ export async function applyPostback(parsed: ParsedPostback): Promise<{
     return { applied: true, reason: "unmatched", poAccountId: undefined };
   }
 
+  // Fetch the existing account once so per-event handlers can branch on its
+  // current state (e.g. registration shouldn't downgrade an already-verified
+  // account back to pending).
+  const account = await prisma.pocketOptionAccount.findUnique({
+    where: { id: poAccountId },
+    select: { status: true },
+  });
+
   // Apply event-specific updates.
   const updates: Record<string, unknown> = { lastPostbackAt: parsed.receivedAt };
 
   switch (parsed.event) {
     case "registration":
       updates.registeredAt = parsed.receivedAt;
-      updates.status = "pending";
+      // Don't downgrade a verified account back to pending. If a deposit
+      // already arrived via FTD/redeposit before the registration postback
+      // (rare but happens with out-of-order PO postbacks), keep verified.
+      if (account?.status !== "verified") {
+        updates.status = "pending";
+      }
       break;
     case "email_confirm":
       updates.emailConfirmedAt = parsed.receivedAt;
@@ -261,6 +476,13 @@ export async function applyPostback(parsed: ParsedPostback): Promise<{
       break;
     case "commission":
       updates.totalRevShare = { increment: parsed.amount ?? 0 };
+      break;
+    case "withdrawal":
+      // Only deduct from totalDeposit when the withdrawal is actually paid out
+      // (status=processed). "new" / "cancelled" don't affect deposit balance.
+      if (parsed.withdrawalStatus === "processed" && parsed.amount) {
+        updates.totalDeposit = { decrement: parsed.amount };
+      }
       break;
   }
 

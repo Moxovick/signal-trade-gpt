@@ -17,7 +17,6 @@ export default async function SecuritySettingsPage() {
       where: { id: session.user.id },
       select: {
         email: true,
-        emailVerifiedAt: true,
         passwordHash: true,
       },
     }),
@@ -56,7 +55,6 @@ export default async function SecuritySettingsPage() {
         </p>
         <TwoFactorForm
           email={user.email}
-          emailVerified={!!user.emailVerifiedAt}
           twoFactorEmail={prefs.twoFactorEmail}
         />
       </Card>

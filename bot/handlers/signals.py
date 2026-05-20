@@ -1,9 +1,9 @@
 """
 /signal — manual signal request.
 
-2-tier access model (mirrors the web platform):
-  - T0 (PO-аккаунт привязан, депо ниже порога): демо-сигналы с
-    lifetime cap (по умолчанию 2 сигнала).
+2-tier access model (mirrors the web platform, v2.2):
+  - T0 (PO-аккаунт привязан, депо ниже порога): безлим OTC-сигналов,
+    остальные банды и индикаторы недоступны.
   - T1+ (депозит ≥ $20): безлимит + все банды (OTC + биржа + Elite),
     расширенные графики (RSI/MACD/EMA/volume).
 
@@ -42,13 +42,12 @@ from services.signal_generator import generate_signal
 logger = logging.getLogger(__name__)
 router = Router()
 
-T0_LIFETIME_DEMO_LIMIT = 2
-
+# T0 видит только OTC-сигналы (никаких индикаторов / биржи / Elite).
 # T1+ видит все банды. T2/T3/T4 свёрнуты в T1, пока многоуровневые перки
 # отключены порогами (см. web-platform/src/lib/tier.ts).
-TIER_TO_KIND = {0: "demo", 1: "otc", 2: "exchange", 3: "elite", 4: "elite"}
+TIER_TO_KIND = {0: "otc", 1: "otc", 2: "exchange", 3: "elite", 4: "elite"}
 TIER_ALLOWED_BANDS = {
-    0: ["demo"],
+    0: ["otc"],
     1: ["otc", "exchange", "elite"],
     2: ["otc", "exchange", "elite"],
     3: ["otc", "exchange", "elite"],
@@ -77,22 +76,11 @@ async def cmd_signal(message: Message) -> None:
         await message.answer("Сначала /start.")
         return
 
-    # Lifetime demo cap (T0 only).
-    if user.tier == 0 and user.signals_received >= T0_LIFETIME_DEMO_LIMIT:
-        await message.answer(
-            "<b>Демо-лимит исчерпан</b>\n"
-            "На T0 (демо) доступно 2 пробных сигнала. Чтобы получать безлимит —"
-            " внеси первый депозит ≥ $20 на PocketOption (счёт, привязанный через /link)."
-            " Сразу откроется T1 — все типы сигналов без лимита.",
-            parse_mode=ParseMode.HTML,
-        )
-        return
-
-    # T1+ get unlimited signals. Admins can still pause a tier by setting its
-    # daily limit to 0 in /admin/bot-config (back-compat with the legacy
-    # `dailyLimits` setting, kept for emergency throttle).
+    # Безлим: T0 даёт OTC-сигналы без капа, T1+ — всё без капа.
+    # Админ может временно приостановить любой тир, выставив daily limit = 0
+    # в /admin/bot-config (back-compat с legacy `dailyLimits`).
     daily_limit = web_sync.get_daily_limit(user.tier)
-    if user.tier > 0 and daily_limit == 0:
+    if daily_limit == 0:
         await message.answer(
             "<b>Сигналы временно приостановлены</b>\n"
             "Админ выставил паузу для твоего тира. Попробуй позже.",
@@ -117,16 +105,15 @@ async def cmd_signal(message: Message) -> None:
         # 2) Fall back to local random generator.
         kind = TIER_TO_KIND.get(user.tier, "otc")
         signal = generate_signal(kind)
-        if user.tier == 0:
-            signal.tier = "demo"
         entry_price = await fetch_price(signal.pair)
 
     signal_id = await save_signal(signal)
     signal.id = signal_id
     await increment_signals_received(user.telegram_id)
 
-    # OTC and demo signals: text-only — there is no real-market price feed
+    # OTC signals: text-only — there is no real-market price feed
     # for synthetic PocketOption pairs, so a chart would be misleading.
+    # `demo` принимаем для обратной совместимости со старыми сигналами в очереди.
     is_otc_band = (signal.tier or "otc") in {"otc", "demo"}
     if is_otc_band:
         body = format_signal_caption(signal, settings.pocket_option_url, None)

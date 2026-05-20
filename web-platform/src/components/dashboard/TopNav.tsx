@@ -11,8 +11,8 @@ import {
   User as UserIcon,
   Shield,
   LogOut,
-  ExternalLink,
   Settings as SettingsIcon,
+  ExternalLink,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
@@ -44,66 +44,87 @@ export function DashboardTopNav({
   const displayName = user.name ?? user.email?.split("@")[0] ?? "Trader";
 
   return (
-    <header className="sticky top-0 z-40 backdrop-blur-md border-b border-[var(--b-soft)] bg-[rgba(8,6,10,0.85)]">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="h-16 flex items-center justify-between gap-6">
+    <header className="sticky top-0 z-40 backdrop-blur-md border-b border-[var(--b-soft)]"
+      style={{ background: "rgba(8,6,10,0.88)" }}
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        {/* Top bar */}
+        <div className="h-14 flex items-center justify-between gap-4">
           <div className="shrink-0">
             <Logo size="md" />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Telegram bot link */}
             <a
               href={BOT_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 text-xs text-[var(--t-2)] hover:text-[var(--brand-gold)] transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-[rgba(56,189,248,0.30)] bg-[rgba(56,189,248,0.07)] text-[#38bdf8] hover:bg-[rgba(56,189,248,0.14)] hover:border-[rgba(56,189,248,0.50)] transition-all"
             >
-              Telegram <ExternalLink size={12} />
+              <Send size={12} />
+              Telegram
+              <ExternalLink size={10} className="opacity-60" />
             </a>
+
+            {/* Admin badge */}
             {user.role === "admin" && (
               <Link
                 href="/admin"
-                className="hidden sm:flex items-center gap-1.5 text-xs text-[var(--brand-gold)] hover:text-[var(--t-1)] transition-colors px-2 py-1 rounded-md bg-[rgba(212,160,23,0.08)] border border-[var(--b-soft)]"
+                className="hidden sm:inline-flex items-center gap-1.5 text-[11px] font-semibold text-[var(--brand-gold)] px-2.5 py-1.5 rounded-lg border border-[var(--b-hard)] bg-[rgba(212,160,23,0.08)] hover:bg-[rgba(212,160,23,0.14)] transition-colors"
               >
-                <Shield size={12} /> Admin
+                <Shield size={11} />
+                Admin
               </Link>
             )}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bg-1)] border border-[var(--b-soft)]">
+
+            {/* User chip */}
+            <div className="hidden sm:flex items-center gap-2 pl-1">
               <div
-                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 select-none"
                 style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}
               >
                 {initial}
               </div>
-              <span className="text-xs text-[var(--t-2)] max-w-32 truncate">
+              <span className="text-xs text-[var(--t-2)] max-w-28 truncate hidden md:block">
                 {displayName}
               </span>
             </div>
+
+            {/* Logout */}
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="text-[var(--t-3)] hover:text-[var(--red)] transition-colors p-1.5 rounded-md"
+              className="p-2 rounded-lg text-[var(--t-3)] hover:text-[var(--red)] hover:bg-[rgba(255,107,61,0.08)] transition-all"
               aria-label="Выйти"
             >
-              <LogOut size={16} />
+              <LogOut size={15} />
             </button>
           </div>
         </div>
 
-        {/* Tabs */}
-        <nav className="flex items-center gap-1 -mb-px overflow-x-auto scrollbar-thin">
+        {/* Navigation pills */}
+        <nav className="flex items-center gap-1 pb-2 overflow-x-auto scrollbar-none">
           {NAV.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href;
+            // For settings, highlight if pathname starts with settings prefix
+            const isSettings = href === "/dashboard/settings";
+            const active = isSettings
+              ? pathname.startsWith("/dashboard/settings")
+              : pathname === href;
+
             return (
               <Link
                 key={href}
                 href={href}
-                className={`flex items-center gap-2 px-4 py-3 text-sm whitespace-nowrap border-b-2 transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                   active
-                    ? "border-[var(--brand-gold)] text-[var(--brand-gold)] font-semibold"
-                    : "border-transparent text-[var(--t-2)] hover:text-[var(--t-1)]"
+                    ? "bg-[rgba(212,160,23,0.14)] text-[var(--brand-gold)] border border-[rgba(212,160,23,0.25)]"
+                    : "text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)] border border-transparent"
                 }`}
               >
-                <Icon size={14} />
+                <Icon
+                  size={13}
+                  className={active ? "text-[var(--brand-gold)]" : "text-[var(--t-3)]"}
+                />
                 {label}
               </Link>
             );

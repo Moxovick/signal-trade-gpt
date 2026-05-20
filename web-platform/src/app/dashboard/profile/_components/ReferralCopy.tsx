@@ -1,52 +1,44 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, CheckCircle2 } from "lucide-react";
+import { Copy, Check } from "lucide-react";
 
 export function ReferralCopy({ code, baseUrl }: { code: string; baseUrl: string }) {
   const [copied, setCopied] = useState(false);
-  const link = `${baseUrl.replace(/\/$/, "")}/register?ref=${encodeURIComponent(code)}`;
+  const shortLink = `${baseUrl.replace(/\/$/, "")}/r/${code}`;
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(shortLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Clipboard API blocked — silently ignore.
+      // silently ignore
     }
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <code
-          className="flex-1 px-3 h-11 rounded-xl bg-[var(--bg-2)] border border-[var(--b-soft)] flex items-center text-sm truncate"
+    <button
+      onClick={copy}
+      className="w-full group rounded-xl border border-[var(--b-soft)] hover:border-[var(--brand-gold)] bg-[var(--bg-2)] hover:bg-[rgba(212,160,23,0.05)] transition-all p-3 text-left"
+    >
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <span
+          className="text-xs font-mono text-[var(--t-2)] truncate"
           style={{ fontFamily: "var(--font-jetbrains)" }}
         >
-          {link}
-        </code>
-        <button
-          onClick={copy}
-          className="inline-flex items-center gap-1.5 h-11 px-4 rounded-xl border border-[var(--b-soft)] hover:border-[var(--brand-gold)] text-sm transition-colors"
-        >
-          {copied ? (
-            <>
-              <CheckCircle2 size={14} className="text-[var(--green)]" /> Скопировано
-            </>
-          ) : (
-            <>
-              <Copy size={14} /> Копировать
-            </>
-          )}
-        </button>
+          /r/{code}
+        </span>
+        <span className="shrink-0 flex items-center gap-1 text-[11px] text-[var(--brand-gold)] font-semibold">
+          {copied
+            ? <><Check size={12} /> Скопировано</>
+            : <><Copy size={12} /> Копировать</>
+          }
+        </span>
       </div>
-      <p className="text-xs text-[var(--t-3)]">
-        Твой код:{" "}
-        <code style={{ fontFamily: "var(--font-jetbrains)" }} className="text-[var(--t-1)]">
-          {code}
-        </code>
+      <p className="text-[11px] text-[var(--t-3)] leading-relaxed">
+        Нажми, чтобы скопировать ссылку и поделиться с другом
       </p>
-    </div>
+    </button>
   );
 }

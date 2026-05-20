@@ -13,7 +13,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getPoReferralUrl } from "@/lib/pocketoption";
+import { buildReferralLink } from "@/lib/pocketoption";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { ExternalLink, ShieldCheck } from "lucide-react";
@@ -26,12 +26,15 @@ export default async function OnboardingPoIdPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
+  // Используем персональную реф-ссылку с `click_id={user.id}`: при регистрации
+  // на PO к нам прилетает postback с этим ID и автоматически создаётся/линкуется
+  // PocketOptionAccount даже до того, как юзер вручную вобьёт свой trader ID.
   const [account, referralUrl] = await Promise.all([
     prisma.pocketOptionAccount.findUnique({
       where: { userId: session.user.id },
       select: { status: true, poTraderId: true },
     }),
-    getPoReferralUrl(),
+    buildReferralLink(session.user.id),
   ]);
 
   // Already verified → straight to dashboard.

@@ -1,15 +1,3 @@
-/**
- * Dashboard · Profile (v3, server-driven).
- *
- * Layout:
- *   - Header card: avatar + nickname + tier badge + member-since.
- *   - PocketOption section: ID, deposit total, status — read-only summary,
- *     edit happens at /onboarding/po-id.
- *   - Personal stats: signal counts + win/loss/winrate.
- *   - Editable form (nickname, telegram username) — actions update DB.
- *   - Referral block: code, copy button, signups count.
- *   - Account meta: id, created at, role.
- */
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -18,15 +6,14 @@ import { getAccessReport } from "@/lib/access";
 import { TIER_LABELS } from "@/lib/tier";
 import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
-import { Stat } from "@/components/ui/Stat";
 import { ProfileEditForm } from "./_components/ProfileEditForm";
 import { ReferralCopy } from "./_components/ReferralCopy";
-import { EmailVerificationCard } from "./_components/EmailVerificationCard";
 import { avatarUrl, initialsFromName } from "@/lib/avatar";
 import {
   Award,
   CalendarDays,
   CheckCircle2,
+  ChevronRight,
   Hash,
   Mail,
   ShieldCheck,
@@ -34,6 +21,8 @@ import {
   Trophy,
   Users,
   XCircle,
+  Clock,
+  Copy,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +30,6 @@ export const dynamic = "force-dynamic";
 const SITE_URL =
   process.env["NEXT_PUBLIC_SITE_URL"] ?? "http://localhost:3000";
 
-// 2-tier model: T0 — OTC только, T1+ — всё безлимитом.
 const TIER_ACCESS: Record<number, ("otc" | "exchange" | "elite")[]> = {
   0: ["otc"],
   1: ["otc", "exchange", "elite"],
@@ -61,7 +49,6 @@ export default async function ProfilePage() {
       select: {
         id: true,
         email: true,
-        emailVerifiedAt: true,
         username: true,
         firstName: true,
         avatar: true,
@@ -90,7 +77,7 @@ export default async function ProfilePage() {
   const completed = wins + losses;
   const winrate = completed > 0 ? Math.round((wins / completed) * 100) : 0;
 
-  const greeting =
+  const displayName =
     user.firstName ?? user.username ?? user.email?.split("@")[0] ?? "User";
   const totalDeposit = account?.totalDeposit ? Number(account.totalDeposit) : 0;
   const memberSince = user.createdAt.toLocaleDateString("ru-RU", {
@@ -99,67 +86,68 @@ export default async function ProfilePage() {
     year: "numeric",
   });
 
-  return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <p className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-1">
-          Профиль
-        </p>
-        <h1 className="text-3xl font-bold">{greeting}</h1>
-      </div>
+  const avatarSrc = avatarUrl({ avatar: user.avatar, email: user.email });
 
-      {/* Identity card */}
-      <Card variant="highlight" padding="lg">
-        <div className="flex flex-col md:flex-row md:items-center gap-5">
-          {(() => {
-            const src = avatarUrl({ avatar: user.avatar, email: user.email });
-            if (src) {
-              return (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={src}
-                  alt=""
-                  className="size-16 rounded-2xl object-cover border border-[var(--b-soft)] shrink-0"
-                />
-              );
-            }
-            return (
-              <div className="size-16 rounded-2xl bg-[var(--brand-gold)] text-[#1a1208] flex items-center justify-center text-2xl font-bold shrink-0">
-                {initialsFromName(user)}
-              </div>
-            );
-          })()}
+  return (
+    <div className="max-w-4xl mx-auto space-y-5">
+
+      {/* ── Hero card ──────────────────────────────────────────────────── */}
+      <div
+        className="rounded-3xl border p-6 relative overflow-hidden"
+        style={{
+          borderColor: tier >= 1 ? "rgba(245,232,192,0.30)" : "var(--b-soft)",
+          background: tier >= 1
+            ? "linear-gradient(135deg,rgba(212,160,23,0.08) 0%,var(--bg-1) 60%)"
+            : "var(--bg-1)",
+        }}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+          {/* Avatar */}
+          {avatarSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarSrc}
+              alt=""
+              className="size-20 rounded-2xl object-cover border border-[var(--b-soft)] shrink-0"
+            />
+          ) : (
+            <div className="size-20 rounded-2xl bg-[var(--brand-gold)] text-[#1a1208] flex items-center justify-center text-3xl font-bold shrink-0 select-none">
+              {initialsFromName(user)}
+            </div>
+          )}
+
+          {/* Name + meta */}
           <div className="flex-1 min-w-0 space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl font-semibold truncate">{greeting}</h2>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-2xl font-bold truncate">{displayName}</h1>
               <TierBadge tier={tier} size="sm" />
-              {user.role === "admin" ? (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--brand-gold)]/15 text-[var(--brand-gold)] border border-[var(--brand-gold)]/30 uppercase tracking-wider">
+              {user.role === "admin" && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--brand-gold)]/15 text-[var(--brand-gold)] border border-[var(--brand-gold)]/30 uppercase tracking-wider font-semibold">
                   admin
                 </span>
-              ) : null}
+              )}
             </div>
-            <div className="flex items-center gap-1.5 text-sm text-[var(--t-2)]">
-              <Mail size={14} className="text-[var(--t-3)]" />
-              {user.email ?? "—"}
-              {user.email &&
-                (user.emailVerifiedAt ? (
-                  <span className="text-[10px] text-[var(--green)] uppercase tracking-wider">
-                    подтверждён
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-[var(--brand-gold)] uppercase tracking-wider">
-                    не подтверждён
-                  </span>
-                ))}
-            </div>
-            <div className="flex items-center gap-1.5 text-sm text-[var(--t-3)]">
-              <CalendarDays size={14} />С нами с {memberSince}
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-[var(--t-3)]">
+              <span className="flex items-center gap-1.5">
+                <Mail size={13} />
+                <span className="text-[var(--t-2)]">{user.email ?? "—"}</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CalendarDays size={13} />
+                С нами с {memberSince}
+              </span>
+              {user.username && (
+                <span className="flex items-center gap-1.5">
+                  <span className="text-[var(--t-3)]">@{user.username}</span>
+                </span>
+              )}
             </div>
           </div>
-          <div className="md:text-right shrink-0">
-            <div className="text-xs uppercase tracking-widest text-[var(--t-3)] mb-1">
-              {TIER_LABELS[tier]}
+
+          {/* Deposit counter */}
+          <div className="sm:text-right shrink-0">
+            <div className="text-[11px] uppercase tracking-widest text-[var(--t-3)] mb-0.5">
+              Депозит на PO
             </div>
             <div
               className="text-3xl font-bold text-[var(--brand-gold)]"
@@ -167,179 +155,183 @@ export default async function ProfilePage() {
             >
               ${totalDeposit.toLocaleString("en-US")}
             </div>
-            <div className="text-[11px] text-[var(--t-3)]">депозит на PO</div>
+            <div className="text-[11px] text-[var(--t-3)] mt-0.5">
+              {TIER_LABELS[tier]}
+            </div>
           </div>
         </div>
-      </Card>
 
-      {/* Personal stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat
-          icon={<TrendingUp size={18} />}
-          label="Сигналов получено"
-          value={user.signalsReceived.toString()}
-        />
-        <Stat
-          icon={<Trophy size={18} />}
-          label="Win / Loss"
-          value={`${wins} / ${losses}`}
-        />
-        <Stat
-          icon={<Award size={18} />}
-          label="Винрейт"
-          value={completed > 0 ? `${winrate}%` : "—"}
-        />
-        <Stat
-          icon={<Users size={18} />}
-          label="Рефералы"
-          value={user._count.referrals.toString()}
-        />
+        {/* Stats row */}
+        <div className="mt-5 pt-5 border-t border-[var(--b-soft)] grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { icon: <TrendingUp size={14} />, label: "Сигналов", value: user.signalsReceived.toString() },
+            { icon: <Trophy size={14} />, label: "Побед", value: wins.toString() },
+            { icon: <Award size={14} />, label: "Винрейт", value: completed > 0 ? `${winrate}%` : "—" },
+            { icon: <Users size={14} />, label: "Рефералов", value: user._count.referrals.toString() },
+          ].map(({ icon, label, value }) => (
+            <div key={label}>
+              <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-[var(--t-3)] mb-1">
+                {icon} {label}
+              </div>
+              <div
+                className="text-2xl font-bold text-[var(--t-1)]"
+                style={{ fontFamily: "var(--font-jetbrains)" }}
+              >
+                {value}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* PocketOption */}
-      <Card padding="lg">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <ShieldCheck size={18} className="text-[var(--brand-gold)]" />
-            PocketOption
-          </h2>
-          <Link
-            href="/onboarding/po-id"
-            className="text-xs text-[var(--brand-gold)] hover:underline"
-          >
-            {account ? "Перепривязать" : "Привязать"}
-          </Link>
-        </div>
-        {account ? (
-          <div className="grid sm:grid-cols-3 gap-3 text-sm">
-            <KeyValue label="Trader ID" mono value={`#${account.poTraderId}`} />
-            <KeyValue
-              label="Депозит"
-              mono
-              value={`$${totalDeposit.toLocaleString("en-US")}`}
-            />
-            <div className="space-y-1">
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--t-3)]">
-                Статус
-              </div>
-              <div className="flex items-center gap-1.5 text-sm">
-                {account.status === "verified" ? (
-                  <>
-                    <CheckCircle2 size={14} className="text-[var(--green)]" />
-                    <span className="text-[var(--green)]">подтверждён</span>
-                  </>
-                ) : account.status === "pending" ? (
-                  <>
-                    <span className="size-2 rounded-full bg-[var(--brand-gold)]" />
-                    <span>ожидание FTD</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle size={14} className="text-[var(--red)]" />
-                    <span className="text-[var(--red)]">отклонён</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-[var(--t-2)]">
-            Аккаунт не привязан.{" "}
-            <Link href="/onboarding/po-id" className="text-[var(--brand-gold)] hover:underline">
-              Привяжи PO ID →
-            </Link>
-          </p>
-        )}
-      </Card>
+      {/* ── Two-column body ────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_320px] gap-5 items-start">
 
-      {user.email && !user.emailVerifiedAt ? (
-        <EmailVerificationCard email={user.email} />
-      ) : null}
-
-      {/* Achievements link */}
-      <Card padding="lg">
-        <Link
-          href="/dashboard/achievements"
-          className="flex items-center justify-between gap-3 group"
-        >
-          <div className="flex items-center gap-3">
-            <Award size={20} className="text-[var(--brand-gold)]" />
-            <div>
-              <div className="text-base font-semibold group-hover:text-[var(--brand-gold)] transition-colors">
-                Мои достижения
-              </div>
-              <div className="text-xs text-[var(--t-3)]">
-                Бейджи за активность, сигналы, депозиты и рефералов
-              </div>
-            </div>
-          </div>
-          <span className="text-[var(--t-3)] group-hover:text-[var(--brand-gold)] transition-colors text-sm">
-            Открыть →
-          </span>
-        </Link>
-      </Card>
-
-      {/* Edit form */}
-      <Card padding="lg">
-        <h2 className="text-lg font-semibold mb-4">Личные данные</h2>
-        <ProfileEditForm
-          email={user.email ?? ""}
-          firstName={user.firstName ?? ""}
-          username={user.username ?? ""}
-          avatar={user.avatar ?? ""}
-        />
-      </Card>
-
-      {/* Referral */}
-      {user.referralCode ? (
+        {/* Left — edit form */}
         <Card padding="lg">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold">Реферальная программа</h2>
-            <span className="text-xs text-[var(--t-3)]">
-              Приглашено: {user._count.referrals}
-            </span>
-          </div>
-          <ReferralCopy code={user.referralCode} baseUrl={SITE_URL} />
-        </Card>
-      ) : null}
-
-      {/* Account meta */}
-      <Card padding="lg">
-        <h2 className="text-lg font-semibold mb-3">Аккаунт</h2>
-        <div className="grid sm:grid-cols-2 gap-3 text-sm">
-          <KeyValue label="ID" mono icon={<Hash size={12} />} value={user.id} />
-          <KeyValue
-            label="Создан"
-            value={user.createdAt.toLocaleString("ru-RU")}
+          <h2 className="text-base font-semibold mb-4">Личные данные</h2>
+          <ProfileEditForm
+            email={user.email ?? ""}
+            firstName={user.firstName ?? ""}
+            username={user.username ?? ""}
+            avatar={user.avatar ?? ""}
           />
+        </Card>
+
+        {/* Right — sidebar */}
+        <div className="space-y-4">
+
+          {/* PocketOption */}
+          <Card padding="lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={15} className="text-[var(--brand-gold)]" />
+                <h2 className="text-sm font-semibold">PocketOption</h2>
+              </div>
+              <Link
+                href="/onboarding/po-id"
+                className="text-[11px] text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
+              >
+                {account ? "Перепривязать" : "Привязать →"}
+              </Link>
+            </div>
+            {account ? (
+              <div className="space-y-3">
+                <InfoRow label="Trader ID">
+                  <span style={{ fontFamily: "var(--font-jetbrains)" }}>
+                    #{account.poTraderId}
+                  </span>
+                </InfoRow>
+                <InfoRow label="Депозит">
+                  <span style={{ fontFamily: "var(--font-jetbrains)" }}>
+                    ${totalDeposit.toLocaleString("en-US")}
+                  </span>
+                </InfoRow>
+                <InfoRow label="Статус">
+                  {account.status === "verified" ? (
+                    <span className="flex items-center gap-1 text-[var(--green)]">
+                      <CheckCircle2 size={12} /> Подтверждён
+                    </span>
+                  ) : account.status === "pending" ? (
+                    <span className="flex items-center gap-1 text-[var(--brand-gold)]">
+                      <Clock size={12} /> Ожидание
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[var(--red)]">
+                      <XCircle size={12} /> Отклонён
+                    </span>
+                  )}
+                </InfoRow>
+              </div>
+            ) : (
+              <p className="text-xs text-[var(--t-3)] leading-relaxed">
+                Аккаунт не привязан.{" "}
+                <Link href="/onboarding/po-id" className="text-[var(--brand-gold)]">
+                  Привязать →
+                </Link>
+              </p>
+            )}
+          </Card>
+
+          {/* Quick links */}
+          <Card padding="none">
+            {[
+              {
+                href: "/dashboard/achievements",
+                icon: <Award size={15} className="text-[var(--brand-gold)]" />,
+                label: "Достижения",
+                sub: "Бейджи за активность",
+              },
+              {
+                href: "/dashboard/referrals",
+                icon: <Users size={15} className="text-[var(--brand-gold)]" />,
+                label: "Рефералы",
+                sub: `${user._count.referrals} приглашено`,
+              },
+              {
+                href: "/dashboard/settings/pocketoption",
+                icon: <TrendingUp size={15} className="text-[var(--brand-gold)]" />,
+                label: "История депозитов",
+                sub: "PocketOption аккаунт",
+              },
+            ].map((item, i, arr) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--bg-2)] transition-colors group ${i < arr.length - 1 ? "border-b border-[var(--b-soft)]" : ""}`}
+              >
+                <div className="w-8 h-8 rounded-lg bg-[rgba(212,160,23,0.08)] flex items-center justify-center shrink-0">
+                  {item.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-[var(--t-1)] group-hover:text-[var(--brand-gold)] transition-colors">
+                    {item.label}
+                  </div>
+                  <div className="text-[11px] text-[var(--t-3)]">{item.sub}</div>
+                </div>
+                <ChevronRight size={14} className="text-[var(--t-3)] shrink-0" />
+              </Link>
+            ))}
+          </Card>
+
+          {/* Referral link */}
+          {user.referralCode && (
+            <Card padding="lg">
+              <h2 className="text-sm font-semibold mb-3">Реферальная ссылка</h2>
+              <ReferralCopy code={user.referralCode} baseUrl={SITE_URL} />
+            </Card>
+          )}
+
+          {/* Account meta */}
+          <div className="px-1 space-y-1.5 text-[11px] text-[var(--t-3)]">
+            <div className="flex items-center gap-1.5">
+              <Hash size={11} />
+              <span className="truncate font-mono">{user.id}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CalendarDays size={11} />
+              <span>Создан {user.createdAt.toLocaleString("ru-RU")}</span>
+            </div>
+          </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
 
-function KeyValue({
+function InfoRow({
   label,
-  value,
-  mono,
-  icon,
+  children,
 }: {
   label: string;
-  value: string;
-  mono?: boolean;
-  icon?: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1">
-      <div className="text-xs uppercase tracking-[0.18em] text-[var(--t-3)] flex items-center gap-1">
-        {icon} {label}
-      </div>
-      <div
-        className={`text-sm text-[var(--t-1)] truncate ${mono ? "" : ""}`}
-        style={mono ? { fontFamily: "var(--font-jetbrains)" } : undefined}
-      >
-        {value}
-      </div>
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[11px] uppercase tracking-wider text-[var(--t-3)]">
+        {label}
+      </span>
+      <span className="text-sm text-[var(--t-1)]">{children}</span>
     </div>
   );
 }

@@ -95,6 +95,16 @@ enum PostbackEvent {
   ftd
   redeposit
   commission
+  withdrawal
+}
+
+/// Status of a withdrawal postback (PocketOption {status} macro).
+/// new = withdrawal initiated / not yet processed; processed = paid out;
+/// cancelled = rejected/cancelled by PO compliance.
+enum WithdrawalStatus {
+  new
+  processed
+  cancelled
 }
 
 // ═══════════════════════════════════════
@@ -467,11 +477,45 @@ model Postback {
   /// Idempotency key to deduplicate replays: hash(eventType + traderId + amount + receivedAt-rounded).
   dedupeKey   String               @unique
 
+  // PocketOption macro fields — captured for attribution and analytics.
+  // PO Partners sends these as URL query params on every postback.
+  /// {site_id} — partner-defined traffic source ID (free-form).
+  siteId       String?
+  /// {cid} — PocketOption campaign ID.
+  campaignId   String?
+  /// {ac} — PocketOption campaign display name.
+  campaignName String?
+  /// {sub_id1..5} — free-form partner sub-trackers.
+  subId1       String?
+  subId2       String?
+  subId3       String?
+  subId4       String?
+  subId5       String?
+  /// {country} — trader country code (e.g. "PL", "BR").
+  country      String?
+  /// {device_type} — mobile | desktop | tablet.
+  deviceType   String?
+  /// {os_version} — iOS, Android, Windows, MacOS, …
+  osVersion    String?
+  /// {browser} — Chrome, Safari, Firefox, …
+  browser      String?
+  /// {promo} — PocketOption promo code applied by the trader (if any).
+  promo        String?
+  /// {link_type} — landing page slug used by the trader.
+  linkType     String?
+  /// {date_time} — event datetime as reported by PO (raw string preserved).
+  eventDate    String?
+  /// {status} — withdrawal status, only populated for `withdrawal` events.
+  withdrawalStatus WithdrawalStatus?
+
   deposit Deposit?
 
   @@index([poTraderId])
   @@index([receivedAt])
   @@index([eventType])
+  @@index([clickId])
+  @@index([campaignId])
+  @@index([siteId])
   @@map("postbacks")
 }
 
