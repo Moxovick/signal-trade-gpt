@@ -51,12 +51,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: session.reason }, { status: 401 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: USER_SELECT,
-  });
+  const [user, referralsCount] = await Promise.all([
+    prisma.user.findUnique({ where: { id: session.userId }, select: USER_SELECT }),
+    prisma.user.count({ where: { referredById: session.userId } }),
+  ]);
   if (!user) {
     return NextResponse.json({ error: "no_account" }, { status: 401 });
   }
-  return NextResponse.json({ user });
+  return NextResponse.json({ user: { ...user, referralsCount } });
 }

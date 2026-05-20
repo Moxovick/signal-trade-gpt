@@ -11,10 +11,11 @@ import { getAccessReport } from "@/lib/access";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// 2-tier model: T0 = Обычный (OTC only), T1+ = Про (everything).
 const TIER_ACCESS: Record<number, ("otc" | "exchange" | "elite")[]> = {
   0: ["otc"],
-  1: ["otc"],
-  2: ["otc", "exchange"],
+  1: ["otc", "exchange", "elite"],
+  2: ["otc", "exchange", "elite"],
   3: ["otc", "exchange", "elite"],
   4: ["otc", "exchange", "elite"],
 };

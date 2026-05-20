@@ -22,6 +22,7 @@ export type TmaUser = {
   signalsReceived: number;
   streakDays: number;
   referralCode: string;
+  referralsCount: number;
   poAccount: { poTraderId: string; status: string; totalDeposit: number | string } | null;
 };
 

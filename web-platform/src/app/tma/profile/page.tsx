@@ -1,16 +1,9 @@
 "use client";
 
-import { Activity, ChevronRight, Copy, Flame, Trophy, User2 } from "lucide-react";
+import { Activity, ChevronRight, Flame, User2, Users } from "lucide-react";
 import { TmaShell, type TmaUser } from "../_components/TmaShell";
 
-// 2-tier model: T0 — Free (PO привязан), T1+ — Pro (депо ≥ $20).
-const TIER_NAMES: Record<number, string> = {
-  0: "Free",
-  1: "Pro ($20+)",
-  2: "Pro",
-  3: "Pro",
-  4: "Pro",
-};
+const BOT_URL = process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/signal_trade_gpt_bot";
 
 export default function TmaProfilePage() {
   return <TmaShell>{(user) => <Profile user={user} />}</TmaShell>;
@@ -22,13 +15,12 @@ function Profile({ user }: { user: TmaUser }) {
     user.username ||
     "Трейдер";
 
-  function copyRef() {
-    const link = `https://signal-trade-gpt.vercel.app/?ref=${encodeURIComponent(user.referralCode)}`;
-    void navigator.clipboard?.writeText(link).catch(() => undefined);
-  }
+  const level = user.tier >= 1 ? "Про" : "Обычный";
+  const levelColor = user.tier >= 1 ? "var(--brand-gold)" : "var(--t-2)";
 
   return (
-    <main className="max-w-md mx-auto p-4 space-y-4">
+    <main className="max-w-md mx-auto p-4 space-y-4 pb-6">
+      {/* Avatar + name */}
       <header className="flex items-center gap-3 pt-2">
         {user.avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -48,30 +40,20 @@ function Profile({ user }: { user: TmaUser }) {
             <div className="text-xs text-[var(--t-3)]">@{user.username}</div>
           )}
         </div>
-        <div className="rounded-xl border border-[var(--brand-gold)]/30 bg-[var(--brand-gold)]/8 px-3 py-2 text-right">
-          <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">Тир</div>
-          <div className="text-base font-bold text-[var(--brand-gold)]">T{user.tier}</div>
+        <div className="rounded-xl border border-[var(--b-soft)] bg-[var(--bg-1)] px-3 py-2 text-right">
+          <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">Уровень</div>
+          <div className="text-sm font-bold" style={{ color: levelColor }}>{level}</div>
         </div>
       </header>
 
+      {/* Stats row */}
       <section className="grid grid-cols-3 gap-2">
         <Stat label="Сигналов" value={String(user.signalsReceived)} icon={Activity} />
         <Stat label="Стрик" value={`${user.streakDays} дн`} icon={Flame} />
-        <Stat
-          label="Депозит"
-          value={`$${Math.round(Number(user.depositTotal))}`}
-          icon={Trophy}
-        />
+        <Stat label="Рефералы" value={String(user.referralsCount)} icon={Users} />
       </section>
 
-      <section className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-4">
-        <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">Тариф</div>
-        <div className="text-base font-bold text-[var(--t-1)]">{TIER_NAMES[user.tier]}</div>
-        <p className="text-xs text-[var(--t-3)] mt-1 leading-relaxed">
-          Тир открывается депозитами в PocketOption. Чем выше тир — тем больше сигналов и пар.
-        </p>
-      </section>
-
+      {/* PocketOption account */}
       <section className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-4">
         <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">
           PocketOption
@@ -91,45 +73,40 @@ function Profile({ user }: { user: TmaUser }) {
                       : "text-[var(--brand-gold)]"
                   }
                 >
-                  {user.poAccount.status}
+                  {user.poAccount.status === "verified" ? "подтверждён" : "ожидание"}
                 </span>
               </div>
             </div>
           </div>
         ) : (
           <a
-            href="https://signal-trade-gpt.vercel.app/dashboard"
+            href={`${process.env["NEXT_PUBLIC_APP_URL"] ?? ""}/dashboard`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-between gap-3"
           >
             <div className="text-sm">
               <div className="text-[var(--t-1)]">Привязать PocketOption ID</div>
-              <div className="text-xs text-[var(--t-3)]">Без него тир остаётся T0</div>
+              <div className="text-xs text-[var(--t-3)]">Нужно для получения сигналов</div>
             </div>
             <ChevronRight size={16} className="text-[var(--t-3)]" />
           </a>
         )}
       </section>
 
-      <section className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-4">
-        <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">
-          Реферальный код
+      {/* Open bot */}
+      <a
+        href={BOT_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-4"
+      >
+        <div className="text-sm">
+          <div className="text-[var(--t-1)] font-semibold">Открыть Telegram-бот</div>
+          <div className="text-xs text-[var(--t-3)]">Управление, настройки, уведомления</div>
         </div>
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-sm font-mono font-semibold text-[var(--brand-gold)]">
-            {user.referralCode}
-          </div>
-          <button
-            type="button"
-            onClick={copyRef}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-[var(--b-soft)] hover:border-[var(--b-hard)] text-[var(--t-2)]"
-          >
-            <Copy size={12} />
-            Копировать ссылку
-          </button>
-        </div>
-      </section>
+        <ChevronRight size={16} className="text-[var(--t-3)]" />
+      </a>
     </main>
   );
 }

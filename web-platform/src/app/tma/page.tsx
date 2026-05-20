@@ -34,7 +34,6 @@ function Home({ user }: { user: TmaUser }) {
   const { tmaFetch } = useTma();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [assets, setAssets] = useState<Record<string, Asset>>({});
-  const [tier, setTier] = useState<number>(user.tier);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,10 +45,9 @@ function Home({ user }: { user: TmaUser }) {
           fetch("/api/assets", { cache: "no-store" }),
         ]);
         if (sr.ok) {
-          const j = (await sr.json()) as { signals: Signal[]; tier: number };
+          const j = (await sr.json()) as { signals: Signal[] };
           if (alive) {
             setSignals(j.signals);
-            setTier(j.tier);
           }
         }
         if (ar.ok) {
@@ -80,8 +78,10 @@ function Home({ user }: { user: TmaUser }) {
           <h1 className="text-xl font-bold text-[var(--t-1)]">{userName}</h1>
         </div>
         <div className="rounded-xl border border-[var(--b-soft)] bg-[var(--bg-1)] px-3 py-2 text-right">
-          <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">Тир</div>
-          <div className="text-sm font-bold text-[var(--brand-gold)]">T{tier}</div>
+          <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">Уровень</div>
+          <div className="text-sm font-bold text-[var(--brand-gold)]">
+            {user.tier >= 1 ? "Про" : "Обычный"}
+          </div>
         </div>
       </header>
 

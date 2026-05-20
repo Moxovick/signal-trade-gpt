@@ -7,9 +7,11 @@ import { TmaShell } from "../_components/TmaShell";
 type Entry = {
   rank: number;
   user: { firstName: string | null; email: string | null };
-  totalProfit?: number | string | null;
-  winRate?: number | string | null;
+  tier: number;
+  signalsReceived: number;
 };
+
+const LEVEL: Record<number, string> = { 0: "Обычный", 1: "Про" };
 
 export default function TmaLeadersPage() {
   return <TmaShell>{() => <Leaders />}</TmaShell>;
@@ -57,12 +59,11 @@ function Leaders() {
             const name =
               e.user.firstName ||
               (e.user.email ? e.user.email.split("@")[0] : `Игрок #${e.rank}`);
-            const profit = Number(e.totalProfit ?? 0);
-            const win = Number(e.winRate ?? 0);
+            const level = LEVEL[e.tier] ?? "Про";
             return (
               <div key={e.rank} className="flex items-center gap-3 p-3">
                 <div
-                  className={`size-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                  className={`size-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                     e.rank === 1
                       ? "bg-[var(--brand-gold)] text-[#1a1208]"
                       : e.rank <= 3
@@ -75,7 +76,7 @@ function Leaders() {
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold truncate">{name}</div>
                   <div className="text-xs text-[var(--t-3)]">
-                    Профит: ${Math.round(profit)} · WR {Math.round(win)}%
+                    {level} · {e.signalsReceived} сигн.
                   </div>
                 </div>
               </div>
