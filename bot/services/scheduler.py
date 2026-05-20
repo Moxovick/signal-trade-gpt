@@ -22,7 +22,8 @@ from config import settings
 from database.db import get_total_signals, get_users_with_notifications, save_signal
 from database.models import Signal
 from services.formatter import format_otc_minimal, format_pro_signal_caption, format_signal_caption
-from services.imagegen import make_signal_chart, make_signal_chart_advanced
+from services.imagegen import make_otc_banner, make_signal_chart_advanced
+from services.price_feed import fetch_ohlc
 from services.signal_generator import generate_signal, random_interval_seconds
 
 logger = logging.getLogger(__name__)
@@ -95,8 +96,8 @@ async def signal_loop(bot: Bot) -> None:
             is_otc = tier in {"otc", "demo"}
 
             if is_otc:
-                # OTC → channel: basic chart + caption.
-                chart_bytes: bytes = make_signal_chart(signal)
+                # OTC → channel: branded banner (no candlestick) + caption.
+                chart_bytes: bytes = make_otc_banner(signal)
                 channel_caption = format_signal_caption(signal, settings.pocket_option_url)
                 await bot.send_photo(
                     chat_id=settings.channel_id,
@@ -105,8 +106,9 @@ async def signal_loop(bot: Bot) -> None:
                     parse_mode=ParseMode.HTML,
                 )
             else:
-                # Pro signal → channel: advanced 4-panel chart + rich caption.
-                chart_bytes = make_signal_chart_advanced(signal)
+                # Pro signal → fetch real OHLC (falls back to synthetic if None).
+                real_ohlc = await fetch_ohlc(signal.pair)
+                chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
                 channel_caption = format_signal_caption(signal, settings.pocket_option_url)
                 await bot.send_photo(
                     chat_id=settings.channel_id,

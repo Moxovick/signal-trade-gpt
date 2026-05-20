@@ -79,6 +79,67 @@ async def _binance(pair: str, endpoint: str) -> float | None:
         return float(price) if price is not None else None
 
 
+async def fetch_ohlc(
+    pair: str,
+    interval: str = "1min",
+    bars: int = 60,
+) -> list[tuple[float, float, float, float]] | None:
+    """
+    Fetch OHLC candles for `pair` from Twelve Data time_series endpoint.
+
+    Only supported when the admin-configured provider is 'twelvedata'.
+    Returns a list of (open, high, low, close) tuples in chronological order
+    (oldest first), or None on any error / wrong provider / missing API key.
+    """
+    src = web_sync.get_price_source()
+    provider = src.get("provider", "off")
+    if provider != "twelvedata":
+        return None
+    api_key = src.get("apiKey") or ""
+    if not api_key:
+        logger.debug("fetch_ohlc: twelvedata requires apiKey")
+        return None
+    endpoint = src.get("endpoint") or "https://api.twelvedata.com"
+    base = endpoint.rstrip("/")
+    symbol = _normalize_pair(pair)
+    url = f"{base}/time_series"
+    params: dict[str, str | int] = {
+        "symbol": symbol,
+        "interval": interval,
+        "outputsize": bars,
+        "apikey": api_key,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            body = resp.json()
+        if not isinstance(body, dict) or body.get("status") != "ok":
+            logger.debug("fetch_ohlc: unexpected response: %s", body)
+            return None
+        values = body.get("values")
+        if not isinstance(values, list) or not values:
+            return None
+        # Twelve Data returns newest-first; reverse to chronological.
+        result: list[tuple[float, float, float, float]] = []
+        for row in reversed(values):
+            try:
+                result.append(
+                    (
+                        float(row["open"]),
+                        float(row["high"]),
+                        float(row["low"]),
+                        float(row["close"]),
+                    )
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+        return result if result else None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("fetch_ohlc[twelvedata] failed for %s: %s", pair, exc)
+        return None
+
+
 async def fetch_price(pair: str) -> float | None:
     """
     Fetch current price for `pair` using admin-configured provider.

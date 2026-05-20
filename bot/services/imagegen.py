@@ -193,17 +193,26 @@ def _seeded_walk(seed: str, n: int = 60, vol: float = 0.0008) -> np.ndarray:
     return np.column_stack([opens, highs, lows, closes_arr])
 
 
-def make_signal_chart(signal: Signal) -> bytes:
+def make_signal_chart(
+    signal: Signal,
+    *,
+    ohlc: list[tuple[float, float, float, float]] | None = None,
+) -> bytes:
     """
     Render a 1280x720 candle chart for a signal with direction badge.
 
-    Returns PNG bytes ready for BufferedInputFile.
+    If `ohlc` is provided and non-empty, real OHLC data is used instead of
+    the synthetic seeded walk.  Returns PNG bytes ready for BufferedInputFile.
     """
     pair = signal.pair
     direction = signal.direction
     is_call = direction == "CALL"
 
-    ohlc = _seeded_walk(pair + str(signal.confidence), n=60)
+    if ohlc:
+        ohlc_arr = np.array(ohlc, dtype=float)
+    else:
+        ohlc_arr = _seeded_walk(pair + str(signal.confidence), n=60)
+    ohlc = ohlc_arr  # type: ignore[assignment]
     n = ohlc.shape[0]
 
     fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=100)
@@ -343,19 +352,27 @@ def _synthetic_volume(seed: str, n: int) -> np.ndarray:
     return np.array([abs(rnd.gauss(1.0, 0.4)) for _ in range(n)])
 
 
-def make_signal_chart_advanced(signal: Signal) -> bytes:
+def make_signal_chart_advanced(
+    signal: Signal,
+    *,
+    ohlc: list[tuple[float, float, float, float]] | None = None,
+) -> bytes:
     """
     Tier-2+ chart: candlestick + RSI + MACD + volume in a single 4-row figure.
 
-    Same input data as `make_signal_chart` but with three extra technical
-    panels stacked underneath. Returns PNG bytes.
+    If `ohlc` is provided and non-empty, real OHLC data is used instead of
+    the synthetic seeded walk.  Returns PNG bytes.
     """
     pair = signal.pair
     direction = signal.direction
     is_call = direction == "CALL"
 
     seed = pair + str(signal.confidence)
-    ohlc = _seeded_walk(seed, n=80)
+    if ohlc:
+        ohlc_arr = np.array(ohlc, dtype=float)
+    else:
+        ohlc_arr = _seeded_walk(seed, n=80)
+    ohlc = ohlc_arr  # type: ignore[assignment]
     n = ohlc.shape[0]
     closes = ohlc[:, 3]
 
@@ -465,6 +482,111 @@ def make_signal_chart_advanced(signal: Signal) -> bytes:
     buf = io.BytesIO()
     plt.savefig(buf, format="png", facecolor=fig.get_facecolor())
     plt.close(fig)
+    return buf.getvalue()
+
+
+def make_otc_banner(signal: Signal) -> bytes:
+    """
+    Branded static 1280x720 banner for OTC signals — no candlestick chart.
+
+    Layout:
+    - Dark gradient background with gold orb glow.
+    - Abstract multi-wave polyline across the middle (gold, varying alpha).
+    - Large direction arrow ("▲" / "▼") centred on the canvas.
+    - Pair name + OTC badge (top-left area).
+    - Expiration and confidence on a second line below.
+    - "SIGNAL · TRADE · GPT" watermark bottom-right.
+    """
+    import math
+
+    w, h = 1280, 720
+    img = _frame(w, h, accent_x=w - 260)
+    d = ImageDraw.Draw(img)
+
+    # ── wave pattern ─────────────────────────────────────────────────────────
+    # Three overlapping sine waves drawn as polylines with slight offsets and
+    # alpha variation to give a live-market feel without actual data.
+    wave_overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    wd = ImageDraw.Draw(wave_overlay)
+    mid_y = h // 2 + 40
+    amplitude = 80
+    freq = 2.5
+    wave_specs = [
+        # (y_offset, amplitude_scale, alpha, line_width)
+        (0, 1.0, 200, 3),
+        (18, 0.65, 110, 2),
+        (-22, 0.45, 70, 2),
+        (8, 0.30, 50, 1),
+    ]
+    steps = 400
+    gold_rgb = _hex(GOLD)
+    for y_off, amp_scale, alpha, lw in wave_specs:
+        pts: list[tuple[float, float]] = []
+        for step in range(steps + 1):
+            t = step / steps
+            x = t * w
+            y = mid_y + y_off + math.sin(t * math.pi * 2 * freq) * amplitude * amp_scale
+            pts.append((x, y))
+        wd.line(pts, fill=(*gold_rgb, alpha), width=lw)
+    wave_overlay = wave_overlay.filter(ImageFilter.GaussianBlur(radius=1))
+    img = Image.alpha_composite(img.convert("RGBA"), wave_overlay).convert("RGB")
+    d = ImageDraw.Draw(img)
+
+    # ── direction arrow ───────────────────────────────────────────────────────
+    is_call = signal.direction == "CALL"
+    arrow_char = "▲" if is_call else "▼"
+    arrow_color = GREEN if is_call else RED
+    f_arrow = _font_bold(220)
+    aw = d.textlength(arrow_char, font=f_arrow)
+    # vertical centre, slightly above centre for visual balance
+    d.text(
+        ((w - aw) // 2, h // 2 - 140),
+        arrow_char,
+        font=f_arrow,
+        fill=arrow_color,
+    )
+
+    # ── direction label ───────────────────────────────────────────────────────
+    f_dir = _font_bold(52)
+    dir_lbl = signal.direction
+    dlw = d.textlength(dir_lbl, font=f_dir)
+    d.text(((w - dlw) // 2, h // 2 + 100), dir_lbl, font=f_dir, fill=arrow_color)
+
+    # ── pair + OTC badge (top-left) ───────────────────────────────────────────
+    f_pair = _font_bold(64)
+    f_badge = _font_bold(26)
+    f_meta = _font_regular(28)
+
+    pair_text = signal.pair
+    pw = d.textlength(pair_text, font=f_pair)
+    px, py = 60, 52
+
+    d.text((px, py), pair_text, font=f_pair, fill=GOLD)
+
+    # OTC badge: rounded rect with gold border, sits to the right of pair name
+    badge_text = "OTC"
+    bw_text = int(d.textlength(badge_text, font=f_badge))
+    badge_pad_x, badge_pad_y = 14, 8
+    badge_x = px + int(pw) + 20
+    badge_y = py + 10
+    badge_rect = [
+        badge_x,
+        badge_y,
+        badge_x + bw_text + badge_pad_x * 2,
+        badge_y + int(d.textlength("M", font=f_badge)) + badge_pad_y * 2,
+    ]
+    d.rounded_rectangle(badge_rect, radius=10, outline=_hex(GOLD), width=2)
+    d.text((badge_x + badge_pad_x, badge_y + badge_pad_y), badge_text, font=f_badge, fill=GOLD)
+
+    # ── expiration + confidence ───────────────────────────────────────────────
+    meta_text = f"Exp: {signal.expiration}   ·   Conf: {signal.confidence}%"
+    d.text((px, py + 76), meta_text, font=f_meta, fill=TEXT_2)
+
+    # ── watermark ─────────────────────────────────────────────────────────────
+    _watermark(d, w, h)
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True)
     return buf.getvalue()
 
 
