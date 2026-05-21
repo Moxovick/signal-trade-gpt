@@ -12,7 +12,7 @@ from aiogram.types import MenuButtonWebApp, WebAppInfo
 from config import settings
 from database.db import init_db
 from handlers import admin, link, menu, onboarding, signals, start, stats
-from services.scheduler import daily_brief_loop, signal_loop
+from services.scheduler import daily_brief_loop, scheduled_signal_loop, signal_loop
 from services.tier_sync import tier_sync_loop
 from services.web_sync import web_sync_loop
 
@@ -73,6 +73,7 @@ async def main() -> None:
     sync_task = asyncio.create_task(tier_sync_loop(bot))
     brief_task = asyncio.create_task(daily_brief_loop(bot))
     web_sync_task = asyncio.create_task(web_sync_loop())
+    scheduled_task = asyncio.create_task(scheduled_signal_loop(bot))
 
     # Drop any active webhook so polling works without conflict
     await bot.delete_webhook(drop_pending_updates=True)
@@ -99,6 +100,7 @@ async def main() -> None:
         sync_task.cancel()
         brief_task.cancel()
         web_sync_task.cancel()
+        scheduled_task.cancel()
         await bot.session.close()
         if PID_FILE.exists():
             PID_FILE.unlink()

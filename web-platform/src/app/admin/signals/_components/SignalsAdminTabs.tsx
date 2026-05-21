@@ -6,19 +6,22 @@ import {
   LayoutTemplate,
   Wand2,
   CalendarClock,
+  CalendarDays,
 } from "lucide-react";
 import { CreateSignalForm } from "./CreateSignalForm";
 import { TemplatesPanel } from "./TemplatesPanel";
 import { BulkPanel } from "./BulkPanel";
 import { SchedulePanel } from "./SchedulePanel";
+import { DayPlanPanel } from "./DayPlanPanel";
 import type { SignalTemplate, SignalSchedule } from "@/lib/signal-config";
 
-type Tab = "publish" | "templates" | "bulk" | "schedule";
+type Tab = "publish" | "templates" | "bulk" | "schedule" | "day";
 
 const TABS: Array<{ id: Tab; label: string; Icon: typeof ListOrdered }> = [
   { id: "publish", label: "Опубликовать", Icon: ListOrdered },
   { id: "templates", label: "Шаблоны", Icon: LayoutTemplate },
   { id: "bulk", label: "Bulk-генерация", Icon: Wand2 },
+  { id: "day", label: "День-план", Icon: CalendarDays },
   { id: "schedule", label: "Авто-расписание", Icon: CalendarClock },
 ];
 
@@ -60,6 +63,7 @@ export function SignalsAdminTabs({
         <TemplatesPanel initial={initialTemplates} />
       ) : null}
       {tab === "bulk" ? <BulkPanel templates={initialTemplates} /> : null}
+      {tab === "day" ? <DayPlanPanel /> : null}
       {tab === "schedule" ? <SchedulePanel initial={initialSchedule} /> : null}
     </div>
   );

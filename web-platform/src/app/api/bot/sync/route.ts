@@ -56,9 +56,19 @@ export async function GET(req: NextRequest) {
     }),
     prisma.siteSettings.findMany(),
     prisma.signal.findMany({
-      where: { isActive: true },
+      where: {
+        OR: [
+          { isActive: true },
+          // Include scheduled signals due in the next 2 hours so the bot
+          // can pre-cache them and publish at exactly the right moment.
+          {
+            isActive: false,
+            scheduledAt: { not: null, lte: new Date(Date.now() + 2 * 60 * 60 * 1000) },
+          },
+        ],
+      },
       orderBy: { createdAt: "desc" },
-      take: 50,
+      take: 100,
     }),
   ]);
 
@@ -91,6 +101,7 @@ export async function GET(req: NextRequest) {
     reasoning: s.reasoning,
     result: s.result,
     isActive: s.isActive,
+    scheduledAt: s.scheduledAt ? s.scheduledAt.toISOString() : null,
     createdAt: s.createdAt.toISOString(),
     closedAt: s.closedAt ? s.closedAt.toISOString() : null,
   }));

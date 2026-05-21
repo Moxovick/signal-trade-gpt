@@ -195,6 +195,7 @@ model Signal {
   reasoning   String?
   chartData   Json?
   isActive    Boolean         @default(true)
+  scheduledAt DateTime?       // null = published immediately; future = queued for bot to activate
   createdAt   DateTime        @default(now())
   closedAt    DateTime?
   createdById String?
@@ -203,6 +204,7 @@ model Signal {
   @@index([tier])
   @@index([createdAt])
   @@index([result])
+  @@index([scheduledAt])
   @@map("signals")
 }
 

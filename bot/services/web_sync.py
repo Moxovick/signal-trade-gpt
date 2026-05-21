@@ -155,6 +155,34 @@ def next_pending_admin_signal(allowed_tiers: list[str]) -> dict[str, Any] | None
     return None
 
 
+def get_due_scheduled_signals() -> list[dict[str, Any]]:
+    """
+    Return scheduled (isActive=False) signals whose scheduledAt is now or in
+    the past, and that haven't been consumed yet. These should be published
+    immediately by the scheduled_signal_loop.
+    """
+    from datetime import datetime, timezone  # local import to avoid cycles
+    now_iso = datetime.now(timezone.utc).isoformat()
+    due: list[dict[str, Any]] = []
+    for sig in _state.signals:
+        if sig.get("isActive"):
+            continue
+        scheduled_at = sig.get("scheduledAt")
+        if not scheduled_at:
+            continue
+        if scheduled_at > now_iso:
+            continue
+        if sig["id"] in _state.consumed_signal_ids:
+            continue
+        due.append(sig)
+    return due
+
+
+def mark_scheduled_consumed(signal_id: str) -> None:
+    """Mark a scheduled signal as consumed so we don't re-publish it."""
+    _state.consumed_signal_ids.add(signal_id)
+
+
 async def _fetch() -> dict[str, Any] | None:
     if not settings.platform_api_url or not settings.bot_sync_secret:
         return None
