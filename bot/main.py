@@ -12,7 +12,7 @@ from aiogram.types import MenuButtonWebApp, WebAppInfo
 from config import settings
 from database.db import init_db
 from handlers import admin, link, menu, onboarding, signals, start, stats
-from services.scheduler import daily_brief_loop, scheduled_signal_loop, signal_loop
+from services.scheduler import daily_brief_loop, scheduled_signal_loop
 from services.tier_sync import tier_sync_loop
 from services.web_sync import web_sync_loop
 
@@ -67,9 +67,8 @@ async def main() -> None:
     dp.include_router(stats.router)
     dp.include_router(menu.router)
 
-    # Start background loops (signal cadence + tier-sync + daily brief +
-    # web-sync to pull bot config & admin signals from the platform).
-    loop_task = asyncio.create_task(signal_loop(bot))
+    # Start background loops. Auto-random signal_loop is disabled —
+    # signals are published only via the admin day-plan (scheduled_signal_loop).
     sync_task = asyncio.create_task(tier_sync_loop(bot))
     brief_task = asyncio.create_task(daily_brief_loop(bot))
     web_sync_task = asyncio.create_task(web_sync_loop())
@@ -96,7 +95,6 @@ async def main() -> None:
     try:
         await dp.start_polling(bot)
     finally:
-        loop_task.cancel()
         sync_task.cancel()
         brief_task.cancel()
         web_sync_task.cancel()
