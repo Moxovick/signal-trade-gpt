@@ -81,7 +81,7 @@ export function DashboardTopNav({
                 <Link
                   key={href}
                   href={href}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all border ${
+                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all border ${
                     isSignals
                       ? active
                         ? "bg-[rgba(212,160,23,0.18)] text-[var(--brand-gold-bright)] border-[var(--brand-gold)] shadow-[0_0_12px_rgba(212,160,23,0.25)]"
@@ -91,7 +91,7 @@ export function DashboardTopNav({
                         : "border-transparent text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)]"
                   }`}
                 >
-                  <Icon size={14} />
+                  <Icon size={16} />
                   {label}
                 </Link>
               );
@@ -150,7 +150,7 @@ export function DashboardTopNav({
               }`}
               aria-label="Настройки"
             >
-              <SettingsIcon size={15} />
+              <SettingsIcon size={17} />
             </Link>
 
             {/* Logout — desktop */}
@@ -159,7 +159,7 @@ export function DashboardTopNav({
               className="hidden sm:inline-flex p-2 rounded-lg text-[var(--t-3)] hover:text-[var(--red)] hover:bg-[rgba(255,107,61,0.08)] transition-all"
               aria-label="Выйти"
             >
-              <LogOut size={15} />
+              <LogOut size={17} />
             </button>
 
             {/* Mobile hamburger */}
