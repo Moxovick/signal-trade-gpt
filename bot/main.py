@@ -98,10 +98,12 @@ async def main() -> None:
     try:
         await dp.start_polling(bot)
     finally:
-        sync_task.cancel()
-        brief_task.cancel()
-        web_sync_task.cancel()
-        scheduled_task.cancel()
+        for task in (sync_task, brief_task, web_sync_task, scheduled_task):
+            task.cancel()
+        await asyncio.gather(
+            sync_task, brief_task, web_sync_task, scheduled_task,
+            return_exceptions=True,
+        )
         await bot.session.close()
         if PID_FILE.exists():
             PID_FILE.unlink()

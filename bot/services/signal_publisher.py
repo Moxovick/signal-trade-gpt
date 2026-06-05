@@ -16,7 +16,7 @@ from aiogram.enums import ParseMode
 from aiogram.types import BufferedInputFile
 
 from config import settings
-from database.db import get_users_with_notifications
+from database.db import get_users_with_notifications, increment_signals_received
 from database.models import Signal
 from services.formatter import (
     format_otc_minimal,
@@ -59,6 +59,7 @@ async def broadcast_to_users(bot: Bot, signal: Signal, chart_bytes: bytes) -> in
                 caption=caption,
                 parse_mode=ParseMode.HTML,
             )
+            await increment_signals_received(user.telegram_id)
             sent += 1
         except Exception:  # noqa: BLE001
             logger.debug("Cannot deliver to telegram_id=%s", user.telegram_id)
