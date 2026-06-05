@@ -21,6 +21,7 @@ import {
   Lock,
   ExternalLink,
   Activity,
+  Clock,
 } from "lucide-react";
 import { LiveSignalHero, type LiveSignal } from "./_components/LiveSignalHero";
 import { TierStrip } from "./_components/TierStrip";
@@ -118,26 +119,38 @@ export default async function SignalsPage() {
 
         {signals.length === 0 ? (
           <Card padding="lg">
-            <p className="text-[var(--t-2)] text-center py-8">
-              Пока нет активных сигналов. Скоро будут!
-            </p>
+            <div className="flex flex-col items-center py-12 text-center">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                style={{ background: "rgba(212,160,23,0.08)", border: "1px solid var(--b-soft)" }}
+              >
+                <Activity size={28} className="text-[var(--brand-gold)] opacity-60" />
+              </div>
+              <h3 className="text-lg font-semibold mb-1">Сигналов пока нет</h3>
+              <p className="text-sm text-[var(--t-2)] max-w-xs">
+                Как только появится новый сигнал — он сразу отобразится здесь.
+                Обычно сигналы приходят каждые 5–15 минут.
+              </p>
+            </div>
           </Card>
         ) : (
           <div className="space-y-2">
-            {signals.map((s) => {
+            {signals.map((s, idx) => {
               const locked = !allowedBands.includes(
                 s.tier as "otc" | "exchange" | "elite",
               );
               const isCall = s.direction === "CALL";
               const conf = Number(s.confidence ?? 0);
               const band = TIER_BAND_LABELS[s.tier];
+              const isPending = s.result === "pending";
+              const isNewest = idx === 0 && isPending && !locked;
 
               const resultLabel =
                 s.result === "win"
                   ? "WIN"
                   : s.result === "loss"
                   ? "LOSS"
-                  : "...";
+                  : s.expiration;
 
               const resultColor =
                 s.result === "win"
@@ -158,10 +171,23 @@ export default async function SignalsPage() {
                 ? "rgba(142,224,107,0.10)"
                 : "rgba(255,107,61,0.10)";
 
+              const confColor = locked
+                ? "var(--bg-3)"
+                : conf >= 90
+                ? "var(--brand-gold)"
+                : conf >= 80
+                ? "var(--green)"
+                : "var(--t-2)";
+
               return (
                 <div
                   key={s.id}
-                  className="flex items-center gap-3 rounded-xl border border-[var(--b-soft)] bg-[var(--bg-1)] px-4 py-3 transition-colors hover:border-[var(--b-hard)] hover:bg-[var(--bg-2)]"
+                  className={[
+                    "flex items-center gap-3 rounded-xl border bg-[var(--bg-1)] px-4 transition-colors hover:bg-[var(--bg-2)]",
+                    isNewest
+                      ? "py-4 border-[var(--b-hard)] shadow-[var(--glow-gold-soft)]"
+                      : "py-3 border-[var(--b-soft)] hover:border-[var(--b-hard)]",
+                  ].join(" ")}
                   style={{
                     opacity: locked ? 0.6 : 1,
                     borderLeft: `3px solid ${locked ? "transparent" : directionColor}`,
@@ -170,29 +196,42 @@ export default async function SignalsPage() {
                 >
                   {/* Direction icon */}
                   <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                    className={[
+                      "rounded-lg flex items-center justify-center shrink-0",
+                      isNewest ? "w-11 h-11" : "w-9 h-9",
+                    ].join(" ")}
                     style={{ background: directionBg, color: directionColor }}
                   >
                     {locked ? (
                       <Lock size={14} />
                     ) : isCall ? (
-                      <TrendingUp size={16} />
+                      <TrendingUp size={isNewest ? 20 : 16} />
                     ) : (
-                      <TrendingDown size={16} />
+                      <TrendingDown size={isNewest ? 20 : 16} />
                     )}
                   </div>
 
-                  {/* Pair + band */}
+                  {/* Pair + band + expiration */}
                   <div className="flex-1 min-w-0">
-                    <div
-                      className="text-sm font-semibold truncate"
-                      style={{
-                        fontFamily: "var(--font-jetbrains)",
-                        filter: locked ? "blur(4px)" : undefined,
-                        userSelect: locked ? "none" : undefined,
-                      }}
-                    >
-                      {s.pair}
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={[
+                          "font-semibold truncate",
+                          isNewest ? "text-base" : "text-sm",
+                        ].join(" ")}
+                        style={{
+                          fontFamily: "var(--font-jetbrains)",
+                          filter: locked ? "blur(4px)" : undefined,
+                          userSelect: locked ? "none" : undefined,
+                        }}
+                      >
+                        {s.pair}
+                      </span>
+                      {isNewest && (
+                        <span className="text-[9px] uppercase tracking-widest text-[var(--brand-gold)] font-bold animate-pulse">
+                          new
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       {band && (
@@ -203,6 +242,12 @@ export default async function SignalsPage() {
                           {band.label}
                         </span>
                       )}
+                      {!locked && isPending && (
+                        <span className="text-[10px] text-[var(--t-3)] flex items-center gap-1">
+                          <Clock size={9} />
+                          {s.expiration}
+                        </span>
+                      )}
                       {locked && (
                         <span className="text-[10px] uppercase tracking-wider text-[var(--brand-gold)]">
                           Pro
@@ -211,38 +256,27 @@ export default async function SignalsPage() {
                     </div>
                   </div>
 
-                  {/* Confidence */}
-                  <div className="hidden sm:flex flex-col gap-1 w-24 shrink-0">
+                  {/* Confidence — bigger bar */}
+                  <div className="hidden sm:flex flex-col gap-1 w-28 shrink-0">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-[var(--t-3)]">Сила</span>
                       <span
-                        className="text-[11px] font-semibold tabular-nums"
+                        className="text-[12px] font-bold tabular-nums"
                         style={{
                           fontFamily: "var(--font-jetbrains)",
                           filter: locked ? "blur(4px)" : undefined,
-                          color:
-                            conf >= 90
-                              ? "var(--brand-gold)"
-                              : conf >= 80
-                              ? "var(--green)"
-                              : "var(--t-2)",
+                          color: confColor,
                         }}
                       >
                         {conf}%
                       </span>
                     </div>
-                    <div className="h-1 rounded-full bg-[var(--bg-3)] overflow-hidden">
+                    <div className="h-2 rounded-full bg-[var(--bg-3)] overflow-hidden">
                       <div
-                        className="h-full rounded-full"
+                        className="h-full rounded-full transition-all duration-500"
                         style={{
                           width: locked ? "100%" : `${conf}%`,
-                          background: locked
-                            ? "var(--bg-3)"
-                            : conf >= 90
-                            ? "var(--brand-gold)"
-                            : conf >= 80
-                            ? "var(--green)"
-                            : "var(--t-2)",
+                          background: locked ? "var(--bg-3)" : confColor,
                         }}
                       />
                     </div>

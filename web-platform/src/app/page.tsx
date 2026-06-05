@@ -16,14 +16,13 @@ import {
   CircleDollarSign,
   ChevronRight,
   Star,
-  Quote,
   UserPlus,
   BarChart3,
+  Clock,
 } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
-import { Stat } from "@/components/ui/Stat";
 import { LiveChart } from "@/components/market/LiveChart";
 import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
 import { prisma } from "@/lib/prisma";
@@ -141,39 +140,125 @@ export default async function LandingPage() {
 
       <main className="relative">
         {/* Hero */}
-        <section className="relative max-w-6xl mx-auto px-6 pt-20 pb-24 text-center">
-          <div className="inline-flex items-center gap-2 px-3 h-8 rounded-full text-xs uppercase tracking-widest border border-[var(--b-soft)] text-[var(--brand-gold)] bg-[var(--bg-1)]">
-            <Sparkles size={12} />
-            <span>RevShare partnership · PocketOption</span>
-          </div>
-          <h1 className="mt-8 text-5xl md:text-7xl font-bold leading-[1.05] text-shimmer">
-            Сигналы, открытые
-            <br />
-            твоим депозитом
-          </h1>
-          <p className="mt-6 max-w-xl mx-auto text-lg text-[var(--t-2)]">
-            Регистрируйся, открой счёт PocketOption по нашей ссылке — и получай
-            AI-сигналы безлимитом. Чем выше депозит — тем глубже анализ.
-          </p>
-          <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <ButtonLink
-              href="/register"
-              size="lg"
-              iconRight={<ArrowRight size={18} />}
-            >
-              Зарегистрироваться
-            </ButtonLink>
-            <ButtonLink href="/how-it-works" variant="secondary" size="lg">
-              Как это работает
-            </ButtonLink>
+        <section className="relative max-w-6xl mx-auto px-6 pt-16 pb-20 md:pt-24 md:pb-28">
+          <div className="grid md:grid-cols-[1fr_auto] gap-12 items-center">
+            {/* Left — text */}
+            <div className="text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-3 h-8 rounded-full text-xs uppercase tracking-widest border border-[var(--b-soft)] text-[var(--brand-gold)] bg-[var(--bg-1)]">
+                <Sparkles size={12} />
+                <span>RevShare partnership · PocketOption</span>
+              </div>
+              <h1 className="mt-8 text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] text-shimmer">
+                Сигналы, открытые
+                <br />
+                твоим депозитом
+              </h1>
+              <p className="mt-6 max-w-xl text-lg text-[var(--t-2)] md:mx-0 mx-auto">
+                Регистрируйся, открой счёт PocketOption по нашей ссылке — и получай
+                AI-сигналы безлимитом. Чем выше депозит — тем глубже анализ.
+              </p>
+              <div className="mt-10 flex flex-col sm:flex-row gap-3 md:justify-start justify-center items-center">
+                <ButtonLink
+                  href="/register"
+                  size="lg"
+                  iconRight={<ArrowRight size={18} />}
+                >
+                  Зарегистрироваться
+                </ButtonLink>
+                <ButtonLink href="/how-it-works" variant="secondary" size="lg">
+                  Как это работает
+                </ButtonLink>
+              </div>
+            </div>
+
+            {/* Right — signal mockup card */}
+            <div className="hidden md:block w-[320px] shrink-0">
+              <div
+                className="rounded-3xl border-2 overflow-hidden animate-float"
+                style={{
+                  borderColor: "var(--green)",
+                  background: "linear-gradient(135deg, rgba(0,229,160,0.08), transparent 60%)",
+                  boxShadow: "0 0 60px rgba(142,224,107,0.12)",
+                }}
+              >
+                {/* Top bar */}
+                <div className="px-5 py-3 flex items-center justify-between border-b border-white/[0.06]">
+                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-[var(--brand-gold)]">
+                    <span className="w-2 h-2 rounded-full bg-[var(--green)] animate-pulse" />
+                    Live сигнал
+                  </div>
+                  <span className="text-[10px] text-[var(--t-3)]">OTC · 3m</span>
+                </div>
+                {/* Body */}
+                <div className="px-5 py-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className="w-14 h-14 rounded-xl flex flex-col items-center justify-center border-2"
+                      style={{
+                        borderColor: "var(--green)",
+                        background: "rgba(142,224,107,0.10)",
+                        color: "var(--green)",
+                      }}
+                    >
+                      <TrendingUp size={24} />
+                      <span className="text-[8px] font-bold mt-0.5">ВВЕРХ</span>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold" style={{ fontFamily: "var(--font-jetbrains)" }}>
+                        EUR/USD
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-[var(--t-2)] mt-0.5">
+                        Уверенность
+                        <span className="font-bold text-sm" style={{ color: "var(--brand-gold)" }}>
+                          91%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Confidence bar */}
+                  <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mb-4">
+                    <div className="h-full rounded-full w-[91%]" style={{ background: "var(--brand-gold)" }} />
+                  </div>
+                  {/* Timer */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[var(--t-3)]">
+                      <Clock size={11} />
+                      Истекает через
+                    </div>
+                    <div
+                      className="text-xl font-bold tabular-nums"
+                      style={{ fontFamily: "var(--font-jetbrains)", color: "var(--t-1)" }}
+                    >
+                      02:47
+                    </div>
+                  </div>
+                </div>
+                {/* Progress */}
+                <div className="h-1 bg-white/[0.06]">
+                  <div className="h-full w-[35%]" style={{ background: "var(--green)" }} />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Stats */}
-          <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
-            <Stat value="87.3%" label="средняя точность" delta={{ value: "+1.2% за неделю" }} />
-            <Stat value="12 800+" label="трейдеров в системе" />
-            <Stat value="24/7" label="OTC-сигналы" />
-            <Stat value="5%" label="реферальный доход" />
+          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { value: "87.3%", label: "средняя точность" },
+              { value: "12 800+", label: "трейдеров в системе" },
+              { value: "24/7", label: "OTC-сигналы" },
+              { value: "5%", label: "реферальный доход" },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] px-4 py-4 transition-all duration-200 hover:border-[var(--b-hard)]"
+              >
+                <div className="text-2xl font-bold" style={{ fontFamily: "var(--font-jetbrains)", color: "var(--t-1)" }}>
+                  {s.value}
+                </div>
+                <div className="text-[12px] text-[var(--t-2)] mt-1">{s.label}</div>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -183,7 +268,7 @@ export default async function LandingPage() {
         </section>
 
         {/* How it works */}
-        <section id="how" className="max-w-6xl mx-auto px-6 py-24">
+        <section id="how" className="max-w-6xl mx-auto px-6 py-24 fade-up-section">
           <div className="text-center mb-16">
             <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
               Процесс
@@ -208,7 +293,7 @@ export default async function LandingPage() {
         </section>
 
         {/* Tiers */}
-        <section id="tiers" className="max-w-6xl mx-auto px-6 py-24">
+        <section id="tiers" className="max-w-6xl mx-auto px-6 py-24 fade-up-section">
           <div className="text-center mb-16">
             <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
               Перки по депозиту
@@ -253,7 +338,7 @@ export default async function LandingPage() {
         </section>
 
         {/* Features */}
-        <section className="max-w-6xl mx-auto px-6 py-20">
+        <section className="max-w-6xl mx-auto px-6 py-20 fade-up-section">
           <div className="grid md:grid-cols-2 gap-5">
             {FEATURES.map((f) => (
               <Card key={f.title} padding="lg" hover>
@@ -287,35 +372,54 @@ export default async function LandingPage() {
               <h2 className="text-4xl md:text-5xl font-bold">Что говорят трейдеры</h2>
             </div>
             <div className="grid md:grid-cols-3 gap-5">
-              {featuredReviews.map((r) => (
-                <Card key={r.id} padding="lg" hover className="flex flex-col h-full">
-                  <Quote size={28} className="text-[var(--brand-gold)] mb-4 opacity-70" />
-                  <div className="flex gap-0.5 mb-4">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        size={14}
-                        className={
-                          i < r.rating
-                            ? "fill-[var(--brand-gold)] text-[var(--brand-gold)]"
-                            : "text-[var(--t-3)]"
-                        }
-                      />
-                    ))}
-                  </div>
-                  <p className="text-sm text-[var(--t-1)] leading-relaxed flex-1">
-                    {r.text}
-                  </p>
-                  <div className="mt-5 pt-4 border-t border-[var(--b-soft)]">
-                    <div className="text-sm font-semibold">{r.authorName}</div>
-                    {r.authorRole && (
-                      <div className="text-xs text-[var(--t-3)] mt-0.5">
-                        {r.authorRole}
+              {featuredReviews.map((r) => {
+                const initials = r.authorName
+                  .split(" ")
+                  .slice(0, 2)
+                  .map((w) => w[0])
+                  .join("")
+                  .toUpperCase();
+                return (
+                  <Card key={r.id} padding="lg" hover className="flex flex-col h-full">
+                    {/* Author header with avatar */}
+                    <div className="flex items-center gap-3 mb-4">
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 text-sm font-bold"
+                        style={{
+                          background: "rgba(212,160,23,0.12)",
+                          color: "var(--brand-gold)",
+                          border: "1px solid var(--b-soft)",
+                        }}
+                      >
+                        {initials}
                       </div>
-                    )}
-                  </div>
-                </Card>
-              ))}
+                      <div>
+                        <div className="text-sm font-semibold">{r.authorName}</div>
+                        {r.authorRole && (
+                          <div className="text-[11px] text-[var(--t-3)]">{r.authorRole}</div>
+                        )}
+                      </div>
+                    </div>
+                    {/* Stars */}
+                    <div className="flex gap-0.5 mb-3">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          size={14}
+                          className={
+                            i < r.rating
+                              ? "fill-[var(--brand-gold)] text-[var(--brand-gold)]"
+                              : "text-[var(--t-3)]"
+                          }
+                        />
+                      ))}
+                    </div>
+                    <p className="text-sm text-[var(--t-1)] leading-relaxed flex-1">
+                      {r.text}
+                    </p>
+                  </Card>
+                );
+              })}
             </div>
           </section>
         )}
@@ -334,14 +438,18 @@ export default async function LandingPage() {
                 key={`${idx}-${f.q}`}
                 className="group rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] open:border-[var(--b-hard)] transition-colors"
               >
-                <summary className="cursor-pointer list-none px-6 py-5 flex items-center justify-between gap-4 text-[var(--t-1)] font-medium">
+                <summary className="cursor-pointer list-none px-6 py-5 flex items-center justify-between gap-4 text-[var(--t-1)] font-medium select-none">
                   <span>{f.q}</span>
                   <ChevronRight
                     size={18}
-                    className="shrink-0 text-[var(--brand-gold)] transition-transform group-open:rotate-90"
+                    className="shrink-0 text-[var(--brand-gold)] transition-transform duration-200 group-open:rotate-90"
                   />
                 </summary>
-                <div className="px-6 pb-6 text-[var(--t-2)] leading-relaxed whitespace-pre-line">{f.a}</div>
+                <div className="grid grid-rows-[0fr] group-open:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out">
+                  <div className="overflow-hidden">
+                    <div className="px-6 pb-6 text-[var(--t-2)] leading-relaxed whitespace-pre-line">{f.a}</div>
+                  </div>
+                </div>
               </details>
             ))}
           </div>
