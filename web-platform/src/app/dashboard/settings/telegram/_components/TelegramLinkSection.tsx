@@ -12,7 +12,7 @@ type Props = {
 
 const ERROR_COPY: Record<string, string> = {
   unauthorized: "Войди заново.",
-  not_configured: "Telegram-бот не настроен на сервере. Свяжись с админом.",
+  not_configured: "Telegram-бот временно недоступен. Попробуй позже.",
   bot_not_configured: "Telegram-бот не настроен на сервере.",
 };
 

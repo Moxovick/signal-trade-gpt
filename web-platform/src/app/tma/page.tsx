@@ -98,7 +98,7 @@ function Home({ user }: { user: TmaUser }) {
           <div className="py-10 text-center">
             <div className="font-semibold mb-1">Сигналов пока нет</div>
             <p className="text-xs text-[var(--t-3)] max-w-xs mx-auto">
-              Как только админ опубликует — появятся здесь и в боте.
+              Как только появятся новые сигналы — они отобразятся здесь и в боте.
             </p>
           </div>
         ) : (

@@ -52,8 +52,7 @@ export default async function DashboardGiveawayPage() {
         </p>
         <h1 className="text-3xl md:text-4xl font-bold">Твои призы</h1>
         <p className="text-[var(--t-2)] mt-2">
-          Чем больше депозит — тем круче приз. Призы и пороги настраивает админ
-          в <code className="text-[var(--brand-gold)]">/admin/giveaway</code>.
+          Чем больше депозит на PocketOption — тем круче приз, который ты можешь получить.
         </p>
       </div>
 
@@ -154,14 +153,7 @@ export default async function DashboardGiveawayPage() {
         {prizes.length === 0 ? (
           <Card padding="lg">
             <p className="text-[var(--t-2)] text-center">
-              Призы пока не настроены — админ добавит их в{" "}
-              <Link
-                href="/admin/giveaway"
-                className="text-[var(--brand-gold)] hover:underline"
-              >
-                /admin/giveaway
-              </Link>
-              .
+              Призы пока не добавлены. Скоро здесь появится список доступных призов.
             </p>
           </Card>
         ) : (

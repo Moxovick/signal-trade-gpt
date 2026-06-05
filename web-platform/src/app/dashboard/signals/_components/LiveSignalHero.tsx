@@ -48,8 +48,7 @@ export function LiveSignalHero({ signal }: { signal: LiveSignal | null }) {
         />
         <h3 className="text-lg font-semibold mb-1">Активных сигналов нет</h3>
         <p className="text-sm text-[var(--t-2)]">
-          Как только админ опубликует новый сигнал — он появится здесь
-          мгновенно.
+          Как только появится новый сигнал — он отобразится здесь мгновенно.
         </p>
       </div>
     );
