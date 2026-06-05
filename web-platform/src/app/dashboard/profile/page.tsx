@@ -22,7 +22,6 @@ import {
   Users,
   XCircle,
   Clock,
-  Copy,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";

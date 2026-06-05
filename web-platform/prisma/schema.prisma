@@ -205,6 +205,9 @@ model Signal {
   @@index([createdAt])
   @@index([result])
   @@index([scheduledAt])
+  @@index([createdById])
+  @@index([isActive])
+  @@index([pair])
   @@map("signals")
 }
 
@@ -279,6 +282,7 @@ model Referral {
   level        Int          @default(1)
 
   @@index([referrerId])
+  @@index([referredId])
   @@map("referrals")
 }
 
@@ -321,6 +325,7 @@ model Review {
 
   @@index([status])
   @@index([isPublic, isFeatured, position])
+  @@index([userId])
   @@map("reviews")
 }
 
@@ -350,6 +355,7 @@ model LeaderboardEntry {
   calculatedAt DateTime @default(now())
 
   @@index([period, rank])
+  @@index([userId])
   @@map("leaderboard_entries")
 }
 
@@ -512,6 +518,7 @@ model Postback {
 
   deposit Deposit?
 
+  @@index([poAccountId])
   @@index([poTraderId])
   @@index([receivedAt])
   @@index([eventType])

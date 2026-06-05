@@ -12,7 +12,10 @@ export async function POST(req: NextRequest) {
     if (!email || !password) {
       return NextResponse.json({ error: GENERIC_ERROR }, { status: 400 });
     }
-    if (password.length < 8) {
+    if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255) {
+      return NextResponse.json({ error: GENERIC_ERROR }, { status: 400 });
+    }
+    if (typeof password !== "string" || password.length < 8 || password.length > 128) {
       return NextResponse.json({ error: GENERIC_ERROR }, { status: 400 });
     }
 

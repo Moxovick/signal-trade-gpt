@@ -392,15 +392,20 @@ export async function applyPostback(parsed: ParsedPostback): Promise<{
       if (user.poAccount) {
         poAccountId = user.poAccount.id;
       } else if (parsed.poTraderId) {
-        const created = await prisma.pocketOptionAccount.create({
-          data: {
+        // Use upsert to avoid TOCTOU race: two concurrent postbacks for the
+        // same user could both see poAccount=null and both try to create.
+        // Upsert is atomic at the DB level (uses ON CONFLICT).
+        const upserted = await prisma.pocketOptionAccount.upsert({
+          where: { userId: user.id },
+          create: {
             userId: user.id,
             poTraderId: parsed.poTraderId,
             status: "pending",
             source: "postback",
           },
+          update: {},
         });
-        poAccountId = created.id;
+        poAccountId = upserted.id;
       }
     }
   }
