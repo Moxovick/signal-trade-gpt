@@ -39,7 +39,7 @@ const BOT_URL =
 export function DashboardTopNav({
   user,
 }: {
-  user: { name: string | null; email: string | null; role?: string };
+  user: { name: string | null; email: string | null; role?: string; avatar?: string | null };
 }) {
   const pathname = usePathname();
   const initial = (user.name ?? user.email ?? "?")[0]!.toUpperCase();
@@ -125,12 +125,16 @@ export function DashboardTopNav({
 
             {/* User chip */}
             <div className="hidden sm:flex items-center gap-2 pl-1">
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 select-none"
-                style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}
-              >
-                {initial}
-              </div>
+              {user.avatar ? (
+                <img src={user.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+              ) : (
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 select-none"
+                  style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}
+                >
+                  {initial}
+                </div>
+              )}
               <span className="text-xs text-[var(--t-2)] max-w-28 truncate hidden md:block">
                 {displayName}
               </span>
@@ -239,12 +243,16 @@ export function DashboardTopNav({
 
             {/* User info — mobile */}
             <div className="flex items-center gap-2.5 px-3 py-2.5">
-              <div
-                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 select-none"
-                style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}
-              >
-                {initial}
-              </div>
+              {user.avatar ? (
+                <img src={user.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
+              ) : (
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 select-none"
+                  style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}
+                >
+                  {initial}
+                </div>
+              )}
               <span className="text-sm text-[var(--t-2)] truncate">{displayName}</span>
             </div>
 

@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import {
-  Mail,
   Send,
   Bell,
   Check,
@@ -61,8 +60,7 @@ const EVENTS: {
   },
 ];
 
-const CHANNELS: { key: ChannelKey; label: string; icon: typeof Mail }[] = [
-  { key: "email", label: "Email", icon: Mail },
+const CHANNELS: { key: ChannelKey; label: string; icon: typeof Send }[] = [
   { key: "telegram", label: "Telegram", icon: Send },
   { key: "browser", label: "Браузер", icon: Bell },
 ];

@@ -1,34 +1,13 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { Sun, Moon, Monitor, Save, Check, Globe, Clock } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Save, Check, Globe, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type {
   Language,
   Theme,
   UserPreferences,
 } from "@/lib/user-preferences";
-
-const THEMES: { value: Theme; label: string; icon: typeof Sun; preview: string }[] = [
-  {
-    value: "light",
-    label: "Светлая",
-    icon: Sun,
-    preview: "bg-[#f7f3ea] border-[#d4a017]",
-  },
-  {
-    value: "dark",
-    label: "Тёмная",
-    icon: Moon,
-    preview: "bg-[#08060a] border-[#d4a017]",
-  },
-  {
-    value: "auto",
-    label: "Авто",
-    icon: Monitor,
-    preview: "bg-gradient-to-br from-[#08060a] to-[#f7f3ea] border-[var(--b-soft)]",
-  },
-];
 
 const LANGUAGES: { value: Language; label: string; native: string }[] = [
   { value: "ru", label: "Русский", native: "RU" },
@@ -74,16 +53,11 @@ export function AppearanceForm({
 }: {
   initialPrefs: UserPreferences;
 }) {
-  const [theme, setTheme] = useState<Theme>(initialPrefs.theme);
   const [language, setLanguage] = useState<Language>(initialPrefs.language);
   const [timezone, setTimezone] = useState(initialPrefs.timezone);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
 
   async function save() {
     setError(null);
@@ -92,7 +66,7 @@ export function AppearanceForm({
       const r = await fetch("/api/account/preferences", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ theme, language, timezone }),
+        body: JSON.stringify({ theme: "dark", language, timezone }),
       });
       if (!r.ok) {
         setError("Не удалось сохранить. Попробуй ещё раз.");
@@ -113,48 +87,6 @@ export function AppearanceForm({
 
   return (
     <div className="space-y-7">
-      {/* Theme */}
-      <section>
-        <label className="flex items-center gap-2 text-[13px] font-semibold text-[var(--t-1)] mb-3">
-          <Sun size={14} className="text-[var(--brand-gold)]" />
-          Тема оформления
-        </label>
-        <div className="grid grid-cols-3 gap-3">
-          {THEMES.map(({ value, label, icon: Icon }) => {
-            const active = theme === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setTheme(value)}
-                className={`relative flex flex-col items-center gap-2.5 py-5 rounded-xl border text-sm transition-all duration-200 ${
-                  active
-                    ? "border-[var(--brand-gold)] bg-[rgba(212,160,23,0.08)]"
-                    : "border-[var(--b-soft)] hover:border-[var(--b-hard)] hover:bg-[var(--bg-2)]"
-                }`}
-              >
-                {active && (
-                  <span className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[var(--brand-gold)] flex items-center justify-center">
-                    <Check size={10} style={{ color: "#1a1208" }} />
-                  </span>
-                )}
-                <Icon
-                  size={22}
-                  className={active ? "text-[var(--brand-gold)]" : "text-[var(--t-3)]"}
-                />
-                <span
-                  className={`text-[13px] font-medium ${
-                    active ? "text-[var(--brand-gold)]" : "text-[var(--t-2)]"
-                  }`}
-                >
-                  {label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
       {/* Language */}
       <section>
         <label className="flex items-center gap-2 text-[13px] font-semibold text-[var(--t-1)] mb-3">

@@ -14,7 +14,7 @@ export default async function AppearanceSettingsPage() {
       <Card padding="lg">
         <h2 className="text-lg font-semibold mb-1">Внешний вид</h2>
         <p className="text-sm text-[var(--t-3)] mb-6">
-          Тема оформления, язык интерфейса и часовой пояс.
+          Язык интерфейса и часовой пояс.
         </p>
         <AppearanceForm initialPrefs={prefs} />
       </Card>

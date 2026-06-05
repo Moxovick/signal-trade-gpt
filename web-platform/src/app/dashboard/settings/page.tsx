@@ -6,7 +6,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getPreferences } from "@/lib/user-preferences";
 import Link from "next/link";
 import {
   Palette,
@@ -16,9 +15,6 @@ import {
   Link2,
   Trophy,
   ChevronRight,
-  Sun,
-  Moon,
-  Monitor,
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
@@ -27,26 +23,18 @@ export default async function SettingsHubPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [user, prefs] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        tier: true,
-        telegramId: true,
-        signalsReceived: true,
-        poAccount: {
-          select: { status: true, poTraderId: true },
-        },
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      tier: true,
+      telegramId: true,
+      signalsReceived: true,
+      poAccount: {
+        select: { status: true, poTraderId: true },
       },
-    }),
-    getPreferences(session.user.id),
-  ]);
+    },
+  });
   if (!user) redirect("/login");
-
-  const themeLabel =
-    prefs.theme === "light" ? "Светлая" : prefs.theme === "dark" ? "Тёмная" : "Авто";
-  const ThemeIcon =
-    prefs.theme === "light" ? Sun : prefs.theme === "dark" ? Moon : Monitor;
 
   const poStatus = user.poAccount?.status ?? null;
   const poConnected = !!user.poAccount;
@@ -59,20 +47,16 @@ export default async function SettingsHubPage() {
         {
           href: "/dashboard/settings/appearance",
           label: "Внешний вид",
-          description: "Тема, язык и часовой пояс",
+          description: "Язык и часовой пояс",
           icon: Palette,
           iconColor: "#a78bfa",
           iconBg: "rgba(167,139,250,0.15)",
-          badge: (
-            <span className="inline-flex items-center gap-1 text-[11px] text-[var(--t-3)]">
-              <ThemeIcon size={11} /> {themeLabel}
-            </span>
-          ),
+          badge: null,
         },
         {
           href: "/dashboard/settings/notifications",
           label: "Уведомления",
-          description: "Email, Telegram, браузерные push",
+          description: "Telegram, браузерные push",
           icon: Bell,
           iconColor: "#f59e0b",
           iconBg: "rgba(245,158,11,0.15)",
@@ -81,7 +65,7 @@ export default async function SettingsHubPage() {
         {
           href: "/dashboard/settings/security",
           label: "Безопасность",
-          description: "Пароль, двухфакторка, журнал входов",
+          description: "Пароль, журнал входов",
           icon: Shield,
           iconColor: "#34d399",
           iconBg: "rgba(52,211,153,0.15)",
@@ -147,7 +131,7 @@ export default async function SettingsHubPage() {
       group: "Активность",
       items: [
         {
-          href: "/dashboard/settings/achievements",
+          href: "/dashboard/achievements",
           label: "Достижения",
           description: "Бейджи, серии, прогресс",
           icon: Trophy,

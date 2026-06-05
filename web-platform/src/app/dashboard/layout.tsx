@@ -35,13 +35,18 @@ export default async function DashboardLayout({
 
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { telegramId: true },
+    select: { telegramId: true, avatar: true },
   });
   const hasTelegram = dbUser?.telegramId != null;
 
+  const userWithAvatar = {
+    ...user,
+    avatar: dbUser?.avatar ?? null,
+  };
+
   return (
     <div className="min-h-screen">
-      <DashboardTopNav user={user} />
+      <DashboardTopNav user={userWithAvatar} />
       <main className="max-w-6xl mx-auto px-6 py-8">
         {!hasTelegram && <TelegramLinkBanner />}
         {children}
