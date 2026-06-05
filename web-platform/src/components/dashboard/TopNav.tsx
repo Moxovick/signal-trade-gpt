@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -14,7 +14,6 @@ import {
   LogOut,
   Settings as SettingsIcon,
   ExternalLink,
-  MoreHorizontal,
   Menu,
   X,
   Wallet,
@@ -27,13 +26,13 @@ type NavItem = {
   icon: typeof Send;
 };
 
-const MORE_NAV: NavItem[] = [
+const MAIN_NAV: NavItem[] = [
+  { href: "/dashboard/signals", label: "Сигналы", icon: Send },
   { href: "/dashboard/referrals", label: "Рефералы", icon: Users },
   { href: "/dashboard/giveaway", label: "Розыгрыш", icon: Gift },
   { href: "/dashboard/leaderboard", label: "Лидерборд", icon: Trophy },
   { href: "/dashboard/pocket-option", label: "PocketOption", icon: Wallet },
   { href: "/dashboard/profile", label: "Профиль", icon: UserIcon },
-  { href: "/dashboard/settings", label: "Настройки", icon: SettingsIcon },
 ];
 
 const BOT_URL =
@@ -48,36 +47,19 @@ export function DashboardTopNav({
   const initial = (user.name ?? user.email ?? "?")[0]!.toUpperCase();
   const displayName = user.name ?? user.email?.split("@")[0] ?? "Trader";
 
-  const [moreOpen, setMoreOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
 
-  // Close "More" dropdown on outside click
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
-        setMoreOpen(false);
-      }
-    }
-    if (moreOpen) {
-      document.addEventListener("mousedown", handleClick);
-      return () => document.removeEventListener("mousedown", handleClick);
-    }
-  }, [moreOpen]);
-
-  // Close menus on navigation by keying state to pathname.
+  // Close menus on navigation
   const [trackedPath, setTrackedPath] = useState(pathname);
   if (trackedPath !== pathname) {
     setTrackedPath(pathname);
     if (mobileOpen) setMobileOpen(false);
-    if (moreOpen) setMoreOpen(false);
   }
 
-  const signalsActive = pathname === "/dashboard/signals";
-
   function isItemActive(href: string): boolean {
+    if (href === "/dashboard/signals") return pathname === "/dashboard/signals";
     if (href === "/dashboard/settings") return pathname.startsWith("/dashboard/settings");
-    return pathname === href;
+    return pathname === href || pathname.startsWith(href + "/");
   }
 
   return (
@@ -86,77 +68,46 @@ export function DashboardTopNav({
       style={{ background: "rgba(8,6,10,0.88)" }}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="h-14 flex items-center justify-between gap-4">
+        <div className="h-14 flex items-center justify-between gap-2">
           {/* LEFT: Logo */}
           <div className="shrink-0">
             <Logo size="md" />
           </div>
 
-          {/* CENTER: Signals — primary CTA */}
-          <Link
-            href="/dashboard/signals"
-            className={`inline-flex items-center gap-2 px-5 py-2 rounded-xl text-base font-bold whitespace-nowrap transition-all duration-200 border ${
-              signalsActive
-                ? "bg-[rgba(212,160,23,0.18)] text-[var(--brand-gold-bright)] border-[var(--brand-gold)] shadow-[0_0_12px_rgba(212,160,23,0.25)]"
-                : "bg-[rgba(212,160,23,0.08)] text-[var(--brand-gold)] border-[rgba(212,160,23,0.30)] hover:bg-[rgba(212,160,23,0.14)] hover:border-[var(--brand-gold)] hover:shadow-[0_0_8px_rgba(212,160,23,0.15)]"
-            }`}
-          >
-            <Send size={16} />
-            Сигналы
-          </Link>
+          {/* CENTER: All nav tabs — desktop */}
+          <nav className="hidden lg:flex items-center gap-1">
+            {MAIN_NAV.map(({ href, label, icon: Icon }) => {
+              const active = isItemActive(href);
+              const isSignals = href === "/dashboard/signals";
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all border ${
+                    isSignals
+                      ? active
+                        ? "bg-[rgba(212,160,23,0.18)] text-[var(--brand-gold-bright)] border-[var(--brand-gold)] shadow-[0_0_12px_rgba(212,160,23,0.25)]"
+                        : "bg-[rgba(212,160,23,0.08)] text-[var(--brand-gold)] border-[rgba(212,160,23,0.30)] hover:bg-[rgba(212,160,23,0.14)] hover:border-[var(--brand-gold)]"
+                      : active
+                        ? "bg-[var(--bg-2)] text-[var(--t-1)] border-[var(--b-hard)]"
+                        : "border-transparent text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)]"
+                  }`}
+                >
+                  <Icon size={14} />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
 
           {/* RIGHT: Actions */}
           <div className="flex items-center gap-2">
-            {/* More dropdown — desktop */}
-            <div ref={moreRef} className="relative hidden sm:block">
-              <button
-                onClick={() => setMoreOpen((v) => !v)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
-                  moreOpen
-                    ? "border-[var(--brand-gold)] bg-[rgba(212,160,23,0.12)] text-[var(--brand-gold)]"
-                    : "border-transparent text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)]"
-                }`}
-                aria-label="Ещё"
-              >
-                <MoreHorizontal size={16} />
-                <span className="hidden md:inline">Ещё</span>
-              </button>
-
-              {moreOpen && (
-                <div
-                  className="absolute right-0 top-full mt-2 w-56 rounded-xl border border-[var(--b-hard)] shadow-xl overflow-hidden"
-                  style={{ background: "var(--bg-1)" }}
-                >
-                  {MORE_NAV.map(({ href, label, icon: Icon }) => {
-                    const active = isItemActive(href);
-                    return (
-                      <Link
-                        key={href}
-                        href={href}
-                        className={`flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors ${
-                          active
-                            ? "bg-[rgba(212,160,23,0.12)] text-[var(--brand-gold)]"
-                            : "text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)]"
-                        }`}
-                      >
-                        <Icon
-                          size={14}
-                          className={active ? "text-[var(--brand-gold)]" : "text-[var(--t-3)]"}
-                        />
-                        {label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Telegram bot link */}
+            {/* Telegram bot link — desktop */}
             <a
               href={BOT_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-[rgba(56,189,248,0.30)] bg-[rgba(56,189,248,0.07)] text-[#38bdf8] hover:bg-[rgba(56,189,248,0.14)] hover:border-[rgba(56,189,248,0.50)] transition-all"
+              className="hidden lg:inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-[rgba(56,189,248,0.30)] bg-[rgba(56,189,248,0.07)] text-[#38bdf8] hover:bg-[rgba(56,189,248,0.14)] hover:border-[rgba(56,189,248,0.50)] transition-all"
             >
               <Send size={12} />
               Telegram
@@ -200,7 +151,7 @@ export function DashboardTopNav({
               <SettingsIcon size={15} />
             </Link>
 
-            {/* Logout */}
+            {/* Logout — desktop */}
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
               className="hidden sm:inline-flex p-2 rounded-lg text-[var(--t-3)] hover:text-[var(--red)] hover:bg-[rgba(255,107,61,0.08)] transition-all"
@@ -212,7 +163,7 @@ export function DashboardTopNav({
             {/* Mobile hamburger */}
             <button
               onClick={() => setMobileOpen((v) => !v)}
-              className="sm:hidden p-2 rounded-lg text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)] transition-all"
+              className="lg:hidden p-2 rounded-lg text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)] transition-all"
               aria-label="Меню"
             >
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -224,11 +175,11 @@ export function DashboardTopNav({
       {/* Mobile menu */}
       {mobileOpen && (
         <div
-          className="sm:hidden border-t border-[var(--b-soft)] px-4 pb-4 pt-2"
+          className="lg:hidden border-t border-[var(--b-soft)] px-4 pb-4 pt-2"
           style={{ background: "var(--bg-1)" }}
         >
           <nav className="flex flex-col gap-1">
-            {MORE_NAV.map(({ href, label, icon: Icon }) => {
+            {MAIN_NAV.map(({ href, label, icon: Icon }) => {
               const active = isItemActive(href);
               return (
                 <Link
@@ -248,6 +199,20 @@ export function DashboardTopNav({
                 </Link>
               );
             })}
+            <Link
+              href="/dashboard/settings"
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                pathname.startsWith("/dashboard/settings")
+                  ? "bg-[rgba(212,160,23,0.12)] text-[var(--brand-gold)]"
+                  : "text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)]"
+              }`}
+            >
+              <SettingsIcon
+                size={14}
+                className={pathname.startsWith("/dashboard/settings") ? "text-[var(--brand-gold)]" : "text-[var(--t-3)]"}
+              />
+              Настройки
+            </Link>
           </nav>
 
           <div className="mt-3 pt-3 border-t border-[var(--b-soft)] flex flex-col gap-1">

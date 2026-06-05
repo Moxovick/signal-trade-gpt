@@ -5,6 +5,7 @@ import "./globals.css";
 import { AnimatedBackground } from "@/components/effects/AnimatedBackground";
 import { Preloader } from "@/components/effects/Preloader";
 import { ScrollProgress } from "@/components/effects/ScrollProgress";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -53,10 +54,12 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <AnimatedBackground />
-        <ScrollProgress />
-        <Preloader />
-        {children}
+        <AuthProvider>
+          <AnimatedBackground />
+          <ScrollProgress />
+          <Preloader />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

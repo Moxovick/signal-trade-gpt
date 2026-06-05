@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Menu, X } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { ArrowRight, Menu, X, LayoutDashboard } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { ButtonLink } from "@/components/ui/Button";
 
@@ -13,6 +14,10 @@ const NAV = [
 
 export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { data: session, status } = useSession();
+  const isLoggedIn = status === "authenticated" && !!session?.user;
+  const displayName =
+    session?.user?.name ?? session?.user?.email?.split("@")[0] ?? "Кабинет";
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md border-b border-[var(--b-soft)] bg-[rgba(8,6,10,0.75)]">
@@ -30,15 +35,27 @@ export function SiteHeader() {
               {n.label}
             </Link>
           ))}
-          <Link href="/login" className="hover:text-[var(--t-1)] transition-colors">
-            Войти
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors font-medium"
+            >
+              <LayoutDashboard size={15} />
+              {displayName}
+            </Link>
+          ) : (
+            <Link href="/login" className="hover:text-[var(--t-1)] transition-colors">
+              Войти
+            </Link>
+          )}
         </div>
-        <div className="hidden md:block">
-          <ButtonLink href="/register" size="sm" iconRight={<ArrowRight size={16} />}>
-            Зарегистрироваться
-          </ButtonLink>
-        </div>
+        {!isLoggedIn && (
+          <div className="hidden md:block">
+            <ButtonLink href="/register" size="sm" iconRight={<ArrowRight size={16} />}>
+              Зарегистрироваться
+            </ButtonLink>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setMobileOpen((v) => !v)}
@@ -62,16 +79,29 @@ export function SiteHeader() {
               {n.label}
             </Link>
           ))}
-          <Link
-            href="/login"
-            onClick={() => setMobileOpen(false)}
-            className="block text-sm text-[var(--t-2)] hover:text-[var(--t-1)] transition-colors"
-          >
-            Войти
-          </Link>
-          <ButtonLink href="/register" size="sm" iconRight={<ArrowRight size={16} />}>
-            Зарегистрироваться
-          </ButtonLink>
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-1.5 text-sm font-medium text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
+            >
+              <LayoutDashboard size={15} />
+              {displayName}
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                onClick={() => setMobileOpen(false)}
+                className="block text-sm text-[var(--t-2)] hover:text-[var(--t-1)] transition-colors"
+              >
+                Войти
+              </Link>
+              <ButtonLink href="/register" size="sm" iconRight={<ArrowRight size={16} />}>
+                Зарегистрироваться
+              </ButtonLink>
+            </>
+          )}
         </div>
       )}
     </header>
