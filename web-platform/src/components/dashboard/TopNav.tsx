@@ -9,7 +9,6 @@ import {
   Users,
   Gift,
   Trophy,
-  User as UserIcon,
   Shield,
   LogOut,
   Settings as SettingsIcon,
@@ -30,7 +29,6 @@ const MAIN_NAV: NavItem[] = [
   { href: "/dashboard/referrals", label: "Рефералы", icon: Users },
   { href: "/dashboard/giveaway", label: "Розыгрыш", icon: Gift },
   { href: "/dashboard/leaderboard", label: "Лидерборд", icon: Trophy },
-  { href: "/dashboard/profile", label: "Профиль", icon: UserIcon },
 ];
 
 const BOT_URL =
@@ -123,8 +121,15 @@ export function DashboardTopNav({
               </Link>
             )}
 
-            {/* User chip */}
-            <div className="hidden sm:flex items-center gap-2 pl-1">
+            {/* User chip → links to profile */}
+            <Link
+              href="/dashboard/profile"
+              className={`hidden sm:flex items-center gap-2 pl-1 pr-2 py-1 rounded-lg transition-all ${
+                pathname.startsWith("/dashboard/profile")
+                  ? "bg-[rgba(212,160,23,0.10)] ring-1 ring-[var(--brand-gold)]"
+                  : "hover:bg-[var(--bg-2)]"
+              }`}
+            >
               {user.avatar ? (
                 <img src={user.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
               ) : (
@@ -138,7 +143,7 @@ export function DashboardTopNav({
               <span className="text-xs text-[var(--t-2)] max-w-28 truncate hidden md:block">
                 {displayName}
               </span>
-            </div>
+            </Link>
 
             {/* Settings icon-button — desktop */}
             <Link
@@ -241,8 +246,15 @@ export function DashboardTopNav({
               </Link>
             )}
 
-            {/* User info — mobile */}
-            <div className="flex items-center gap-2.5 px-3 py-2.5">
+            {/* User info — mobile → links to profile */}
+            <Link
+              href="/dashboard/profile"
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors ${
+                pathname.startsWith("/dashboard/profile")
+                  ? "bg-[rgba(212,160,23,0.12)] text-[var(--brand-gold)]"
+                  : "text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)]"
+              }`}
+            >
               {user.avatar ? (
                 <img src={user.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
               ) : (
@@ -253,8 +265,9 @@ export function DashboardTopNav({
                   {initial}
                 </div>
               )}
-              <span className="text-sm text-[var(--t-2)] truncate">{displayName}</span>
-            </div>
+              <span className="text-sm truncate">{displayName}</span>
+              <span className="text-[10px] text-[var(--t-3)] ml-auto">Профиль</span>
+            </Link>
 
             {/* Logout — mobile */}
             <button

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { ArrowRight, Menu, X, LayoutDashboard } from "lucide-react";
+import { ArrowRight, Menu, X } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { ButtonLink } from "@/components/ui/Button";
 
@@ -18,6 +18,8 @@ export function SiteHeader() {
   const isLoggedIn = status === "authenticated" && !!session?.user;
   const displayName =
     session?.user?.name ?? session?.user?.email?.split("@")[0] ?? "Кабинет";
+  const avatarUrl = (session?.user as { image?: string | null } | undefined)?.image ?? null;
+  const initial = displayName[0]?.toUpperCase() ?? "?";
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md border-b border-[var(--b-soft)] bg-[rgba(8,6,10,0.75)]">
@@ -38,9 +40,18 @@ export function SiteHeader() {
           {isLoggedIn ? (
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-1.5 text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors font-medium"
+              className="inline-flex items-center gap-2 text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors font-medium px-3 py-1.5 rounded-lg hover:bg-[rgba(212,160,23,0.08)]"
             >
-              <LayoutDashboard size={15} />
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+              ) : (
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                  style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}
+                >
+                  {initial}
+                </div>
+              )}
               {displayName}
             </Link>
           ) : (
@@ -83,9 +94,18 @@ export function SiteHeader() {
             <Link
               href="/dashboard"
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-1.5 text-sm font-medium text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
+              className="flex items-center gap-2.5 text-sm font-medium text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
             >
-              <LayoutDashboard size={15} />
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
+              ) : (
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                  style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}
+                >
+                  {initial}
+                </div>
+              )}
               {displayName}
             </Link>
           ) : (

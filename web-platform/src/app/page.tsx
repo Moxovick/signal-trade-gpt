@@ -425,14 +425,14 @@ export default async function LandingPage() {
         )}
 
         {/* FAQ */}
-        <section id="faq" className="max-w-3xl mx-auto px-6 py-20">
+        <section id="faq" className="max-w-6xl mx-auto px-6 py-20">
           <div className="text-center mb-12">
             <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
               FAQ
             </div>
             <h2 className="text-4xl md:text-5xl font-bold">Частые вопросы</h2>
           </div>
-          <div className="space-y-3">
+          <div className="grid md:grid-cols-2 gap-3">
             {FAQS.map((f, idx) => (
               <details
                 key={`${idx}-${f.q}`}
