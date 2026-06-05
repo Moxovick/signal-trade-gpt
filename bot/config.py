@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, model_validator
 
 
 class Settings(BaseSettings):
@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     pocket_option_partner_id: str = Field("", env="POCKETOPTION_PARTNER_ID")
 
     log_level: str = Field("INFO", env="LOG_LEVEL")
+
+    @model_validator(mode="after")
+    def _check_required(self) -> "Settings":
+        if not self.bot_token or not isinstance(self.bot_token, str):
+            raise ValueError("BOT_TOKEN must be a non-empty string")
+        if not str(self.channel_id):
+            raise ValueError("CHANNEL_ID must be set")
+        return self
 
     class Config:
         env_file = ".env"

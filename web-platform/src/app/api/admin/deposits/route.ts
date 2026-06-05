@@ -47,6 +47,11 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "ID и статус обязательны" }, { status: 400 });
   }
 
+  const VALID_STATUSES = ["pending", "confirmed", "rejected"] as const;
+  if (!(VALID_STATUSES as readonly string[]).includes(status)) {
+    return NextResponse.json({ error: `status must be one of: ${VALID_STATUSES.join(", ")}` }, { status: 400 });
+  }
+
   const deposit = await prisma.deposit.update({
     where: { id },
     data: {

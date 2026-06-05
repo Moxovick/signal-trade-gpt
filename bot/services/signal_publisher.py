@@ -8,6 +8,7 @@ loop iteration.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Callable, Awaitable
 
@@ -61,6 +62,7 @@ async def broadcast_to_users(bot: Bot, signal: Signal, chart_bytes: bytes) -> in
             )
             await increment_signals_received(user.telegram_id)
             sent += 1
+            await asyncio.sleep(0.035)
         except Exception:  # noqa: BLE001
             logger.debug("Cannot deliver to telegram_id=%s", user.telegram_id)
 

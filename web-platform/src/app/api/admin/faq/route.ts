@@ -21,6 +21,18 @@ export async function POST(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const body = await req.json();
+
+  const VALID_CATEGORIES = ["general", "trading", "deposit", "technical", "account"] as const;
+  if (!body.question || typeof body.question !== "string" || !body.question.trim()) {
+    return NextResponse.json({ error: "question is required" }, { status: 400 });
+  }
+  if (!body.answer || typeof body.answer !== "string" || !body.answer.trim()) {
+    return NextResponse.json({ error: "answer is required" }, { status: 400 });
+  }
+  if (body.category && !(VALID_CATEGORIES as readonly string[]).includes(body.category)) {
+    return NextResponse.json({ error: `category must be one of: ${VALID_CATEGORIES.join(", ")}` }, { status: 400 });
+  }
+
   const faq = await prisma.faq.create({
     data: {
       question: body.question,

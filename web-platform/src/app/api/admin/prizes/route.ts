@@ -21,6 +21,14 @@ export async function POST(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const b = await req.json();
+
+  if (b.tier != null && (typeof b.tier !== "number" || b.tier < 0 || b.tier > 4)) {
+    return NextResponse.json({ error: "tier must be between 0 and 4" }, { status: 400 });
+  }
+  if (b.position != null && (typeof b.position !== "number" || b.position < 1)) {
+    return NextResponse.json({ error: "position must be > 0" }, { status: 400 });
+  }
+
   const prize = await prisma.prize.create({
     data: {
       tier: b.tier ?? 1,

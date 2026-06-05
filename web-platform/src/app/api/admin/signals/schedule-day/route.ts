@@ -26,18 +26,15 @@ type SlotInput = {
   analysis?: string | null;
 };
 
-async function requireAdmin(_req: NextRequest) {
+async function requireAdmin() {
   const session = await auth();
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  if (!session?.user || role !== "admin") {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  }
-  return null;
+  if (!session || session.user.role !== "admin") return null;
+  return session;
 }
 
 export async function GET(req: NextRequest) {
-  const denied = await requireAdmin(req);
-  if (denied) return denied;
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const url = new URL(req.url);
   const dateStr = url.searchParams.get("date"); // YYYY-MM-DD
@@ -71,8 +68,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const denied = await requireAdmin(req);
-  if (denied) return denied;
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = (await req.json().catch(() => null)) as { slots?: SlotInput[] } | null;
   const slots = body?.slots;
@@ -116,8 +113,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const session = await auth();
-  const userId = session?.user?.id;
+  const userId = session.user.id;
 
   const created = await prisma.signal.createMany({
     data: parsed.map((s) => ({

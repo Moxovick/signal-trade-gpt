@@ -157,12 +157,30 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-/** Strip dangerous HTML tags and event handlers as defense-in-depth. */
+/** Allowlist-based HTML sanitizer as defense-in-depth. */
 function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
-    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, "");
+  const SAFE_TAGS = new Set([
+    "p", "h1", "h2", "h3", "h4", "h5", "h6",
+    "ul", "ol", "li", "a", "strong", "em", "br",
+    "blockquote", "code", "pre",
+  ]);
+
+  // Replace all tags: keep only safe ones, strip all attributes except href on <a>
+  return html.replace(/<\/?([a-z][a-z0-9]*)\b([^>]*)?\/?>/gi, (match, tag: string, attrs: string) => {
+    const lowerTag = tag.toLowerCase();
+    if (!SAFE_TAGS.has(lowerTag)) return "";
+    // Closing tags — no attributes
+    if (match.startsWith("</")) return `</${lowerTag}>`;
+    // For <a>, preserve only href with http(s) or mailto
+    if (lowerTag === "a" && attrs) {
+      const hrefMatch = (attrs as string).match(/\bhref\s*=\s*["']((https?:\/\/|mailto:)[^"']*)["']/i);
+      if (hrefMatch) {
+        return `<a href="${hrefMatch[1]}" rel="noopener noreferrer nofollow">`;
+      }
+    }
+    // All other safe tags — strip all attributes
+    return `<${lowerTag}>`;
+  });
 }
 
 // Tiny inline markdown rendering for preview only (full rendering happens server-side on /terms etc.)

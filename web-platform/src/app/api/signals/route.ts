@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session || session.user.role !== "admin") {
+  if (!session?.user || (session.user as { role?: string }).role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

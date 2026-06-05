@@ -90,7 +90,10 @@ async def _send_upgrade(bot: Bot, telegram_id: int, new_tier: int, deposit: floa
 
 
 async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
-    po_id = str(item["poTraderId"])
+    po_id = item.get("poTraderId")
+    if not po_id:
+        return
+    po_id = str(po_id)
     new_tier = int(item.get("tier") or 0)
     deposit = float(item.get("totalDeposit") or 0.0)
 
