@@ -57,7 +57,7 @@ export default async function SettingsHubPage() {
       group: "Аккаунт",
       items: [
         {
-          href: "/dashboard/settings",
+          href: "/dashboard/settings/appearance",
           label: "Внешний вид",
           description: "Тема, язык и часовой пояс",
           icon: Palette,

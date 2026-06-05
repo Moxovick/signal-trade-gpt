@@ -16,7 +16,6 @@ import {
   ExternalLink,
   Menu,
   X,
-  Wallet,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
@@ -31,7 +30,6 @@ const MAIN_NAV: NavItem[] = [
   { href: "/dashboard/referrals", label: "Рефералы", icon: Users },
   { href: "/dashboard/giveaway", label: "Розыгрыш", icon: Gift },
   { href: "/dashboard/leaderboard", label: "Лидерборд", icon: Trophy },
-  { href: "/dashboard/pocket-option", label: "PocketOption", icon: Wallet },
   { href: "/dashboard/profile", label: "Профиль", icon: UserIcon },
 ];
 

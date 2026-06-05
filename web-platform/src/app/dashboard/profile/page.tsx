@@ -15,7 +15,6 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
-  Hash,
   Mail,
   ShieldCheck,
   TrendingUp,
@@ -40,7 +39,6 @@ export default async function ProfilePage() {
     prisma.user.findUnique({
       where: { id: userId },
       select: {
-        id: true,
         email: true,
         username: true,
         firstName: true,
@@ -291,17 +289,6 @@ export default async function ProfilePage() {
             </Card>
           )}
 
-          {/* Account meta */}
-          <div className="px-1 space-y-1.5 text-[11px] text-[var(--t-3)]">
-            <div className="flex items-center gap-1.5">
-              <Hash size={11} />
-              <span className="truncate font-mono">{user.id}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <CalendarDays size={11} />
-              <span>Создан {user.createdAt.toLocaleString("ru-RU")}</span>
-            </div>
-          </div>
         </div>
       </div>
     </div>
