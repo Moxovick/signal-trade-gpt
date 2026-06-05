@@ -28,8 +28,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
-  const page = Number(searchParams.get("page") ?? 1);
-  const limit = Number(searchParams.get("limit") ?? 50);
+  const page = Math.max(1, Math.min(10000, Number(searchParams.get("page") ?? 1) || 1));
+  const limit = Math.max(1, Math.min(100, Number(searchParams.get("limit") ?? 50) || 50));
 
   const [signals, total] = await Promise.all([
     prisma.signal.findMany({
@@ -157,7 +157,15 @@ export async function PUT(req: NextRequest) {
       data.closedAt = result === "pending" ? null : new Date();
     }
     if (typeof isActive === "boolean") data.isActive = isActive;
-    if (confidence != null) data.confidence = Math.round(confidence);
+    if (confidence != null) {
+      if (confidence < 0 || confidence > 100) {
+        return NextResponse.json(
+          { error: "confidence в диапазоне 0..100" },
+          { status: 400 },
+        );
+      }
+      data.confidence = Math.round(confidence);
+    }
     if (analysis !== undefined) data.analysis = analysis;
     if (reasoning !== undefined) data.reasoning = reasoning;
     if (exitPrice !== undefined) data.exitPrice = exitPrice;

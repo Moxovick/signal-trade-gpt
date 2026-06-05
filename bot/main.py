@@ -12,6 +12,7 @@ from aiogram.types import MenuButtonWebApp, WebAppInfo
 from config import settings
 from database.db import init_db
 from handlers import admin, link, menu, onboarding, signals, start, stats
+from middlewares import BannedUserMiddleware
 from services.scheduler import daily_brief_loop, scheduled_signal_loop
 from services.tier_sync import tier_sync_loop
 from services.web_sync import web_sync_loop
@@ -57,6 +58,8 @@ async def main() -> None:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher()
+
+    dp.message.middleware(BannedUserMiddleware())
 
     # Order matters: specific command routers first, generic menu/text last.
     dp.include_router(admin.router)

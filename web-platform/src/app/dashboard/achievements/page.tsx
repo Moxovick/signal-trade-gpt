@@ -11,11 +11,13 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAccessReport } from "@/lib/access";
 import { Card } from "@/components/ui/Card";
-import { Trophy, Star, Lock, CheckCircle2 } from "lucide-react";
+import { Trophy, Star, Lock, CheckCircle2, Target, BarChart3, Flame, Award, Coins, Rocket, Handshake, Users } from "lucide-react";
+import { redirect } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 
 type AchievementDef = {
   id: string;
-  emoji: string;
+  icon: LucideIcon;
   title: string;
   description: string;
   /** Predicate evaluated against the stats payload. */
@@ -32,63 +34,63 @@ type Stats = {
 const CATALOG: AchievementDef[] = [
   {
     id: "first_signal",
-    emoji: "🎯",
+    icon: Target,
     title: "Первый сигнал",
     description: "Получи свой первый AI-сигнал в боте",
     unlocked: (s) => s.signalsReceived >= 1,
   },
   {
     id: "ten_signals",
-    emoji: "📊",
+    icon: BarChart3,
     title: "Десятка",
     description: "Получи 10 сигналов",
     unlocked: (s) => s.signalsReceived >= 10,
   },
   {
     id: "fifty_signals",
-    emoji: "🔥",
+    icon: Flame,
     title: "На потоке",
     description: "Получи 50 сигналов",
     unlocked: (s) => s.signalsReceived >= 50,
   },
   {
     id: "hundred_signals",
-    emoji: "💯",
+    icon: Award,
     title: "Центурион",
     description: "Получи 100 сигналов",
     unlocked: (s) => s.signalsReceived >= 100,
   },
   {
     id: "first_deposit",
-    emoji: "💰",
+    icon: Coins,
     title: "Первый депозит",
     description: "Внеси первый депозит на PocketOption",
     unlocked: (s) => s.totalDeposit > 0,
   },
   {
     id: "tier_1",
-    emoji: "🚀",
+    icon: Rocket,
     title: "Pro-доступ",
     description: "Открыл T1 — депозит от $20",
     unlocked: (s) => s.tier >= 1,
   },
   {
     id: "first_referral",
-    emoji: "🤝",
+    icon: Handshake,
     title: "Первый реферал",
     description: "Пригласи первого друга",
     unlocked: (s) => s.referrals >= 1,
   },
   {
     id: "five_referrals",
-    emoji: "👥",
+    icon: Users,
     title: "Пятёрка",
     description: "Пригласи 5 друзей",
     unlocked: (s) => s.referrals >= 5,
   },
   {
     id: "ten_referrals",
-    emoji: "🌟",
+    icon: Star,
     title: "Лидер мнений",
     description: "Пригласи 10 друзей",
     unlocked: (s) => s.referrals >= 10,
@@ -97,7 +99,7 @@ const CATALOG: AchievementDef[] = [
 
 export default async function DashboardAchievementsPage() {
   const session = await auth();
-  if (!session?.user?.id) return null;
+  if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
   const [user, account, report] = await Promise.all([
@@ -174,10 +176,10 @@ export default async function DashboardAchievementsPage() {
             }`}
           >
             <div
-              className={`text-5xl mb-3 ${a.isUnlocked ? "" : "grayscale"}`}
+              className={`mb-3 ${a.isUnlocked ? "text-[var(--brand-gold)]" : "text-[var(--t-3)] grayscale"}`}
               aria-hidden
             >
-              {a.emoji}
+              <a.icon size={28} />
             </div>
             <h3 className="text-sm font-semibold mb-1">{a.title}</h3>
             <p className="text-xs text-[var(--t-3)] leading-snug flex-1">

@@ -22,6 +22,7 @@
  * POCKETOPTION_POSTBACK_SECRET (fallback).
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   computeTier,
@@ -130,7 +131,12 @@ function parseAmount(...candidates: Array<string | null | undefined>): number | 
     const cleaned = s.replace(/[^0-9.\-]/g, "");
     if (!cleaned) continue;
     const n = Number(cleaned);
-    if (Number.isFinite(n)) return n;
+    if (!Number.isFinite(n)) continue;
+    if (n <= 0 || n > 1_000_000) {
+      console.warn(`[parseAmount] anomalous amount rejected: ${n}`);
+      return null;
+    }
+    return n;
   }
   return null;
 }
@@ -359,11 +365,7 @@ export async function applyPostback(parsed: ParsedPostback): Promise<{
   userId?: string;
   newTier?: number;
 }> {
-  // Dedupe.
-  const existing = await prisma.postback.findUnique({
-    where: { dedupeKey: parsed.dedupeKey },
-  });
-  if (existing) return { applied: false, reason: "duplicate" };
+  // Dedupe — handled via unique constraint catch below (no TOCTOU race).
 
   // Locate the PO account.
   let userId: string | null = null;
@@ -405,36 +407,48 @@ export async function applyPostback(parsed: ParsedPostback): Promise<{
 
   // Persist the raw postback regardless of whether we matched a user — admins
   // can attribute later from the unmatched queue.
-  const stored = await prisma.postback.create({
-    data: {
-      poAccountId,
-      eventType: parsed.event,
-      rawPayload: parsed.raw as object,
-      clickId: parsed.clickId,
-      poTraderId: parsed.poTraderId,
-      amount: parsed.amount ?? undefined,
-      currency: parsed.currency,
-      receivedAt: parsed.receivedAt,
-      signature: parsed.signature,
-      dedupeKey: parsed.dedupeKey,
-      siteId: parsed.siteId,
-      campaignId: parsed.campaignId,
-      campaignName: parsed.campaignName,
-      subId1: parsed.subId1,
-      subId2: parsed.subId2,
-      subId3: parsed.subId3,
-      subId4: parsed.subId4,
-      subId5: parsed.subId5,
-      country: parsed.country,
-      deviceType: parsed.deviceType,
-      osVersion: parsed.osVersion,
-      browser: parsed.browser,
-      promo: parsed.promo,
-      linkType: parsed.linkType,
-      eventDate: parsed.eventDate,
-      withdrawalStatus: parsed.withdrawalStatus,
-    },
-  });
+  // We rely on the unique constraint on `dedupeKey` to handle races atomically.
+  let stored;
+  try {
+    stored = await prisma.postback.create({
+      data: {
+        poAccountId,
+        eventType: parsed.event,
+        rawPayload: parsed.raw as object,
+        clickId: parsed.clickId,
+        poTraderId: parsed.poTraderId,
+        amount: parsed.amount ?? undefined,
+        currency: parsed.currency,
+        receivedAt: parsed.receivedAt,
+        signature: parsed.signature,
+        dedupeKey: parsed.dedupeKey,
+        siteId: parsed.siteId,
+        campaignId: parsed.campaignId,
+        campaignName: parsed.campaignName,
+        subId1: parsed.subId1,
+        subId2: parsed.subId2,
+        subId3: parsed.subId3,
+        subId4: parsed.subId4,
+        subId5: parsed.subId5,
+        country: parsed.country,
+        deviceType: parsed.deviceType,
+        osVersion: parsed.osVersion,
+        browser: parsed.browser,
+        promo: parsed.promo,
+        linkType: parsed.linkType,
+        eventDate: parsed.eventDate,
+        withdrawalStatus: parsed.withdrawalStatus,
+      },
+    });
+  } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === "P2002"
+    ) {
+      return { applied: false, reason: "duplicate" };
+    }
+    throw err;
+  }
 
   if (!poAccountId || !userId) {
     return { applied: true, reason: "unmatched", poAccountId: undefined };
@@ -445,7 +459,7 @@ export async function applyPostback(parsed: ParsedPostback): Promise<{
   // account back to pending).
   const account = await prisma.pocketOptionAccount.findUnique({
     where: { id: poAccountId },
-    select: { status: true },
+    select: { status: true, totalDeposit: true },
   });
 
   // Apply event-specific updates.
@@ -481,7 +495,12 @@ export async function applyPostback(parsed: ParsedPostback): Promise<{
       // Only deduct from totalDeposit when the withdrawal is actually paid out
       // (status=processed). "new" / "cancelled" don't affect deposit balance.
       if (parsed.withdrawalStatus === "processed" && parsed.amount) {
-        updates.totalDeposit = { decrement: parsed.amount };
+        // Prevent negative totalDeposit underflow
+        const currentDeposit = Number(account?.totalDeposit ?? 0);
+        const decrementAmount = Math.min(parsed.amount, currentDeposit);
+        if (decrementAmount > 0) {
+          updates.totalDeposit = { decrement: decrementAmount };
+        }
       }
       break;
   }
@@ -576,25 +595,42 @@ export async function manualAttachPoAccount(
   }
   // "not_configured" | "invalid_response" → fall through with pending status.
 
-  await prisma.pocketOptionAccount.upsert({
-    where: { userId },
-    create: {
-      userId,
-      poTraderId: trimmed,
-      status,
-      source: "manual",
-      totalDeposit: depositTotal,
-      ...(ftdAt ? { ftdAt } : {}),
-    },
-    update: {
-      poTraderId: trimmed,
-      source: "manual",
-      ...(status === "verified" ? { status, totalDeposit: depositTotal } : {}),
-      ...(ftdAt ? { ftdAt } : {}),
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.pocketOptionAccount.upsert({
+      where: { userId },
+      create: {
+        userId,
+        poTraderId: trimmed,
+        status,
+        source: "manual",
+        totalDeposit: depositTotal,
+        ...(ftdAt ? { ftdAt } : {}),
+      },
+      update: {
+        poTraderId: trimmed,
+        source: "manual",
+        ...(status === "verified" ? { status, totalDeposit: depositTotal } : {}),
+        ...(ftdAt ? { ftdAt } : {}),
+      },
+    });
+
+    // Recompute tier within the same transaction.
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      include: { poAccount: true },
+    });
+    if (!user) return;
+
+    const thresholds = await getTierThresholds();
+    const hasAccount = user.poAccount != null;
+    const total = user.poAccount?.totalDeposit ?? 0;
+    const tier = computeTier(total, hasAccount, thresholds);
+
+    if (tier !== user.tier) {
+      await tx.user.update({ where: { id: userId }, data: { tier } });
+    }
   });
 
-  await recomputeUserTier(userId);
   return { ok: true, status, depositTotal };
 }
 

@@ -7,16 +7,18 @@ export async function POST(req: NextRequest) {
   try {
     const { email, password, referralCode, promoCode } = await req.json();
 
+    const GENERIC_ERROR = "Регистрация не удалась. Попробуйте снова или войдите.";
+
     if (!email || !password) {
-      return NextResponse.json({ error: "Email и пароль обязательны" }, { status: 400 });
+      return NextResponse.json({ error: GENERIC_ERROR }, { status: 400 });
     }
-    if (password.length < 6) {
-      return NextResponse.json({ error: "Пароль минимум 6 символов" }, { status: 400 });
+    if (password.length < 8) {
+      return NextResponse.json({ error: GENERIC_ERROR }, { status: 400 });
     }
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
-      return NextResponse.json({ error: "Email уже зарегистрирован" }, { status: 409 });
+      return NextResponse.json({ error: GENERIC_ERROR }, { status: 409 });
     }
 
     let referredById: string | null = null;

@@ -13,8 +13,8 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
-  const page = Number(searchParams.get("page") ?? 1);
-  const limit = Number(searchParams.get("limit") ?? 20);
+  const page = Math.max(1, Math.min(10000, Number(searchParams.get("page") ?? 1) || 1));
+  const limit = Math.max(1, Math.min(100, Number(searchParams.get("limit") ?? 20) || 20));
   const search = searchParams.get("search") ?? "";
 
   const where = search

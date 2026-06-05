@@ -41,24 +41,30 @@ export function LegacyEmailLoginForm() {
           {error}
         </div>
       )}
-      <input
-        type="email"
-        required
-        autoComplete="email"
-        placeholder="email@example.com"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className={FIELD}
-      />
-      <input
-        type="password"
-        required
-        autoComplete="current-password"
-        placeholder="Пароль"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className={FIELD}
-      />
+      <label className="block">
+        <span className="sr-only">Email</span>
+        <input
+          type="email"
+          required
+          autoComplete="email"
+          placeholder="email@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={FIELD}
+        />
+      </label>
+      <label className="block">
+        <span className="sr-only">Пароль</span>
+        <input
+          type="password"
+          required
+          autoComplete="current-password"
+          placeholder="Пароль"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className={FIELD}
+        />
+      </label>
       <button
         type="submit"
         disabled={loading}

@@ -107,6 +107,21 @@ export function distanceToNextTier(
  * В 2-тирной модели всё, что выше T0, — это «Pro». Если позже включим
  * 5-уровневую модель, лейблы можно вернуть к Pro / Pro+ / VIP и т.п.
  */
+/**
+ * Signal bands accessible at each tier (2-tier model).
+ *
+ * T0 = OTC only; T1+ = all bands. Higher tiers mirror T1 for forward-compat.
+ */
+export type SignalBand = "otc" | "exchange" | "elite";
+
+export const TIER_ACCESS: Record<number, SignalBand[]> = {
+  0: ["otc"],
+  1: ["otc", "exchange", "elite"],
+  2: ["otc", "exchange", "elite"],
+  3: ["otc", "exchange", "elite"],
+  4: ["otc", "exchange", "elite"],
+};
+
 export const TIER_LABELS: Record<number, string> = {
   0: "Обычный",
   1: "Про",

@@ -82,6 +82,16 @@ async def _redeem_link_token(message: Message, token: str) -> bool:
                 json=payload,
                 headers={"X-Bot-Secret": settings.bot_sync_secret},
             )
+        if not resp.is_success:
+            content_type = resp.headers.get("content-type", "")
+            body = resp.json() if content_type.startswith("application/json") else {}
+            reason = str(body.get("reason", "unknown"))
+            logger.warning("link-token redeem HTTP %d: %s", resp.status_code, reason)
+            await message.answer(
+                "Не удалось привязать аккаунт (сервер вернул ошибку). "
+                "Попробуй ещё раз позже.",
+            )
+            return True
         body = resp.json()
     except Exception as exc:  # noqa: BLE001
         logger.warning("link-token redeem failed: %s", exc)

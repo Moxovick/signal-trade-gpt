@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { ReferralWidget } from "../_components/ReferralWidget";
+import { formatDate } from "@/lib/utils";
 import {
   Users,
   TrendingUp,
@@ -255,10 +256,7 @@ export default async function ReferralsPage() {
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-[11px] text-[var(--t-3)]">
-                        {new Date(r.referred.createdAt).toLocaleDateString(
-                          "ru-RU",
-                          { day: "numeric", month: "short", year: "numeric" },
-                        )}
+                        {formatDate(r.referred.createdAt)}
                       </span>
                       {/* PO status */}
                       {hasPo ? (

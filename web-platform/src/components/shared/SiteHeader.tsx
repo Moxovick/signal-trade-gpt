@@ -1,5 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Menu, X } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { ButtonLink } from "@/components/ui/Button";
 
@@ -9,6 +12,8 @@ const NAV = [
 ];
 
 export function SiteHeader() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-40 backdrop-blur-md border-b border-[var(--b-soft)] bg-[rgba(8,6,10,0.75)]">
       <nav className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -29,10 +34,46 @@ export function SiteHeader() {
             Войти
           </Link>
         </div>
-        <ButtonLink href="/register" size="sm" iconRight={<ArrowRight size={16} />}>
-          Зарегистрироваться
-        </ButtonLink>
+        <div className="hidden md:block">
+          <ButtonLink href="/register" size="sm" iconRight={<ArrowRight size={16} />}>
+            Зарегистрироваться
+          </ButtonLink>
+        </div>
+        <button
+          type="button"
+          onClick={() => setMobileOpen((v) => !v)}
+          className="md:hidden p-2 text-[var(--t-2)] hover:text-[var(--t-1)] transition-colors"
+          aria-label={mobileOpen ? "Закрыть меню" : "Открыть меню"}
+        >
+          {mobileOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
       </nav>
+
+      {/* Mobile dropdown */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-[var(--b-soft)] bg-[rgba(8,6,10,0.95)] px-6 pb-6 pt-4 space-y-4">
+          {NAV.map((n) => (
+            <Link
+              key={n.href}
+              href={n.href}
+              onClick={() => setMobileOpen(false)}
+              className="block text-sm text-[var(--t-2)] hover:text-[var(--brand-gold)] transition-colors"
+            >
+              {n.label}
+            </Link>
+          ))}
+          <Link
+            href="/login"
+            onClick={() => setMobileOpen(false)}
+            className="block text-sm text-[var(--t-2)] hover:text-[var(--t-1)] transition-colors"
+          >
+            Войти
+          </Link>
+          <ButtonLink href="/register" size="sm" iconRight={<ArrowRight size={16} />}>
+            Зарегистрироваться
+          </ButtonLink>
+        </div>
+      )}
     </header>
   );
 }

@@ -3,12 +3,13 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAccessReport } from "@/lib/access";
-import { TIER_LABELS } from "@/lib/tier";
+import { TIER_ACCESS, TIER_LABELS } from "@/lib/tier";
 import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { ProfileEditForm } from "./_components/ProfileEditForm";
 import { ReferralCopy } from "./_components/ReferralCopy";
 import { avatarUrl, initialsFromName } from "@/lib/avatar";
+import { formatDate } from "@/lib/utils";
 import {
   Award,
   CalendarDays,
@@ -29,14 +30,6 @@ export const dynamic = "force-dynamic";
 
 const SITE_URL =
   process.env["NEXT_PUBLIC_SITE_URL"] ?? "http://localhost:3000";
-
-const TIER_ACCESS: Record<number, ("otc" | "exchange" | "elite")[]> = {
-  0: ["otc"],
-  1: ["otc", "exchange", "elite"],
-  2: ["otc", "exchange", "elite"],
-  3: ["otc", "exchange", "elite"],
-  4: ["otc", "exchange", "elite"],
-};
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -80,11 +73,7 @@ export default async function ProfilePage() {
   const displayName =
     user.firstName ?? user.username ?? user.email?.split("@")[0] ?? "User";
   const totalDeposit = account?.totalDeposit ? Number(account.totalDeposit) : 0;
-  const memberSince = user.createdAt.toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+  const memberSince = formatDate(user.createdAt);
 
   const avatarSrc = avatarUrl({ avatar: user.avatar, email: user.email });
 

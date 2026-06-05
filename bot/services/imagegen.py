@@ -25,6 +25,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from constants import TIER_NAMES
 from database.models import Signal
 
 
@@ -596,9 +597,7 @@ def make_tier_card(tier: int, deposit: float, next_threshold: int | None) -> byt
     img = _gradient_bg(w, h)
     draw = ImageDraw.Draw(img)
 
-    # 2-tier модель: T0 = Обычный, T1+ = Про.
-    tier_names = {0: "ОБЫЧНЫЙ", 1: "ПРО", 2: "ПРО", 3: "ПРО", 4: "ПРО"}
-    name = tier_names.get(tier, "—")
+    name = TIER_NAMES.get(tier, "—").upper()
 
     # Big tier label
     title_f = _font_bold(140)
@@ -932,7 +931,7 @@ def make_leaderboard_table(
         d.text((x, head_y), label, font=f_head, fill=TEXT_2)
     d.line([(60, head_y + 30), (w - 60, head_y + 30)], fill=_hex(GOLD_SOFT), width=1)
 
-    tier_labels = {0: "Обычный", 1: "Про", 2: "Про", 3: "Про", 4: "Про"}
+    tier_labels = TIER_NAMES
     rank_marks = {1: "Ⅰ", 2: "Ⅱ", 3: "Ⅲ"}  # roman numerals as medal stand-in
     row_y = head_y + 50
     row_h = 44
@@ -987,8 +986,7 @@ def make_settings_card(
     d.text((60, 80), "ПРОФИЛЬ", font=f_title, fill=GOLD)
     d.text((60, 160), name, font=f_val, fill=TEXT_1)
 
-    _tier_names = {0: "Обычный", 1: "Про", 2: "Про", 3: "Про", 4: "Про"}
-    tier_label = _tier_names.get(tier, "Про")
+    tier_label = TIER_NAMES.get(tier, "Про")
     # Rows
     rows = [
         ("Уровень доступа", tier_label, GOLD),

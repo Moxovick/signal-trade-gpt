@@ -14,6 +14,7 @@ Bans are tracked via a `banned` flag column added by `_ensure_columns`.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import aiosqlite
@@ -90,7 +91,8 @@ async def _tier_breakdown() -> dict[int, int]:
 @router.message(Command("admin"))
 async def cmd_admin(message: Message) -> None:
     if not _is_admin(message.from_user.id):
-        return  # silent
+        await message.answer("⛔ Доступ запрещён.")
+        return
     total_signals = await get_total_signals()
     total_users = await get_total_users()
     breakdown = await _tier_breakdown()
@@ -118,6 +120,7 @@ async def cmd_admin(message: Message) -> None:
 @router.message(Command("broadcast"))
 async def cmd_broadcast(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён.")
         return
     text = (command.args or "").strip()
     if not text:
@@ -133,6 +136,7 @@ async def cmd_broadcast(message: Message, command: CommandObject) -> None:
             sent += 1
         except Exception:  # noqa: BLE001
             failed += 1
+        await asyncio.sleep(0.05)
     await message.answer(
         f"<b>Broadcast done</b>\nsent: {sent}, failed: {failed}",
         parse_mode=ParseMode.HTML,
@@ -142,6 +146,7 @@ async def cmd_broadcast(message: Message, command: CommandObject) -> None:
 @router.message(Command("set_tier"))
 async def cmd_set_tier(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён.")
         return
     parts = (command.args or "").split()
     if len(parts) != 2 or not all(p.lstrip("-").isdigit() for p in parts):
@@ -168,6 +173,7 @@ async def cmd_set_tier(message: Message, command: CommandObject) -> None:
 @router.message(Command("ban"))
 async def cmd_ban(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён.")
         return
     raw = (command.args or "").strip()
     if not raw.lstrip("-").isdigit():
@@ -185,6 +191,7 @@ async def cmd_ban(message: Message, command: CommandObject) -> None:
 @router.message(Command("unban"))
 async def cmd_unban(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён.")
         return
     raw = (command.args or "").strip()
     if not raw.lstrip("-").isdigit():
@@ -200,6 +207,7 @@ async def cmd_unban(message: Message, command: CommandObject) -> None:
 @router.message(Command("stats_global"))
 async def cmd_stats_global(message: Message) -> None:
     if not _is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён.")
         return
     total_signals = await get_total_signals()
     total_users = await get_total_users()
@@ -243,6 +251,7 @@ async def cmd_test_as(message: Message, command: CommandObject) -> None:
     Usage: /test_as <telegram_id>  →  renders /tier and /stats cards for them.
     """
     if not _is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён.")
         return
     raw = (command.args or "").strip()
     if not raw.lstrip("-").isdigit():
@@ -305,6 +314,7 @@ async def cmd_demo_signal(message: Message, command: CommandObject) -> None:
       /demo_signal GBP/JPY PUT       → confidence random
     """
     if not _is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён.")
         return
     parts = (command.args or "").split()
     from random import choice, randint
@@ -355,6 +365,7 @@ async def cmd_demo_signal(message: Message, command: CommandObject) -> None:
 async def cmd_reset_my_state(message: Message) -> None:
     """Wipe own wins/losses/signals counter for re-testing achievements."""
     if not _is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён.")
         return
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
@@ -379,6 +390,7 @@ async def cmd_reset_my_state(message: Message) -> None:
 async def cmd_seed_data(message: Message) -> None:
     """Insert 5 fake users with different tiers, for leaderboard / preview testing."""
     if not _is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён.")
         return
     fakes = [
         (9_000_001, "alex_pro", "Alex", 4, 15000.0, 24, 6),
@@ -420,6 +432,7 @@ async def cmd_preview(message: Message, command: CommandObject) -> None:
       Screens: tier, stats, ref, ach, top, settings, help
     """
     if not _is_admin(message.from_user.id):
+        await message.answer("⛔ Доступ запрещён.")
         return
     screen = (command.args or "").strip().lower()
     valid = {"tier", "stats", "ref", "ach", "top", "settings", "help"}
@@ -437,7 +450,7 @@ async def cmd_preview(message: Message, command: CommandObject) -> None:
     from handlers import menu  # circular-safe at runtime
 
     if screen == "tier":
-        await menu.btn_tier(message)
+        await message.answer("Preview tier: not implemented yet")
     elif screen == "stats":
         await menu.btn_stats(message)
     elif screen == "ref":

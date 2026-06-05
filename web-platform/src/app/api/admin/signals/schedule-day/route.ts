@@ -80,12 +80,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "slots required" }, { status: 400 });
   }
 
-  // Validate that all scheduledAt parse correctly.
-  const parsed = slots.map((s) => {
-    const dt = new Date(s.scheduledAt);
-    if (isNaN(dt.getTime())) throw new Error(`Invalid scheduledAt: ${s.scheduledAt}`);
-    return { ...s, scheduledAt: dt };
-  });
+  // Validate that all scheduledAt parse correctly and are in the future.
+  const now = new Date();
+  let parsed: (Omit<SlotInput, "scheduledAt"> & { scheduledAt: Date })[];
+  try {
+    parsed = slots.map((s) => {
+      const dt = new Date(s.scheduledAt);
+      if (isNaN(dt.getTime())) throw new Error(`Invalid scheduledAt: ${s.scheduledAt}`);
+      if (dt.getTime() <= now.getTime()) {
+        throw new Error(`scheduledAt must be in the future: ${s.scheduledAt}`);
+      }
+      return { ...s, scheduledAt: dt };
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: msg }, { status: 400 });
+  }
 
   // Delete existing unactivated signals scheduled on the same dates.
   const dates = [...new Set(parsed.map((s) => {

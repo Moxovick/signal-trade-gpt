@@ -56,7 +56,8 @@ export async function registerAction(
   const poTraderIdRaw = String(formData.get("poTraderId") ?? "").trim();
   const poTraderId = poTraderIdRaw.length > 0 ? poTraderIdRaw : null;
 
-  if (!email.includes("@")) {
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!EMAIL_RE.test(email)) {
     return { ok: false, error: "Введи корректный email" };
   }
   if (password.length < 6) {

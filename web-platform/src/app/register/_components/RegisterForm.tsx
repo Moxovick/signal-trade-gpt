@@ -102,70 +102,94 @@ export function RegisterForm() {
         </div>
       </div>
 
-      <input
-        type="email"
-        name="email"
-        required
-        autoComplete="email"
-        placeholder="Email"
-        className={FIELD}
-      />
-      <input
-        type="password"
-        name="password"
-        required
-        autoComplete="new-password"
-        placeholder="Пароль (минимум 6 символов)"
-        className={FIELD}
-      />
-      <input
-        type="password"
-        name="confirm"
-        required
-        autoComplete="new-password"
-        placeholder="Повтори пароль"
-        className={FIELD}
-      />
-      <input
-        type="text"
-        name="poTraderId"
-        inputMode="numeric"
-        autoComplete="off"
-        placeholder="PocketOption Trader ID (необязательно)"
-        className={FIELD}
-        maxLength={12}
-      />
-      <input
-        type="text"
-        name="promoCode"
-        autoComplete="off"
-        placeholder="Промокод (если активировал на PO — для записи)"
-        className={FIELD}
-        maxLength={32}
-      />
-      <input
-        type="text"
-        name="nickname"
-        autoComplete="nickname"
-        placeholder="Ник для leaderboard (необязательно)"
-        className={FIELD}
-        maxLength={32}
-      />
-      <input
-        type="text"
-        name="telegramUsername"
-        autoComplete="off"
-        placeholder="Telegram username, без @ (необязательно)"
-        className={FIELD}
-        maxLength={32}
-      />
-      <input
-        type="text"
-        name="referralCode"
-        defaultValue={initialRef}
-        placeholder="Реферальный код (если кто-то пригласил)"
-        className={FIELD}
-      />
+      <label className="block">
+        <span className="sr-only">Email</span>
+        <input
+          type="email"
+          name="email"
+          required
+          autoComplete="email"
+          placeholder="Email"
+          className={FIELD}
+        />
+      </label>
+      <label className="block">
+        <span className="sr-only">Пароль</span>
+        <input
+          type="password"
+          name="password"
+          required
+          autoComplete="new-password"
+          placeholder="Пароль (минимум 6 символов)"
+          className={FIELD}
+        />
+      </label>
+      <label className="block">
+        <span className="sr-only">Повтори пароль</span>
+        <input
+          type="password"
+          name="confirm"
+          required
+          autoComplete="new-password"
+          placeholder="Повтори пароль"
+          className={FIELD}
+        />
+      </label>
+      <label className="block">
+        <span className="sr-only">PocketOption Trader ID</span>
+        <input
+          type="text"
+          name="poTraderId"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="PocketOption Trader ID (необязательно)"
+          className={FIELD}
+          maxLength={12}
+        />
+      </label>
+      <label className="block">
+        <span className="sr-only">Промокод</span>
+        <input
+          type="text"
+          name="promoCode"
+          autoComplete="off"
+          placeholder="Промокод (если активировал на PO — для записи)"
+          className={FIELD}
+          maxLength={32}
+        />
+      </label>
+      <label className="block">
+        <span className="sr-only">Ник</span>
+        <input
+          type="text"
+          name="nickname"
+          autoComplete="nickname"
+          placeholder="Ник для leaderboard (необязательно)"
+          className={FIELD}
+          maxLength={32}
+        />
+      </label>
+      <label className="block">
+        <span className="sr-only">Telegram username</span>
+        <input
+          type="text"
+          name="telegramUsername"
+          autoComplete="off"
+          placeholder="Telegram username, без @ (необязательно)"
+          className={FIELD}
+          maxLength={32}
+        />
+      </label>
+      <label className="block">
+        <span className="sr-only">Реферальный код</span>
+        <input
+          type="text"
+          name="referralCode"
+          defaultValue={initialRef}
+          placeholder="Реферальный код (если кто-то пригласил)"
+          className={FIELD}
+        />
+      </label>
       <button
         type="submit"
         disabled={isPending}

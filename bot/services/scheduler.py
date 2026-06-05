@@ -16,17 +16,15 @@ from datetime import datetime, timezone
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
-from aiogram.types import BufferedInputFile
-
 import httpx
 
 from config import settings
-from database.db import get_total_signals, get_users_with_notifications, save_signal
+from database.db import get_total_signals, save_signal
 from database.models import Signal
-from services.formatter import format_otc_minimal, format_pro_signal_caption, format_signal_caption
 from services.imagegen import make_otc_banner, make_signal_chart_advanced
 from services.price_feed import fetch_ohlc
 from services.signal_generator import generate_signal, random_interval_seconds
+from services.signal_publisher import publish_signal
 from services import web_sync
 
 logger = logging.getLogger(__name__)
@@ -35,46 +33,6 @@ logger = logging.getLogger(__name__)
 def _is_working_hours() -> bool:
     now_utc = datetime.now(timezone.utc)
     return settings.working_hours_start <= now_utc.hour < settings.working_hours_end
-
-
-async def _broadcast_to_users(bot: Bot, signal: Signal, chart_bytes: bytes) -> None:
-    """
-    Push signal to every opted-in user, tier-filtered.
-
-    - OTC signals  → all users (Обычный + Про), basic chart + OTC caption.
-    - Pro signals  → only Про users (tier >= 1), advanced chart + rich caption.
-    """
-    try:
-        users = await get_users_with_notifications()
-    except Exception:  # noqa: BLE001
-        logger.exception("Failed to fetch users for broadcast")
-        return
-
-    tier = signal.tier or "otc"
-    is_pro_signal = tier not in {"otc", "demo"}
-
-    sent = 0
-    for user in users:
-        # Про signals are exclusive to Про users.
-        if is_pro_signal and user.tier == 0:
-            continue
-        try:
-            if is_pro_signal and user.tier >= 1:
-                caption = format_pro_signal_caption(signal, settings.pocket_option_url)
-            else:
-                caption = format_otc_minimal(signal)
-            await bot.send_photo(
-                chat_id=user.telegram_id,
-                photo=BufferedInputFile(chart_bytes, filename="signal.png"),
-                caption=caption,
-                parse_mode=ParseMode.HTML,
-            )
-            sent += 1
-        except Exception:  # noqa: BLE001
-            # User may have blocked the bot — skip silently.
-            logger.debug("Cannot deliver to telegram_id=%s", user.telegram_id)
-
-    logger.info("Broadcast complete: %d/%d users reached", sent, len(users))
 
 
 async def signal_loop(bot: Bot) -> None:
@@ -99,38 +57,15 @@ async def signal_loop(bot: Bot) -> None:
             is_otc = tier in {"otc", "demo"}
 
             if is_otc:
-                # OTC → channel: branded banner (no candlestick) + caption.
                 chart_bytes: bytes = make_otc_banner(signal)
-                channel_caption = format_signal_caption(signal, settings.pocket_option_url)
-                await bot.send_photo(
-                    chat_id=settings.channel_id,
-                    photo=BufferedInputFile(chart_bytes, filename=f"signal_{sid}.png"),
-                    caption=channel_caption,
-                    parse_mode=ParseMode.HTML,
-                )
             else:
-                # Pro signal → fetch real OHLC (falls back to synthetic if None).
                 real_ohlc = await fetch_ohlc(signal.pair)
                 chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
-                channel_caption = format_signal_caption(signal, settings.pocket_option_url)
-                await bot.send_photo(
-                    chat_id=settings.channel_id,
-                    photo=BufferedInputFile(chart_bytes, filename=f"signal_{sid}.png"),
-                    caption=channel_caption,
-                    parse_mode=ParseMode.HTML,
-                )
 
-            logger.info(
-                "Signal sent to channel: %s %s exp=%s conf=%d%% kind=%s",
-                signal.pair,
-                signal.direction,
-                signal.expiration,
-                signal.confidence,
-                kind,
-            )
-
-            # Push directly to individual users (tier-filtered).
-            await _broadcast_to_users(bot, signal, chart_bytes)  # type: ignore[arg-type]
+            # publish_signal marks consumed BEFORE sending — safe against
+            # partial-send retries (auto-generated signals have no external
+            # consumed flag, so mark_consumed is omitted here).
+            await publish_signal(bot, signal, str(sid), chart_bytes)
 
         except Exception:  # noqa: BLE001
             logger.exception("Failed to send signal")
@@ -222,13 +157,12 @@ async def scheduled_signal_loop(bot: Bot) -> None:
     logger.info("Scheduled signal loop started (30s poll)")
     while True:
         await asyncio.sleep(30)
-        due = web_sync.get_due_scheduled_signals()
+        due = await web_sync.get_due_scheduled_signals()
         if not due:
             continue
 
         for sig_dict in due:
             signal_id: str = sig_dict["id"]
-            web_sync.mark_scheduled_consumed(signal_id)
 
             # Build a Signal model from the dict so we can reuse existing helpers.
             signal = Signal(
@@ -252,25 +186,12 @@ async def scheduled_signal_loop(bot: Bot) -> None:
                     real_ohlc = await fetch_ohlc(signal.pair)
                     chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
 
-                channel_caption = format_signal_caption(signal, settings.pocket_option_url)
-                await bot.send_photo(
-                    chat_id=settings.channel_id,
-                    photo=BufferedInputFile(chart_bytes, filename=f"signal_{signal_id}.png"),
-                    caption=channel_caption,
-                    parse_mode=ParseMode.HTML,
+                # mark_consumed is called BEFORE any Telegram send inside
+                # publish_signal, preventing duplicate delivery on retry.
+                await publish_signal(
+                    bot, signal, signal_id, chart_bytes,
+                    mark_consumed=web_sync.mark_scheduled_consumed,
                 )
-
-                logger.info(
-                    "Scheduled signal published: %s %s exp=%s tier=%s id=%s",
-                    signal.pair,
-                    signal.direction,
-                    signal.expiration,
-                    signal.tier,
-                    signal_id,
-                )
-
-                # Broadcast to individual users.
-                await _broadcast_to_users(bot, signal, chart_bytes)
 
                 # Activate on web platform.
                 activated = await _activate_signal_on_web(signal_id)

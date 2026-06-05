@@ -11,7 +11,14 @@ import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { TIER_LABELS } from "@/lib/tier";
 import { Trophy, Medal, Award, Crown } from "lucide-react";
+import { redirect } from "next/navigation";
 import { LeaderboardFilters } from "./_components/LeaderboardFilters";
+
+const MEDAL_COLORS = {
+  gold: "var(--brand-gold)",
+  silver: "#c0c0c0",
+  bronze: "#cd7f32",
+} as const;
 import type { Prisma } from "@/generated/prisma/client";
 
 type Row = {
@@ -37,7 +44,7 @@ type PageProps = {
 
 export default async function LeaderboardPage({ searchParams }: PageProps) {
   const session = await auth();
-  if (!session?.user?.id) return null;
+  if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
   const sp = await searchParams;
@@ -100,22 +107,23 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
 
   // Find user's rank (if outside top-10)
   const myIdx = topUsers.findIndex((u) => u.id === userId);
+  const inTop10 = myIdx >= 0 && myIdx < 10;
   const myRow: Row | null =
-    me && myIdx === -1
+    me && !inTop10
       ? {
           id: me.id,
           displayName: displayName(me),
           tier: me.tier,
           signalsReceived: me.signalsReceived,
           totalDeposit: Number(me.poAccount?.totalDeposit ?? 0),
-          rank: Math.min(50, myStats),
+          rank: myIdx >= 0 ? myIdx + 1 : myStats + 1,
         }
       : null;
 
   const medalFor = (rank: number) => {
-    if (rank === 1) return { icon: Crown, color: "#f5c518", bg: "rgba(245,197,24,0.12)" };
-    if (rank === 2) return { icon: Medal, color: "#c0c0c0", bg: "rgba(192,192,192,0.1)" };
-    if (rank === 3) return { icon: Award, color: "#cd7f32", bg: "rgba(205,127,50,0.1)" };
+    if (rank === 1) return { icon: Crown, color: MEDAL_COLORS.gold, bg: "rgba(245,197,24,0.12)" };
+    if (rank === 2) return { icon: Medal, color: MEDAL_COLORS.silver, bg: "rgba(192,192,192,0.1)" };
+    if (rank === 3) return { icon: Award, color: MEDAL_COLORS.bronze, bg: "rgba(205,127,50,0.1)" };
     return null;
   };
 

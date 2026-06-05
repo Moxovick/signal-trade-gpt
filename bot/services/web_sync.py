@@ -37,6 +37,7 @@ class WebSyncState:
 
 
 _state = WebSyncState()
+_state_lock = asyncio.Lock()
 
 
 def state() -> WebSyncState:
@@ -135,27 +136,28 @@ def get_price_source() -> dict[str, Any]:
     return {"provider": "off"}
 
 
-def next_pending_admin_signal(allowed_tiers: list[str]) -> dict[str, Any] | None:
+async def next_pending_admin_signal(allowed_tiers: list[str]) -> dict[str, Any] | None:
     """
     Return the most recent pending admin-published signal whose tier is in
     `allowed_tiers`. Marks the signal as consumed so each user only gets it
     once per bot session (the web side still tracks the canonical state).
     """
-    for sig in _state.signals:
-        if sig["id"] in _state.consumed_signal_ids:
-            continue
-        if not sig.get("isActive"):
-            continue
-        if sig.get("result") != "pending":
-            continue
-        if sig.get("tier") not in allowed_tiers:
-            continue
-        _state.consumed_signal_ids.add(sig["id"])
-        return sig
-    return None
+    async with _state_lock:
+        for sig in _state.signals:
+            if sig["id"] in _state.consumed_signal_ids:
+                continue
+            if not sig.get("isActive"):
+                continue
+            if sig.get("result") != "pending":
+                continue
+            if sig.get("tier") not in allowed_tiers:
+                continue
+            _state.consumed_signal_ids.add(sig["id"])
+            return sig
+        return None
 
 
-def get_due_scheduled_signals() -> list[dict[str, Any]]:
+async def get_due_scheduled_signals() -> list[dict[str, Any]]:
     """
     Return scheduled (isActive=False) signals whose scheduledAt is now or in
     the past, and that haven't been consumed yet. These should be published
@@ -164,23 +166,25 @@ def get_due_scheduled_signals() -> list[dict[str, Any]]:
     from datetime import datetime, timezone  # local import to avoid cycles
     now_iso = datetime.now(timezone.utc).isoformat()
     due: list[dict[str, Any]] = []
-    for sig in _state.signals:
-        if sig.get("isActive"):
-            continue
-        scheduled_at = sig.get("scheduledAt")
-        if not scheduled_at:
-            continue
-        if scheduled_at > now_iso:
-            continue
-        if sig["id"] in _state.consumed_signal_ids:
-            continue
-        due.append(sig)
+    async with _state_lock:
+        for sig in _state.signals:
+            if sig.get("isActive"):
+                continue
+            scheduled_at = sig.get("scheduledAt")
+            if not scheduled_at:
+                continue
+            if scheduled_at > now_iso:
+                continue
+            if sig["id"] in _state.consumed_signal_ids:
+                continue
+            due.append(sig)
     return due
 
 
-def mark_scheduled_consumed(signal_id: str) -> None:
+async def mark_scheduled_consumed(signal_id: str) -> None:
     """Mark a scheduled signal as consumed so we don't re-publish it."""
-    _state.consumed_signal_ids.add(signal_id)
+    async with _state_lock:
+        _state.consumed_signal_ids.add(signal_id)
 
 
 async def _fetch() -> dict[str, Any] | None:
@@ -203,20 +207,21 @@ async def _fetch() -> dict[str, Any] | None:
         return None
 
 
-def _apply(body: dict[str, Any]) -> None:
-    _state.accounts = list(body.get("accounts") or [])
-    new_signals = list(body.get("signals") or [])
-    # Drop consumed-ids that no longer exist (signal was deleted server-side).
-    visible = {s["id"] for s in new_signals}
-    _state.consumed_signal_ids &= visible
-    _state.signals = new_signals
-    cfg = body.get("config")
-    if isinstance(cfg, dict):
-        _state.config = cfg
-    thr = body.get("tierThresholds")
-    if isinstance(thr, dict):
-        _state.tier_thresholds = thr
-    _state.last_fetched_ts = int(body.get("ts") or 0)
+async def _apply(body: dict[str, Any]) -> None:
+    async with _state_lock:
+        _state.accounts = list(body.get("accounts") or [])
+        new_signals = list(body.get("signals") or [])
+        # Drop consumed-ids that no longer exist (signal was deleted server-side).
+        visible = {s["id"] for s in new_signals}
+        _state.consumed_signal_ids &= visible
+        _state.signals = new_signals
+        cfg = body.get("config")
+        if isinstance(cfg, dict):
+            _state.config = cfg
+        thr = body.get("tierThresholds")
+        if isinstance(thr, dict):
+            _state.tier_thresholds = thr
+        _state.last_fetched_ts = int(body.get("ts") or 0)
 
 
 async def refresh_now() -> bool:
@@ -224,7 +229,7 @@ async def refresh_now() -> bool:
     body = await _fetch()
     if body is None:
         return False
-    _apply(body)
+    await _apply(body)
     return True
 
 

@@ -12,10 +12,11 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { Gift, Lock, CheckCircle2, ArrowRight } from "lucide-react";
+import { redirect } from "next/navigation";
 
 export default async function DashboardGiveawayPage() {
   const session = await auth();
-  if (!session?.user?.id) return null;
+  if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
   const [account, prizes] = await Promise.all([

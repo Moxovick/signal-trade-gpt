@@ -1,3 +1,4 @@
+from constants import TIER_DEPOSIT_THRESHOLDS, TIER_NAMES
 from database.models import Signal
 from services import web_sync
 
@@ -53,16 +54,8 @@ TIER_TAGS = {
     "elite": "#elite",
 }
 
-# 2-tier модель v2.2: T0 (Обычный, безлим OTC) и T1+ (Про, безлим всё).
-# Ключи T2-T4 сохранены для бэк-компата (см. web-platform/src/lib/tier.ts).
-USER_TIER_NAMES = {0: "Обычный", 1: "Про", 2: "Про", 3: "Про", 4: "Про"}
-_UNREACHABLE_THRESHOLD = 9_007_199_254_740_991
-USER_TIER_DEPOSIT_THRESHOLDS = {
-    1: 20,
-    2: _UNREACHABLE_THRESHOLD,
-    3: _UNREACHABLE_THRESHOLD,
-    4: _UNREACHABLE_THRESHOLD,
-}
+USER_TIER_NAMES = TIER_NAMES
+USER_TIER_DEPOSIT_THRESHOLDS = TIER_DEPOSIT_THRESHOLDS
 
 
 def format_otc_minimal(signal: Signal) -> str:

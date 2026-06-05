@@ -29,8 +29,16 @@
   --green: #8ee06b;
   --red: #ff6b3d;
 
+  /* Gold backgrounds — subtle fills for cards, badges, hover states */
+  --brand-gold-bg-subtle: rgba(212, 160, 23, 0.05);
+  --brand-gold-bg: rgba(212, 160, 23, 0.08);
+  --brand-gold-bg-moderate: rgba(212, 160, 23, 0.10);
+  --brand-gold-bg-hover: rgba(212, 160, 23, 0.14);
+  --brand-gold-bg-active: rgba(212, 160, 23, 0.18);
+
   /* Borders */
   --b-soft: rgba(212, 160, 23, 0.12);
+  --brand-gold-border: rgba(212, 160, 23, 0.30);
   --b-hard: rgba(212, 160, 23, 0.35);
   --b-glow: rgba(212, 160, 23, 0.60);
 

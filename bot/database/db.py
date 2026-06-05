@@ -22,6 +22,7 @@ async def _ensure_column(db: aiosqlite.Connection, table: str, column: str, ddl:
         cols = [r[1] for r in await cur.fetchall()]
     if column not in cols:
         await db.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
+        await db.commit()
 
 
 async def init_db() -> None:
@@ -39,6 +40,17 @@ async def init_db() -> None:
         )
         await _ensure_column(db, "users", "wins", "wins INTEGER DEFAULT 0")
         await _ensure_column(db, "users", "losses", "losses INTEGER DEFAULT 0")
+        await _ensure_column(db, "users", "banned", "banned INTEGER DEFAULT 0")
+        await db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS achievements (
+                telegram_id INTEGER NOT NULL,
+                code        TEXT    NOT NULL,
+                awarded_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (telegram_id, code)
+            )
+            """
+        )
         await db.commit()
     logger.info("Database initialized at %s", DB_PATH)
 
@@ -206,20 +218,35 @@ async def toggle_notifications(telegram_id: int) -> bool:
             return bool(row[0]) if row else True
 
 
+async def is_user_banned(telegram_id: int) -> bool:
+    """Check if a user is banned."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT banned FROM users WHERE telegram_id = ?", (telegram_id,)
+        ) as cursor:
+            row = await cursor.fetchone()
+            return bool(row[0]) if row else False
+
+
 async def record_signal_result(telegram_id: int, signal_id: int, result: str) -> None:
     """Mark a signal's result and bump the user's win/loss counter."""
     if result not in {"win", "loss"}:
         raise ValueError(f"Bad signal result: {result!r}")
     column = "wins" if result == "win" else "losses"
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE signals SET result = ? WHERE id = ?", (result, signal_id)
-        )
-        await db.execute(
-            f"UPDATE users SET {column} = {column} + 1 WHERE telegram_id = ?",
-            (telegram_id,),
-        )
-        await db.commit()
+        await db.execute("BEGIN")
+        try:
+            await db.execute(
+                "UPDATE signals SET result = ? WHERE id = ?", (result, signal_id)
+            )
+            await db.execute(
+                f"UPDATE users SET {column} = {column} + 1 WHERE telegram_id = ?",
+                (telegram_id,),
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            raise
 
 
 async def get_referral_count(telegram_id: int) -> int:

@@ -157,6 +157,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+/** Strip dangerous HTML tags and event handlers as defense-in-depth. */
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
+    .replace(/\bon\w+\s*=\s*["'][^"']*["']/gi, "");
+}
+
 // Tiny inline markdown rendering for preview only (full rendering happens server-side on /terms etc.)
 function simpleMarkdownPreview(md: string): string {
   let html = md
@@ -174,5 +182,5 @@ function simpleMarkdownPreview(md: string): string {
   html = "<p>" + html + "</p>";
   html = html.replace(/<p>(<h\d>)/g, "$1").replace(/(<\/h\d>)<\/p>/g, "$1");
   html = html.replace(/<p>(<ul>)/g, "$1").replace(/(<\/ul>)<\/p>/g, "$1");
-  return html;
+  return sanitizeHtml(html);
 }

@@ -169,7 +169,6 @@ async def _record(telegram_id: int, code: str) -> None:
 
 async def check_and_award(bot: Bot, user: User) -> None:
     """Evaluate every achievement for `user` and award + notify any new ones."""
-    await _ensure_table()
     unlocked = await _unlocked_codes(user.telegram_id)
     for ach in ACHIEVEMENTS:
         if ach.code in unlocked:
@@ -201,6 +200,5 @@ async def check_and_award(bot: Bot, user: User) -> None:
 
 async def list_for_user(telegram_id: int) -> list[tuple[Achievement, bool]]:
     """Return (achievement, unlocked) pairs in catalogue order."""
-    await _ensure_table()
     unlocked = await _unlocked_codes(telegram_id)
     return [(a, a.code in unlocked) for a in ACHIEVEMENTS]
