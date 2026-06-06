@@ -13,7 +13,7 @@ from config import settings
 from database.db import init_db
 from handlers import admin, link, menu, onboarding, signals, start, stats
 from middlewares import BannedUserMiddleware
-from services.scheduler import daily_brief_loop, scheduled_signal_loop
+from services.scheduler import daily_brief_loop
 from services.tier_sync import tier_sync_loop
 from services.web_sync import web_sync_loop
 
@@ -70,12 +70,10 @@ async def main() -> None:
     dp.include_router(stats.router)
     dp.include_router(menu.router)
 
-    # Start background loops. Auto-random signal_loop is disabled —
-    # signals are published only via the admin day-plan (scheduled_signal_loop).
+    # Background loops — signal delivery is now on-demand (no scheduled loops).
     sync_task = asyncio.create_task(tier_sync_loop(bot))
     brief_task = asyncio.create_task(daily_brief_loop(bot))
     web_sync_task = asyncio.create_task(web_sync_loop())
-    scheduled_task = asyncio.create_task(scheduled_signal_loop(bot))
 
     # Drop any active webhook so polling works without conflict
     await bot.delete_webhook(drop_pending_updates=True)
@@ -98,10 +96,10 @@ async def main() -> None:
     try:
         await dp.start_polling(bot)
     finally:
-        for task in (sync_task, brief_task, web_sync_task, scheduled_task):
+        for task in (sync_task, brief_task, web_sync_task):
             task.cancel()
         await asyncio.gather(
-            sync_task, brief_task, web_sync_task, scheduled_task,
+            sync_task, brief_task, web_sync_task,
             return_exceptions=True,
         )
         await bot.session.close()

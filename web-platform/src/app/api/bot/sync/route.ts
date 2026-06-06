@@ -2,15 +2,17 @@
  * GET /api/bot/sync
  *
  * Bot-facing snapshot endpoint. Returns:
- *   - accounts:   linked PO accounts with tier/deposit/telegramId
- *   - signals:    recent active signals (admin-published) the bot can broadcast
- *   - config:     bot configuration (welcome msg, signal template, autopost,
- *                 daily limits, FAQ, price source) — see lib/bot-config.ts.
+ *   - accounts:       linked PO accounts with tier/deposit/telegramId
+ *   - config:         bot configuration (welcome msg, signal template,
+ *                     FAQ, price source) — see lib/bot-config.ts.
  *   - tierThresholds: for tier-up calculations.
+ *   - onDemandConfig: per-tier daily limits & allowed signal types.
  *
- * Auth: header `X-Bot-Secret` must equal env BOT_SYNC_SECRET. Shared-secret
- * auth is enough because the response is read-only and the bot is trusted.
+ * On-demand model: signals are no longer broadcast from admin. Each user
+ * requests signals individually. The bot generates signals on /signal command
+ * using onDemandConfig for limits and allowed types.
  *
+ * Auth: header `X-Bot-Secret` must equal env BOT_SYNC_SECRET.
  * The bot polls this endpoint every ~60s and mirrors data to SQLite.
  */
 import { NextResponse, type NextRequest } from "next/server";
@@ -41,7 +43,8 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const [accounts, settings, signals] = await Promise.all([
+  // On-demand model: no scheduled signals to sync. Only accounts + config.
+  const [accounts, settings] = await Promise.all([
     prisma.pocketOptionAccount.findMany({
       select: {
         poTraderId: true,
@@ -55,21 +58,6 @@ export async function GET(req: NextRequest) {
       },
     }),
     prisma.siteSettings.findMany(),
-    prisma.signal.findMany({
-      where: {
-        OR: [
-          { isActive: true },
-          // Include scheduled signals due in the next 2 hours so the bot
-          // can pre-cache them and publish at exactly the right moment.
-          {
-            isActive: false,
-            scheduledAt: { not: null, lte: new Date(Date.now() + 2 * 60 * 60 * 1000) },
-          },
-        ],
-      },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-    }),
   ]);
 
   const accountsData = accounts.map((a) => ({
@@ -88,30 +76,24 @@ export async function GET(req: NextRequest) {
       ? (tierRow.value as TierThresholds)
       : DEFAULT_TIER_THRESHOLDS;
 
-  const signalsData = signals.map((s) => ({
-    id: s.id,
-    pair: s.pair,
-    direction: s.direction,
-    expiration: s.expiration,
-    confidence: s.confidence,
-    tier: s.tier,
-    type: s.type,
-    entryPrice: s.entryPrice == null ? null : Number(s.entryPrice),
-    analysis: s.analysis,
-    reasoning: s.reasoning,
-    result: s.result,
-    isActive: s.isActive,
-    scheduledAt: s.scheduledAt ? s.scheduledAt.toISOString() : null,
-    createdAt: s.createdAt.toISOString(),
-    closedAt: s.closedAt ? s.closedAt.toISOString() : null,
-  }));
+  // On-demand signal config for the bot (daily limits per tier)
+  const onDemandRow = settings.find((s) => s.key === "on_demand_signal_config");
+  const onDemandConfig = onDemandRow?.value ?? {
+    dailyLimits: { "0": 3, "1": 10, "2": null },
+    allowedTypes: {
+      "0": ["otc"],
+      "1": ["otc", "exchange"],
+      "2": ["otc", "exchange", "elite"],
+    },
+    proFrequencySeconds: 0,
+  };
 
   return NextResponse.json({
     ok: true,
     ts: Date.now(),
     accounts: accountsData,
-    signals: signalsData,
     config,
     tierThresholds,
+    onDemandConfig,
   });
 }

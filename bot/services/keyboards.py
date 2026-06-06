@@ -18,7 +18,7 @@ from aiogram.types import (
 
 # ── persistent main menu (shown after /start) ─────────────────────────────────
 
-# Removed: BTN_SIGNAL (signals are automatic), BTN_TIER (no tier UI)
+BTN_SIGNAL = "🎯 Получить сигнал"
 BTN_LINK = "🔗 Привязать ID"
 BTN_REF = "👥 Рефералы"
 BTN_STATS = "📈 Статистика"
@@ -27,6 +27,7 @@ BTN_HELP = "❔ Помощь"
 
 MAIN_MENU = ReplyKeyboardMarkup(
     keyboard=[
+        [KeyboardButton(text=BTN_SIGNAL)],
         [KeyboardButton(text=BTN_LINK), KeyboardButton(text=BTN_REF)],
         [KeyboardButton(text=BTN_STATS), KeyboardButton(text=BTN_SETTINGS)],
         [KeyboardButton(text=BTN_HELP)],

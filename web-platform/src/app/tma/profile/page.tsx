@@ -15,8 +15,8 @@ function Profile({ user }: { user: TmaUser }) {
     user.username ||
     "Трейдер";
 
-  const level = user.tier >= 1 ? "Про" : "Обычный";
-  const levelColor = user.tier >= 1 ? "var(--brand-gold)" : "var(--t-2)";
+  const level = user.tier >= 2 ? "Про" : user.tier === 1 ? "Базовый" : "Бесплатный";
+  const levelColor = user.tier >= 2 ? "var(--brand-gold)" : user.tier === 1 ? "var(--brand-gold-deep)" : "var(--t-2)";
 
   return (
     <main className="max-w-md mx-auto p-4 space-y-4 pb-6">

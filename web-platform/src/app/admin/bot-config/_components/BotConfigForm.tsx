@@ -168,46 +168,19 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
         />
       </div>
 
-      {/* Auto-post */}
+      {/* On-demand model notice */}
       <div className={SECTION_CARD} style={SECTION_STYLE}>
         <div className={SECTION_HEADER}>
           <Activity size={16} className="text-[#f5c518]" />
-          Авто-постинг сигналов
+          Модель сигналов: On-demand
         </div>
-        <label className="flex items-center gap-3 cursor-pointer text-sm">
-          <input
-            type="checkbox"
-            checked={autoEnabled}
-            onChange={(e) => setAutoEnabled(e.target.checked)}
-            className="w-4 h-4 accent-[#f5c518]"
-          />
-          Включить автопостинг (бот рассылает сигналы по расписанию)
-        </label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-          <label className="text-xs text-[#777] flex flex-col gap-1">
-            Интервал (минут)
-            <input
-              type="number"
-              min={1}
-              value={autoInterval}
-              onChange={(e) => setAutoInterval(Number(e.target.value))}
-              className={FIELD}
-            />
-          </label>
-          <label className="text-xs text-[#777] flex flex-col gap-1">
-            Пары через запятую (если нет ручного сигнала)
-            <input
-              value={autoPairs}
-              onChange={(e) => setAutoPairs(e.target.value)}
-              className={FIELD}
-              placeholder="EUR/USD, GBP/USD, USD/JPY"
-            />
-          </label>
-        </div>
-        <p className="text-[11px] text-[#666] leading-relaxed">
-          Если включено — каждые N минут бот публикует сигнал. Сначала забирает
-          самый свежий <em>pending</em> сигнал из админки, иначе генерирует
-          случайный по списку пар выше.
+        <p className="text-sm text-[#aaa]">
+          Сигналы генерируются по запросу пользователя (кнопка в дашборде или
+          команда /signal в боте). Дневные лимиты и типы сигналов настраиваются
+          в разделе{" "}
+          <a href="/admin/signals" className="text-[#f5c518] hover:underline">
+            Сигналы
+          </a>.
         </p>
       </div>
 
@@ -249,9 +222,8 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
           Перки на тир
         </div>
         <p className="text-xs text-[#777]">
-          Что открывается на каждом уровне. Лимита по числу сигналов больше
-          нет — все тиры с T1 видят сигналы безлимитом. Старшие тиры получают
-          углублённый анализ и ранний доступ.
+          Что открывается на каждом уровне. T0 (Free) = 3 сигнала/день OTC,
+          T1 (Basic) = 10/день OTC+биржа, T2 (Pro) = безлимит все типы.
         </p>
         <div className="space-y-2">
           {(["0", "1", "2", "3", "4"] as const).map((t) => (

@@ -27,6 +27,7 @@ from services.keyboards import (
     BTN_LINK,
     BTN_REF,
     BTN_SETTINGS,
+    BTN_SIGNAL,
     BTN_STATS,
     MAIN_MENU,
     referral_inline,
@@ -37,6 +38,15 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 from handlers.link import cmd_link as do_link  # noqa: E402
+from handlers.signals import _request_signal  # noqa: E402
+
+
+@router.message(F.text == BTN_SIGNAL)
+async def btn_signal(message: Message) -> None:
+    error, _, _ = await _request_signal(message.from_user.id, message.bot)
+    if error:
+        from aiogram.enums import ParseMode as _PM
+        await message.answer(error, parse_mode=_PM.HTML)
 
 
 @router.message(F.text == BTN_LINK)
@@ -93,7 +103,8 @@ async def btn_stats(message: Message) -> None:
         return
     total = user.wins + user.losses
     winrate = (user.wins / total * 100) if total else 0.0
-    level = "Про" if user.tier >= 1 else "Обычный"
+    from constants import TIER_NAMES
+    level = TIER_NAMES.get(user.tier, "Free")
     caption = (
         "<b>📊 Твоя статистика</b>\n"
         "\n"
@@ -287,7 +298,7 @@ async def cmd_leaderboard(message: Message) -> None:
         logger.warning("Could not render leaderboard: %s", exc)
         lines = [caption, ""]
         medals = ["🥇", "🥈", "🥉"]
-        tier_names = {0: "Обычный", 1: "Про"}
+        tier_names = {0: "Free", 1: "Basic", 2: "Pro"}
         for rank, name, _wr, w, _l, t in rows:
             prefix = medals[rank - 1] if rank <= 3 else f"{rank}."
             tier_label = tier_names.get(t, "Про")

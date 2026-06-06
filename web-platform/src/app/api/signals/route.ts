@@ -1,10 +1,12 @@
 /**
- * GET /api/signals  — list signals visible to the caller, filtered by tier.
- * POST /api/signals — admin-only signal creation.
+ * GET /api/signals — list signals visible to the caller, filtered by tier.
  *
- * v6b access model (two-tier):
- *  - T0 (Free): up to 3 OTC signals per day.
- *  - T1+ (Pro): all bands, no daily cap.
+ * On-demand 3-tier access model:
+ *  - T0 (Free):  OTC only, 3/day.
+ *  - T1 (Basic): OTC + exchange, 10/day.
+ *  - T2 (Pro):   all bands, unlimited.
+ *
+ * Signal creation moved to POST /api/signals/request.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -14,8 +16,8 @@ import { canReceiveSignal } from "@/lib/access";
 type SignalTier = "otc" | "exchange" | "elite";
 
 function tiersForUser(tier: number): SignalTier[] {
-  // T0 — OTC only; T1+ — all bands.
   if (tier <= 0) return ["otc"];
+  if (tier === 1) return ["otc", "exchange"];
   return ["otc", "exchange", "elite"];
 }
 
@@ -29,9 +31,11 @@ export async function GET(req: NextRequest) {
   const page = Number(searchParams.get("page") ?? 1);
   const limit = Math.min(50, Number(searchParams.get("limit") ?? 20));
   const tierFilter = searchParams.get("tier") as SignalTier | null;
+  const myOnly = searchParams.get("my") === "true";
 
   const access = await canReceiveSignal(session.user.id);
-  const allowedTiers = tiersForUser(access.report?.tier ?? 0);
+  const tier = access.report?.tier ?? 0;
+  const allowedTiers = tiersForUser(tier);
 
   const tiersForQuery = tierFilter
     ? allowedTiers.filter((t) => t === tierFilter)
@@ -44,14 +48,17 @@ export async function GET(req: NextRequest) {
       page,
       limit,
       allowedTiers,
-      access: { tier: access.report?.tier ?? 0 },
+      access: { tier, dailyLimit: access.report?.dailySignalLimit, used: access.report?.signalsTodayUsed ?? 0 },
     });
   }
 
-  const where = {
+  const where: Record<string, unknown> = {
     tier: { in: tiersForQuery },
     isActive: true,
   };
+  if (myOnly) {
+    where["createdById"] = session.user.id;
+  }
 
   const [signals, total] = await Promise.all([
     prisma.signal.findMany({
@@ -74,6 +81,7 @@ export async function GET(req: NextRequest) {
         reasoning: true,
         createdAt: true,
         closedAt: true,
+        createdById: true,
       },
     }),
     prisma.signal.count({ where }),
@@ -86,34 +94,12 @@ export async function GET(req: NextRequest) {
     limit,
     allowedTiers,
     access: {
-      tier: access.report?.tier ?? 0,
-      demoRemaining: access.report?.demoSignalsRemaining,
+      tier,
       dailyLimit: access.report?.dailySignalLimit,
       used: access.report?.signalsTodayUsed ?? 0,
+      remaining: access.report?.dailySignalLimit != null
+        ? Math.max(0, access.report.dailySignalLimit - access.report.signalsTodayUsed)
+        : null,
     },
   });
-}
-
-export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user || (session.user as { role?: string }).role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const body = await req.json();
-  const signal = await prisma.signal.create({
-    data: {
-      pair: body.pair,
-      direction: body.direction,
-      expiration: body.expiration,
-      confidence: body.confidence,
-      type: body.type ?? "ai",
-      tier: body.tier ?? "otc",
-      analysis: body.analysis ?? null,
-      reasoning: body.reasoning ?? null,
-      createdById: session.user.id,
-    },
-  });
-
-  return NextResponse.json({ signal }, { status: 201 });
 }

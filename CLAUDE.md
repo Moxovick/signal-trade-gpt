@@ -15,16 +15,18 @@ Signal Trade GPT — платформа AI-сигналов для PocketOption.
 - `docs/` — PRD, брифинги.
 - `docker-compose.yml` — Postgres + бот.
 
-## Phase 2 status (текущее)
+## Phase 3 status (текущее)
 
 - [x] Подписки удалены из UI/копии.
 - [x] Prisma v2 схема: PocketOptionAccount, Postback, BotPerk, User.tier.
-- [x] Tier-engine + access-engine.
+- [x] 3-tier модель (FREE / BASIC / PRO) — tier-engine + access-engine.
+- [x] On-demand сигналы (по запросу через кнопку, daily лимиты).
 - [x] PocketOption postback API (HMAC, idempotent).
 - [x] Manual ID flow (web + bot /link).
 - [x] Telegram Login Widget на /login (NextAuth credentials provider).
 - [x] Дизайн-токены (matte gold), AnimatedBackground, CustomCursor, Preloader.
 - [x] Лендинг / dashboard / админка переписаны.
+- [x] Админка сигналов: настройки лимитов и типов по тирам.
 - [ ] Real-time графики (Phase G — Chipa API).
 
 ## Code conventions
@@ -71,21 +73,24 @@ Signal Trade GPT — платформа AI-сигналов для PocketOption.
    - Пересчитываем `User.tier`.
 4. Tier открывает перки (`BotPerk.minTier ≤ User.tier`).
 
-## Tier perks (2-tier модель v2)
+## Tier perks (3-tier модель v3)
 
-| Tier | Депозит      | Лимит            | Сигналы                                   |
+| Tier | Депозит      | Лимит сигналов   | Типы сигналов                              |
 |-----:|--------------|------------------|-------------------------------------------|
-|   T0 | $0 (рега PO) | 3 OTC / день *(в боте: 2 lifetime demo)* | OTC (demo)             |
-|   T1 | от $20       | безлимит         | OTC + биржа + Elite, индикаторы, ранний доступ |
+| FREE | $0 (рега PO) | 3 OTC / день     | только OTC (рандом)                        |
+| BASIC| от $20       | 10 / день        | OTC + биржевые (настраиваемо в админке)    |
+| PRO  | от $100      | безлимит         | всё: OTC + биржа + Elite                   |
 
-- T0 открывается **только** регистрацией PocketOption по нашей реф-ссылке;
-  депозит не требуется.
-- T1 (Pro) открывается автоматически при первом депозите ≥ $20 на привязанном
-  PocketOption-аккаунте (через постбэк).
-- Пороги редактируются в `/admin/settings → tier_thresholds`. Поля T2/T3/T4
-  оставлены в схеме (`tierThresholds.{2,3,4}`) выставленными в
-  `Number.MAX_SAFE_INTEGER` — возврат к многоуровневой модели — это правка
-  настроек, без миграций кода.
+- Сигналы выдаются **по запросу** (on-demand): юзер нажимает кнопку →
+  получает один сигнал. Лимит считается за 24ч с первого запроса.
+- FREE открывается **только** регистрацией PocketOption по нашей реф-ссылке;
+  депозит не требуется. Без привязки PO-аккаунта сигналы не работают.
+- BASIC открывается автоматически при депозите ≥ $20 (через постбэк).
+- PRO открывается автоматически при депозите ≥ $100 (через постбэк).
+- Пороги и лимиты редактируются в `/admin/settings → tier_thresholds`
+  и `/admin/signals → настройки тиров`.
+- OTC-сигналы генерируются рандомно. Non-OTC — реальные данные через API
+  с графиком и аналитикой.
 - Регистрация **не блокирует** пользователей по сумме депозита. Trader ID
   на `/register` опционален: можно дозаполнить на `/onboarding/po-id`.
 

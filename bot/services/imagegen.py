@@ -628,7 +628,7 @@ def make_tier_card(tier: int, deposit: float, next_threshold: int | None) -> byt
     draw.text((bar_x, bar_y - 50), f"Депозит: ${deposit:,.0f}", font=txt_f, fill=TEXT_1)
     if next_threshold:
         remaining = max(0, next_threshold - int(deposit))
-        next_name = "Про" if tier == 0 else f"T{tier + 1}"
+        next_name = {0: "Basic", 1: "Pro"}.get(tier, f"T{tier + 1}")
         draw.text(
             (bar_x, bar_y + 30),
             f"До {next_name}: ещё ${remaining:,}",
@@ -954,7 +954,7 @@ def make_leaderboard_table(
             name = name[:27] + "…"
         d.text((cols[1][1], row_y + 4), name, font=f_row, fill=TEXT_1)
         d.text((cols[2][1], row_y + 4), str(signals), font=f_row, fill=GOLD)
-        tier_lbl = tier_labels.get(tier, "Про")
+        tier_lbl = tier_labels.get(tier, "Pro")
         d.text((cols[3][1], row_y + 4), tier_lbl, font=f_row, fill=GOLD if tier >= 1 else TEXT_2)
         row_y += row_h
 

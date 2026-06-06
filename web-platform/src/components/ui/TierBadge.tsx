@@ -7,19 +7,19 @@ type Props = {
   className?: string;
 };
 
-// 2-tier model: T0 — нейтральный, T1+ — золотой Pro.
-// T2/T3/T4 ключи оставлены на случай возврата многоуровневой модели.
-const PRO_COLOR = {
-  bg: "linear-gradient(135deg, rgba(212,160,23,0.20), rgba(245,232,192,0.10))",
-  fg: "#f5e8c0",
-  border: "rgba(245,232,192,0.50)",
-};
+// 3-tier model: Free — grey, Basic — blue/silver, Pro — gold.
 const TIER_COLORS: Record<number, { bg: string; fg: string; border: string }> = {
   0: { bg: "rgba(110,96,76,0.15)", fg: "#b6a586", border: "rgba(110,96,76,0.3)" },
-  1: PRO_COLOR,
-  2: PRO_COLOR,
-  3: PRO_COLOR,
-  4: PRO_COLOR,
+  1: {
+    bg: "linear-gradient(135deg, rgba(100,149,237,0.20), rgba(176,196,222,0.10))",
+    fg: "#b0c4de",
+    border: "rgba(176,196,222,0.50)",
+  },
+  2: {
+    bg: "linear-gradient(135deg, rgba(212,160,23,0.20), rgba(245,232,192,0.10))",
+    fg: "#f5e8c0",
+    border: "rgba(245,232,192,0.50)",
+  },
 };
 
 const SIZE: Record<NonNullable<Props["size"]>, string> = {

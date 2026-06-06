@@ -18,10 +18,9 @@ type Prize = {
 };
 
 const TIER_NAME: Record<number, string> = {
-  1: "T1 Starter",
-  2: "T2 Active",
-  3: "T3 Pro",
-  4: "T4 VIP",
+  0: "Free",
+  1: "Basic",
+  2: "Pro",
 };
 
 export default function AdminGiveawayPage() {

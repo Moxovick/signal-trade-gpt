@@ -1,16 +1,14 @@
 /**
  * Access engine — given a userId, decide which signals/perks they can see.
  *
- * Two-tier access model (v2.2):
- *  - T0 (PO привязан, депо < $20): безлим OTC-сигналов, остальные тулзы скрыты.
- *  - T1+ (депо ≥ $20): безлим всё + полный набор индикаторов/перков.
+ * Three-tier access model (v3):
+ *  - T0 (Free):  3 OTC-сигнала в день.
+ *  - T1 (Basic): 10 сигналов в день, OTC + биржевые.
+ *  - T2 (Pro):   безлимит, все типы (OTC + биржа + Elite).
  *
  * Доступ к /dashboard как таковой контролируется в `app/dashboard/layout.tsx`
  * (требуется привязанный PO-аккаунт). Здесь мы уже считаем перки/лимиты для
  * залогиненного юзера с привязкой.
- *
- * Ключевое отличие от прошлой версии: T0 НЕ имеет дневного капа. Если ты
- * захочешь вернуть лимит — задай ему положительное число в TIER_DAILY_LIMITS.
  */
 import { prisma } from "@/lib/prisma";
 
@@ -26,9 +24,7 @@ export type AccessReport = {
     unlocked: boolean;
   }>;
   /**
-   * Сколько демо-сигналов осталось сегодня. Текущая модель — безлим, поэтому
-   * для всех тиров возвращается null. Поле сохранено для обратной
-   * совместимости с UI, который ещё может его читать.
+   * Сколько сигналов осталось сегодня (null — безлимит, т.е. Pro).
    */
   demoSignalsRemaining: number | null;
   /** Дневной мягкий кап (null — без лимита). */
@@ -37,12 +33,9 @@ export type AccessReport = {
 };
 
 const TIER_DAILY_LIMITS: Record<number, number | null> = {
-  0: null, // T0 (Free · OTC): безлим
-  1: null, // T1+ (Pro): безлим
-  // T2/T3/T4 — на текущем этапе не используются (см. lib/tier.ts), но
-  // оставлены здесь на случай возвращения многоуровневой модели через
-  // SiteSettings.tier_thresholds.
-  2: null,
+  0: 3,    // T0 (Free): 3 OTC-сигнала в день
+  1: 10,   // T1 (Basic): 10 сигналов в день
+  2: null,  // T2 (Pro): безлимит
   3: null,
   4: null,
 };
@@ -83,7 +76,7 @@ export async function getAccessReport(userId: string): Promise<AccessReport | nu
       unlocked: user.tier >= p.minTier,
     })),
     demoSignalsRemaining:
-      user.tier === 0 && dailyLimit != null
+      dailyLimit != null
         ? Math.max(0, dailyLimit - used)
         : null,
     dailySignalLimit: dailyLimit,

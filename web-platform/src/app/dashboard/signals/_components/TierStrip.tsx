@@ -7,16 +7,19 @@ import { TierBadge } from "@/components/ui/TierBadge";
 type Props = {
   tier: number;
   depositTotal: number;
-  proThreshold: number;
+  nextThreshold: number | null;
+  dailyLimit: number | null;
+  signalsRemaining: number | null;
 };
 
-export function TierStrip({ tier, depositTotal, proThreshold }: Props) {
-  const isPro = tier >= 1;
-  const remaining = Math.max(0, proThreshold - depositTotal);
-  const progressPct = Math.min(
-    100,
-    Math.round((depositTotal / proThreshold) * 100),
-  );
+export function TierStrip({ tier, depositTotal, nextThreshold, dailyLimit, signalsRemaining }: Props) {
+  const isPro = tier >= 2;
+  const hasNextTier = nextThreshold !== null;
+  const remaining = hasNextTier ? Math.max(0, nextThreshold - depositTotal) : 0;
+  const progressPct = hasNextTier
+    ? Math.min(100, Math.round((depositTotal / nextThreshold) * 100))
+    : 100;
+  const nextLabel = tier === 0 ? "Basic" : tier === 1 ? "Pro" : null;
 
   return (
     <div
@@ -37,25 +40,33 @@ export function TierStrip({ tier, depositTotal, proThreshold }: Props) {
         </span>
       ) : (
         <div className="flex flex-1 items-center gap-3 min-w-0">
-          {/* Mini progress bar */}
-          <div className="w-20 shrink-0">
-            <div className="h-1.5 rounded-full bg-[var(--bg-2)] overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${progressPct}%`,
-                  background:
-                    "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
-                }}
-              />
-            </div>
-          </div>
-          <span
-            className="text-xs text-[var(--t-2)] whitespace-nowrap"
-            style={{ fontFamily: "var(--font-jetbrains)" }}
-          >
-            ${remaining} до Pro
-          </span>
+          {dailyLimit != null && (
+            <span className="text-xs text-[var(--t-2)] whitespace-nowrap">
+              {signalsRemaining ?? dailyLimit}/{dailyLimit}
+            </span>
+          )}
+          {hasNextTier && (
+            <>
+              <div className="w-20 shrink-0">
+                <div className="h-1.5 rounded-full bg-[var(--bg-2)] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${progressPct}%`,
+                      background:
+                        "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+                    }}
+                  />
+                </div>
+              </div>
+              <span
+                className="text-xs text-[var(--t-2)] whitespace-nowrap"
+                style={{ fontFamily: "var(--font-jetbrains)" }}
+              >
+                ${remaining} до {nextLabel}
+              </span>
+            </>
+          )}
         </div>
       )}
 

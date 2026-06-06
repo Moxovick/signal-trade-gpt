@@ -1,4 +1,4 @@
-from constants import TIER_DEPOSIT_THRESHOLDS, TIER_NAMES
+from constants import TIER_DAILY_LIMITS, TIER_DEPOSIT_THRESHOLDS, TIER_NAMES, TIER_SIGNAL_TYPES
 from database.models import Signal
 from services import web_sync
 
@@ -60,7 +60,7 @@ USER_TIER_DEPOSIT_THRESHOLDS = TIER_DEPOSIT_THRESHOLDS
 
 def format_otc_minimal(signal: Signal) -> str:
     """
-    OTC signal caption for Обычный users.
+    OTC signal caption for Free-tier users.
     Clean and readable: pair, direction, expiry, confidence bar.
     """
     arrow = DIRECTION_ARROW[signal.direction]
@@ -186,9 +186,9 @@ def format_stats(total_signals: int, total_users: int) -> str:
         f"<b>Режим работы:</b> 24/7 (OTC) / 08:00-22:00 UTC (биржа)\n"
         f"\n"
         f"<b>Уровни доступа:</b>\n"
-        f"  • <b>Обычный</b> — OTC-сигналы, личный кабинет\n"
-        f"  • <b>Про</b> (депозит ≥ $20) — всё: OTC + биржа + Elite,"
-        f" индикаторы и ранний доступ\n"
+        f"  • <b>Free</b> — OTC-сигналы, 3/день\n"
+        f"  • <b>Basic</b> (депозит ≥ $20) — OTC + биржа, 10/день\n"
+        f"  • <b>Pro</b> (депозит ≥ $100) — всё: OTC + биржа + Elite, безлимит\n"
         f"\n"
         f"<i>Данные обновляются в режиме реального времени</i>"
     )
@@ -205,14 +205,14 @@ def format_welcome(first_name: str, referral_code: str, bot_username: str) -> st
         f"<b>Как начать:</b>\n"
         f"1. Открой счёт PocketOption по нашей реф-ссылке (/link)\n"
         f"   и пришли свой PocketOption Trader ID.\n"
-        f"2. Сразу после привязки ты получаешь уровень <b>Обычный</b> — OTC-сигналы.\n"
-        f"3. Внесёшь депозит ≥ $20 — автоматически откроется уровень <b>Про</b>:\n"
-        f"   OTC + биржа + Elite, индикаторы и ранний доступ.\n"
+        f"2. Сразу после привязки — уровень <b>Free</b>: OTC-сигналы, 3/день.\n"
+        f"3. Депозит ≥ $20 — <b>Basic</b>: OTC + биржа, 10/день.\n"
+        f"4. Депозит ≥ $100 — <b>Pro</b>: всё безлимитно.\n"
         f"\n"
         f"<b>Команды:</b>\n"
+        f"/signal — запросить сигнал\n"
         f"/tier — твой текущий уровень\n"
         f"/link — привязать аккаунт PocketOption\n"
-        f"/signal — запросить сигнал\n"
         f"/stats — статистика платформы\n"
         f"/ref — реферальная программа\n"
         f"\n"
@@ -226,18 +226,21 @@ def format_welcome(first_name: str, referral_code: str, bot_username: str) -> st
 
 
 def format_tier_info(tier: int, po_trader_id: str | None, signals_received: int) -> str:
-    name = USER_TIER_NAMES.get(tier, "—")
-    is_pro = tier >= 1
+    name = USER_TIER_NAMES.get(tier, "Free")
 
-    # 2-тирная модель: tier 0 → следующая планка $20. tier 1+ — максимум.
-    next_threshold = USER_TIER_DEPOSIT_THRESHOLDS.get(1) if not is_pro else None
+    # Signal types for this tier
+    types = TIER_SIGNAL_TYPES.get(tier, ["otc"])
+    signal_access = " + ".join(t.upper() for t in types)
 
-    signal_access = "OTC + биржа + Elite" if is_pro else "только OTC"
+    # Daily limit
+    daily_limit = TIER_DAILY_LIMITS.get(tier, 3)
+    limit_text = "безлимит" if daily_limit is None else f"{daily_limit}/день"
 
     lines = [
         f"<b>Твой уровень: {name}</b>",
         "",
         f"<b>Доступные сигналы:</b> {signal_access}",
+        f"<b>Лимит:</b> {limit_text}",
         f"<b>Сигналов получено:</b> {signals_received}",
     ]
 
@@ -246,10 +249,16 @@ def format_tier_info(tier: int, po_trader_id: str | None, signals_received: int)
     else:
         lines.append("<b>PocketOption:</b> не привязан — /link")
 
-    if next_threshold:
+    # Show next tier info
+    if tier == 0:
         lines.append("")
         lines.append(
-            f"<i>До уровня Про: первый депозит ≥ ${next_threshold} на PocketOption.</i>"
+            "<i>До уровня Basic: депозит ≥ $20 на PocketOption.</i>"
+        )
+    elif tier == 1:
+        lines.append("")
+        lines.append(
+            "<i>До уровня Pro: депозит ≥ $100 на PocketOption.</i>"
         )
 
     return "\n".join(lines)

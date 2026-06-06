@@ -80,7 +80,7 @@ function Home({ user }: { user: TmaUser }) {
         <div className="rounded-xl border border-[var(--b-soft)] bg-[var(--bg-1)] px-3 py-2 text-right">
           <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">Уровень</div>
           <div className="text-sm font-bold text-[var(--brand-gold)]">
-            {user.tier >= 1 ? "Про" : "Обычный"}
+            {user.tier >= 2 ? "Про" : user.tier === 1 ? "Базовый" : "Бесплатный"}
           </div>
         </div>
       </header>

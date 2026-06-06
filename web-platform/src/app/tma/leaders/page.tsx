@@ -11,7 +11,7 @@ type Entry = {
   signalsReceived: number;
 };
 
-const LEVEL: Record<number, string> = { 0: "Обычный", 1: "Про" };
+const LEVEL: Record<number, string> = { 0: "Бесплатный", 1: "Базовый", 2: "Про" };
 
 export default function TmaLeadersPage() {
   return <TmaShell>{() => <Leaders />}</TmaShell>;

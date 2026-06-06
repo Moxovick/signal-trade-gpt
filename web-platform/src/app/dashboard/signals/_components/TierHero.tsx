@@ -2,12 +2,12 @@
 
 /**
  * Dashboard hero — surfaces the user's current tier, PO trader ID, personal
- * referral link, and (for T0) a progress bar to Pro. The single visual cue
- * that tells the user "where they are and how to get to the next step".
+ * referral link, and progress bar to next tier (Free->Basic->Pro).
  */
 import { useState } from "react";
 import { Copy, Check, ExternalLink, ShieldCheck, Sparkles } from "lucide-react";
 import { TierBadge } from "@/components/ui/TierBadge";
+import { TIER_LABELS } from "@/lib/tier";
 
 type Props = {
   tier: number;
@@ -15,7 +15,10 @@ type Props = {
   poStatus: "verified" | "pending" | "rejected" | null;
   referralUrl: string;
   depositTotal: number;
-  proThreshold: number;
+  /** Threshold for the next tier (Basic or Pro). */
+  nextThreshold: number | null;
+  dailyLimit: number | null;
+  signalsRemaining: number | null;
 };
 
 function formatUsd(n: number): string {
@@ -28,16 +31,19 @@ export function TierHero({
   poStatus,
   referralUrl,
   depositTotal,
-  proThreshold,
+  nextThreshold,
+  dailyLimit,
+  signalsRemaining,
 }: Props) {
   const [copied, setCopied] = useState<"link" | "id" | null>(null);
 
-  const isPro = tier >= 1;
-  const remaining = Math.max(0, proThreshold - depositTotal);
-  const progressPct = Math.min(
-    100,
-    Math.round((depositTotal / proThreshold) * 100),
-  );
+  const isPro = tier >= 2;
+  const hasNextTier = nextThreshold !== null;
+  const remaining = hasNextTier ? Math.max(0, nextThreshold - depositTotal) : 0;
+  const progressPct = hasNextTier
+    ? Math.min(100, Math.round((depositTotal / nextThreshold) * 100))
+    : 100;
+  const nextTierLabel = tier === 0 ? "Базового" : tier === 1 ? "Про" : null;
 
   async function copy(label: "link" | "id", value: string) {
     try {
@@ -72,7 +78,9 @@ export function TierHero({
             ) : (
               <span className="inline-flex items-center gap-1 text-xs text-[var(--t-2)]">
                 <ShieldCheck size={12} className="text-[var(--brand-gold)]" />
-                Безлим OTC-сигналов
+                {dailyLimit != null
+                  ? `${signalsRemaining ?? dailyLimit}/${dailyLimit} сигналов сегодня`
+                  : "Безлимит сигналов"}
               </span>
             )}
           </div>
@@ -111,11 +119,11 @@ export function TierHero({
             )}
           </div>
 
-          {!isPro && (
+          {hasNextTier && (
             <div className="space-y-2">
               <div className="flex items-baseline justify-between gap-3 flex-wrap">
                 <div className="text-sm text-[var(--t-2)]">
-                  До Про осталось{" "}
+                  До {nextTierLabel} осталось{" "}
                   <span
                     className="text-[var(--brand-gold-bright)] font-semibold"
                     style={{ fontFamily: "var(--font-jetbrains)" }}
@@ -128,7 +136,7 @@ export function TierHero({
                   className="text-xs text-[var(--t-3)] tabular-nums"
                   style={{ fontFamily: "var(--font-jetbrains)" }}
                 >
-                  {formatUsd(depositTotal)} / {formatUsd(proThreshold)}
+                  {formatUsd(depositTotal)} / {formatUsd(nextThreshold)}
                 </div>
               </div>
               <div className="h-2 rounded-full bg-[var(--bg-2)] overflow-hidden">
@@ -181,14 +189,14 @@ export function TierHero({
             Открыть PocketOption
             <ExternalLink size={14} />
           </a>
-          {!isPro && (
+          {hasNextTier && (
             <a
               href={referralUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm bg-transparent text-[var(--brand-gold)] border border-[var(--b-hard)] hover:border-[var(--b-glow)] hover:bg-[rgba(212,160,23,0.05)] transition-all"
             >
-              Пополнить → Про
+              Пополнить → {TIER_LABELS[tier + 1] ?? "Про"}
             </a>
           )}
         </div>

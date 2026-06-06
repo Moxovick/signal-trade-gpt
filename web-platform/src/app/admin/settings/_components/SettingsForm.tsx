@@ -36,11 +36,9 @@ export function SettingsForm({
       : {};
 
   const router = useRouter();
-  // 2-tier модель: редактируем только T1; T2-T4 выставлены недостижимыми.
+  // 3-tier модель: T1 (Basic) и T2 (Pro) редактируемы; T3/T4 выключены.
   const [t1, setT1] = useState(asNumber(initialThresholds["1"], 20));
-  // T2-T4 — фактически выключены. Храним MAX_SAFE_INTEGER, чтобы
-  // tier engine без хаков продолжал работать (см. lib/tier.ts).
-  const t2 = asNumber(initialThresholds["2"], Number.MAX_SAFE_INTEGER);
+  const [t2, setT2] = useState(asNumber(initialThresholds["2"], 100));
   const t3 = asNumber(initialThresholds["3"], Number.MAX_SAFE_INTEGER);
   const t4 = asNumber(initialThresholds["4"], Number.MAX_SAFE_INTEGER);
   const [refTpl, setRefTpl] = useState(asString(refLinkTemplate, ""));
@@ -77,25 +75,39 @@ export function SettingsForm({
       {/* Tiers */}
       <fieldset>
         <legend className="text-sm font-semibold mb-3">
-          Порог депозита для T1 · Pro (USD)
+          Пороги депозита (USD)
         </legend>
         <p className="text-xs text-[var(--t-3)] mb-3">
-          Сейчас работает 2-тирная модель: T0 — регистрация по нашей PO-ссылке,
-          T1 — депозит ≥ этого значения. T2/T3/T4 выключены.
+          3-тирная модель: Free — рег, Basic — депозит ≥ T1, Pro — депозит ≥ T2. T3/T4 выключены.
         </p>
-        <label className="block max-w-xs">
-          <span className="text-xs text-[var(--t-3)] uppercase tracking-wider">
-            T1 · Pro
-          </span>
-          <input
-            type="number"
-            min={0}
-            step={10}
-            value={t1}
-            onChange={(e) => setT1(Number(e.target.value))}
-            className={`${FIELD} mt-1`}
-          />
-        </label>
+        <div className="flex gap-4 max-w-md">
+          <label className="block flex-1">
+            <span className="text-xs text-[var(--t-3)] uppercase tracking-wider">
+              T1 · Basic
+            </span>
+            <input
+              type="number"
+              min={0}
+              step={10}
+              value={t1}
+              onChange={(e) => setT1(Number(e.target.value))}
+              className={`${FIELD} mt-1`}
+            />
+          </label>
+          <label className="block flex-1">
+            <span className="text-xs text-[var(--t-3)] uppercase tracking-wider">
+              T2 · Pro
+            </span>
+            <input
+              type="number"
+              min={0}
+              step={10}
+              value={t2}
+              onChange={(e) => setT2(Number(e.target.value))}
+              className={`${FIELD} mt-1`}
+            />
+          </label>
+        </div>
       </fieldset>
 
       {/* Ref link */}

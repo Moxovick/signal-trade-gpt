@@ -1,30 +1,26 @@
 /**
- * Dashboard — Signals page (rework v2).
+ * Dashboard — Signals page (on-demand model).
  *
- * Tier-aware signal feed: filter by direction (CALL/PUT/all), color-coded
- * by result (win/loss/pending), inline confidence meter. Header shows
- * winrate and tier-based daily limit.
+ * Users press "Получить сигнал" to request a signal on-demand.
+ * Shows daily limit usage, signal history, and tier info.
  */
-import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAccessReport } from "@/lib/access";
-import { TIER_ACCESS } from "@/lib/tier";
+import { TIER_LABELS } from "@/lib/tier";
 import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { buildReferralLink } from "@/lib/pocketoption";
 import {
   TrendingUp,
   TrendingDown,
-  CircleDot,
-  Send,
-  Lock,
-  ExternalLink,
   Activity,
   Clock,
+  Send,
+  CircleDot,
 } from "lucide-react";
-import { LiveSignalHero, type LiveSignal } from "./_components/LiveSignalHero";
 import { TierStrip } from "./_components/TierStrip";
+import { SignalRequestButton } from "./_components/SignalRequestButton";
 
 const TIER_BAND_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   otc:      { label: "OTC",   color: "#8888ff", bg: "rgba(136,136,255,0.10)" },
@@ -32,7 +28,8 @@ const TIER_BAND_LABELS: Record<string, { label: string; color: string; bg: strin
   elite:    { label: "Elite", color: "#d4a017", bg: "rgba(212,160,23,0.10)"  },
 };
 
-const PRO_THRESHOLD = 20;
+const BASIC_THRESHOLD = 20;
+const PRO_THRESHOLD = 100;
 
 export default async function SignalsPage() {
   const session = await auth();
@@ -46,45 +43,31 @@ export default async function SignalsPage() {
   ]);
   if (!report) return null;
   const tier = report.tier;
-  const allowedBands = TIER_ACCESS[tier] ?? ["otc"];
-
+  // Fetch user's own signals (on-demand model: each user sees their own)
   const signals = await prisma.signal.findMany({
-    where: { isActive: true },
+    where: {
+      createdById: userId,
+      isActive: true,
+    },
     orderBy: { createdAt: "desc" },
     take: 60,
   });
 
-  const liveSignal: LiveSignal | null = (() => {
-    const pending = signals.find(
-      (s) =>
-        s.result === "pending" &&
-        allowedBands.includes(s.tier as "otc" | "exchange" | "elite"),
-    );
-    if (!pending) return null;
-    return {
-      id: pending.id,
-      pair: pending.pair,
-      direction: pending.direction,
-      expiration: pending.expiration,
-      confidence: pending.confidence,
-      tier: pending.tier,
-      entryPrice: pending.entryPrice == null ? null : Number(pending.entryPrice),
-      analysis: pending.analysis,
-      createdAtIso: pending.createdAt.toISOString(),
-    };
-  })();
-
-  const visibleSignals = signals.filter((s) =>
-    allowedBands.includes(s.tier as "otc" | "exchange" | "elite"),
-  );
-  const wins = visibleSignals.filter((s) => s.result === "win").length;
-  const losses = visibleSignals.filter((s) => s.result === "loss").length;
+  const wins = signals.filter((s) => s.result === "win").length;
+  const losses = signals.filter((s) => s.result === "loss").length;
   const completed = wins + losses;
   const winrate = completed > 0 ? Math.round((wins / completed) * 100) : 0;
 
   const depositTotal = poAccount?.totalDeposit
     ? Number(poAccount.totalDeposit)
     : 0;
+
+  const dailyLimit = report.dailySignalLimit;
+  const used = report.signalsTodayUsed;
+  const remaining = dailyLimit != null ? Math.max(0, dailyLimit - used) : null;
+  const limitReached = dailyLimit != null && used >= dailyLimit;
+
+  const tierLabel = TIER_LABELS[tier] ?? `T${tier}`;
 
   return (
     <div className="space-y-6">
@@ -93,24 +76,124 @@ export default async function SignalsPage() {
         <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--brand-gold)] mb-1">
           Торговые сигналы
         </p>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Лента</h1>
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Сигналы</h1>
       </div>
 
       {/* Tier strip */}
       <TierStrip
         tier={tier}
         depositTotal={depositTotal}
-        proThreshold={PRO_THRESHOLD}
+        nextThreshold={tier === 0 ? BASIC_THRESHOLD : tier === 1 ? PRO_THRESHOLD : null}
+        dailyLimit={dailyLimit}
+        signalsRemaining={remaining}
       />
 
-      {/* Live signal */}
-      <LiveSignalHero signal={liveSignal} />
+      {/* Signal request CTA */}
+      <Card padding="lg">
+        <div className="flex flex-col items-center text-center py-4">
+          {/* Daily limit indicator */}
+          <div className="mb-4">
+            {dailyLimit != null ? (
+              <div className="flex items-center gap-2 text-sm text-[var(--t-2)]">
+                <Activity size={16} className="text-[var(--brand-gold)]" />
+                <span>
+                  Использовано{" "}
+                  <span className="font-bold text-[var(--t-1)]">{used}</span>
+                  {" "}из{" "}
+                  <span className="font-bold text-[var(--t-1)]">{dailyLimit}</span>
+                  {" "}сигналов сегодня
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-[var(--t-2)]">
+                <Activity size={16} className="text-[var(--brand-gold)]" />
+                <span>
+                  Получено сегодня:{" "}
+                  <span className="font-bold text-[var(--t-1)]">{used}</span>
+                  {" "}<span className="text-[var(--brand-gold)]">Безлимит</span>
+                </span>
+              </div>
+            )}
+          </div>
 
-      {/* Signal feed */}
+          {/* Progress bar for daily limit */}
+          {dailyLimit != null && (
+            <div className="w-full max-w-xs mb-4">
+              <div className="h-2 rounded-full bg-[var(--bg-2)] overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.min(100, (used / dailyLimit) * 100)}%`,
+                    background: limitReached
+                      ? "var(--red)"
+                      : "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          <SignalRequestButton
+            limitReached={limitReached}
+            remaining={remaining}
+            tierLabel={tierLabel}
+            referralUrl={referralUrl}
+          />
+
+          {limitReached && (
+            <div className="mt-3 space-y-1">
+              <p className="text-sm text-[var(--red)]">
+                Лимит исчерпан
+              </p>
+              <p className="text-xs text-[var(--t-3)]">
+                Лимит обновится в 00:00 UTC.
+                {tier < 2 && (
+                  <>{" "}Или повысьте уровень для увеличения лимита.</>
+                )}
+              </p>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Stat
+          icon={<Activity size={16} />}
+          label="Сегодня"
+          value={
+            dailyLimit == null
+              ? `${used}`
+              : `${used} / ${dailyLimit}`
+          }
+        />
+        <Stat
+          icon={<TrendingUp size={16} />}
+          label="Винрейт"
+          value={completed > 0 ? `${winrate}%` : "--"}
+          delta={
+            completed > 0
+              ? { value: `${wins}W / ${losses}L`, positive: winrate >= 60 }
+              : undefined
+          }
+        />
+        <Stat
+          icon={<Send size={16} />}
+          label="Всего получено"
+          value={signals.length.toString()}
+        />
+        <Stat
+          icon={<CircleDot size={16} />}
+          label="В работе"
+          value={signals.filter((s) => s.result === "pending").length.toString()}
+        />
+      </div>
+
+      {/* Signal history */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-[var(--t-1)]">
-            Последние сигналы
+            Ваши сигналы
           </h2>
           <span className="text-xs text-[var(--t-3)]">
             {signals.length} записей
@@ -128,22 +211,18 @@ export default async function SignalsPage() {
               </div>
               <h3 className="text-lg font-semibold mb-1">Сигналов пока нет</h3>
               <p className="text-sm text-[var(--t-2)] max-w-xs">
-                Как только появится новый сигнал — он сразу отобразится здесь.
-                Обычно сигналы приходят каждые 5–15 минут.
+                Нажмите кнопку выше, чтобы получить ваш первый торговый сигнал.
               </p>
             </div>
           </Card>
         ) : (
           <div className="space-y-2">
             {signals.map((s, idx) => {
-              const locked = !allowedBands.includes(
-                s.tier as "otc" | "exchange" | "elite",
-              );
               const isCall = s.direction === "CALL";
               const conf = Number(s.confidence ?? 0);
               const band = TIER_BAND_LABELS[s.tier];
               const isPending = s.result === "pending";
-              const isNewest = idx === 0 && isPending && !locked;
+              const isNewest = idx === 0 && isPending;
 
               const resultLabel =
                 s.result === "win"
@@ -159,25 +238,17 @@ export default async function SignalsPage() {
                   ? "var(--red)"
                   : "var(--t-3)";
 
-              const directionColor = locked
-                ? "var(--t-3)"
-                : isCall
-                ? "var(--green)"
-                : "var(--red)";
-
-              const directionBg = locked
-                ? "var(--bg-2)"
-                : isCall
+              const directionColor = isCall ? "var(--green)" : "var(--red)";
+              const directionBg = isCall
                 ? "rgba(142,224,107,0.10)"
                 : "rgba(255,107,61,0.10)";
 
-              const confColor = locked
-                ? "var(--bg-3)"
-                : conf >= 90
-                ? "var(--brand-gold)"
-                : conf >= 80
-                ? "var(--green)"
-                : "var(--t-2)";
+              const confColor =
+                conf >= 90
+                  ? "var(--brand-gold)"
+                  : conf >= 80
+                  ? "var(--green)"
+                  : "var(--t-2)";
 
               return (
                 <div
@@ -189,10 +260,8 @@ export default async function SignalsPage() {
                       : "py-3 border-[var(--b-soft)] hover:border-[var(--b-hard)]",
                   ].join(" ")}
                   style={{
-                    opacity: locked ? 0.6 : 1,
-                    borderLeft: `3px solid ${locked ? "transparent" : directionColor}`,
+                    borderLeft: `3px solid ${directionColor}`,
                   }}
-                  title={locked ? "Открой Pro — депозит от $20 на PocketOption" : undefined}
                 >
                   {/* Direction icon */}
                   <div
@@ -202,9 +271,7 @@ export default async function SignalsPage() {
                     ].join(" ")}
                     style={{ background: directionBg, color: directionColor }}
                   >
-                    {locked ? (
-                      <Lock size={14} />
-                    ) : isCall ? (
+                    {isCall ? (
                       <TrendingUp size={isNewest ? 20 : 16} />
                     ) : (
                       <TrendingDown size={isNewest ? 20 : 16} />
@@ -219,11 +286,7 @@ export default async function SignalsPage() {
                           "font-semibold truncate",
                           isNewest ? "text-base" : "text-sm",
                         ].join(" ")}
-                        style={{
-                          fontFamily: "var(--font-jetbrains)",
-                          filter: locked ? "blur(4px)" : undefined,
-                          userSelect: locked ? "none" : undefined,
-                        }}
+                        style={{ fontFamily: "var(--font-jetbrains)" }}
                       >
                         {s.pair}
                       </span>
@@ -242,21 +305,16 @@ export default async function SignalsPage() {
                           {band.label}
                         </span>
                       )}
-                      {!locked && isPending && (
+                      {isPending && (
                         <span className="text-[10px] text-[var(--t-3)] flex items-center gap-1">
                           <Clock size={9} />
                           {s.expiration}
                         </span>
                       )}
-                      {locked && (
-                        <span className="text-[10px] uppercase tracking-wider text-[var(--brand-gold)]">
-                          Pro
-                        </span>
-                      )}
                     </div>
                   </div>
 
-                  {/* Confidence — bigger bar */}
+                  {/* Confidence */}
                   <div className="hidden sm:flex flex-col gap-1 w-28 shrink-0">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-[var(--t-3)]">Сила</span>
@@ -264,7 +322,6 @@ export default async function SignalsPage() {
                         className="text-[12px] font-bold tabular-nums"
                         style={{
                           fontFamily: "var(--font-jetbrains)",
-                          filter: locked ? "blur(4px)" : undefined,
                           color: confColor,
                         }}
                       >
@@ -275,36 +332,26 @@ export default async function SignalsPage() {
                       <div
                         className="h-full rounded-full transition-all duration-500"
                         style={{
-                          width: locked ? "100%" : `${conf}%`,
-                          background: locked ? "var(--bg-3)" : confColor,
+                          width: `${conf}%`,
+                          background: confColor,
                         }}
                       />
                     </div>
                   </div>
 
-                  {/* Result / lock CTA */}
+                  {/* Result */}
                   <div className="shrink-0 w-16 text-right">
-                    {locked ? (
-                      <Link
-                        href={referralUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[10px] uppercase tracking-wider text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] inline-flex items-center gap-0.5 transition-colors"
-                      >
-                        Открыть <ExternalLink size={9} />
-                      </Link>
-                    ) : (
-                      <span
-                        className="text-xs font-bold"
-                        style={{ color: resultColor }}
-                      >
-                        {resultLabel}
-                      </span>
-                    )}
+                    <span
+                      className="text-xs font-bold"
+                      style={{ color: resultColor }}
+                    >
+                      {resultLabel}
+                    </span>
                   </div>
 
                   {/* Time */}
-                  <div className="shrink-0 w-10 text-right text-[11px] text-[var(--t-3)] tabular-nums hidden md:block"
+                  <div
+                    className="shrink-0 w-10 text-right text-[11px] text-[var(--t-3)] tabular-nums hidden md:block"
                     style={{ fontFamily: "var(--font-jetbrains)" }}
                   >
                     {new Date(s.createdAt).toLocaleTimeString("ru", {
@@ -317,39 +364,6 @@ export default async function SignalsPage() {
             })}
           </div>
         )}
-      </div>
-
-      {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat
-          icon={<Activity size={16} />}
-          label="Сегодня"
-          value={
-            report.dailySignalLimit == null
-              ? `${report.signalsTodayUsed}`
-              : `${report.signalsTodayUsed} / ${report.dailySignalLimit}`
-          }
-        />
-        <Stat
-          icon={<TrendingUp size={16} />}
-          label="Винрейт"
-          value={completed > 0 ? `${winrate}%` : "—"}
-          delta={
-            completed > 0
-              ? { value: `${wins}W / ${losses}L`, positive: winrate >= 60 }
-              : undefined
-          }
-        />
-        <Stat
-          icon={<Send size={16} />}
-          label="Всего в ленте"
-          value={signals.length.toString()}
-        />
-        <Stat
-          icon={<CircleDot size={16} />}
-          label="В работе"
-          value={signals.filter((s) => s.result === "pending").length.toString()}
-        />
       </div>
     </div>
   );

@@ -63,9 +63,12 @@ export default async function PocketOptionSettingsPage() {
     ) ?? [];
 
   const depositTotal = Number(user.depositTotal ?? 0);
-  const PRO_THRESHOLD = 20;
-  const isT1 = user.tier >= 1;
-  const progressPct = isT1 ? 100 : Math.min((depositTotal / PRO_THRESHOLD) * 100, 100);
+  const BASIC_THRESHOLD = 20;
+  const PRO_THRESHOLD = 100;
+  const isPro = user.tier >= 2;
+  const nextThreshold = user.tier === 0 ? BASIC_THRESHOLD : user.tier === 1 ? PRO_THRESHOLD : null;
+  const progressPct = nextThreshold ? Math.min((depositTotal / nextThreshold) * 100, 100) : 100;
+  const nextLabel = user.tier === 0 ? "Базового" : user.tier === 1 ? "Про" : null;
 
   const statusConfig = {
     verified: { icon: CheckCircle2, label: "Подтверждён", color: "var(--green)", bg: "rgba(142,224,107,0.10)" },
@@ -79,8 +82,8 @@ export default async function PocketOptionSettingsPage() {
       <div
         className="rounded-2xl border p-5 relative overflow-hidden"
         style={{
-          borderColor: isT1 ? "var(--b-hard)" : "var(--b-soft)",
-          background: isT1
+          borderColor: isPro ? "var(--b-hard)" : "var(--b-soft)",
+          background: isPro
             ? "linear-gradient(135deg,rgba(212,160,23,0.08) 0%,var(--bg-1) 100%)"
             : "var(--bg-1)",
         }}
@@ -88,31 +91,33 @@ export default async function PocketOptionSettingsPage() {
         <div className="flex items-start gap-3 mb-4">
           <div
             className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: isT1 ? "rgba(212,160,23,0.15)" : "var(--bg-2)" }}
+            style={{ background: isPro ? "rgba(212,160,23,0.15)" : "var(--bg-2)" }}
           >
-            {isT1
+            {isPro
               ? <Star size={20} className="text-[var(--brand-gold)]" fill="currentColor" />
               : <TrendingUp size={20} className="text-[var(--t-2)]" />
             }
           </div>
           <div>
             <div className="font-bold text-base">
-              {TIER_LABELS[user.tier] ?? "Обычный"}
+              {TIER_LABELS[user.tier] ?? "Бесплатный"}
             </div>
             <div className="text-[12px] text-[var(--t-3)] mt-0.5">
-              {isT1
+              {isPro
                 ? "Полный доступ: OTC, биржевые и Elite сигналы"
-                : `До Про: депозит $${PRO_THRESHOLD} на PocketOption`}
+                : nextLabel
+                  ? `До ${nextLabel}: депозит $${nextThreshold} на PocketOption`
+                  : ""}
             </div>
           </div>
         </div>
 
-        {!isT1 && (
+        {nextThreshold != null && (
           <>
             <div className="flex justify-between text-xs text-[var(--t-3)] mb-1.5">
               <span>Депозит засчитан</span>
               <span style={{ fontFamily: "var(--font-jetbrains)" }}>
-                ${depositTotal.toFixed(2)} / ${PRO_THRESHOLD}
+                ${depositTotal.toFixed(2)} / ${nextThreshold}
               </span>
             </div>
             <div className="h-2 rounded-full bg-[var(--bg-3)] overflow-hidden">
@@ -125,7 +130,7 @@ export default async function PocketOptionSettingsPage() {
               />
             </div>
             <p className="text-[11px] text-[var(--t-3)] mt-2">
-              После первого депозита ≥ $20 уровень повышается до Про автоматически.
+              Уровень повышается автоматически при достижении порога депозита.
             </p>
           </>
         )}

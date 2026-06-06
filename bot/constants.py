@@ -1,13 +1,19 @@
 """Shared constants for the Signal Trade GPT bot."""
 
-# 2-tier модель v2.2: T0 (Обычный, безлим OTC) и T1+ (Про, безлим всё).
-# Ключи T2-T4 сохранены для бэк-компата (см. web-platform/src/lib/tier.ts).
-TIER_NAMES: dict[int, str] = {0: "Обычный", 1: "Про", 2: "Про", 3: "Про", 4: "Про"}
+# 3-tier model: Free (0), Basic (1), Pro (2).
+TIER_NAMES: dict[int, str] = {0: "Free", 1: "Basic", 2: "Pro"}
 
-_UNREACHABLE_THRESHOLD: int = 9_007_199_254_740_991
 TIER_DEPOSIT_THRESHOLDS: dict[int, int] = {
     1: 20,
-    2: _UNREACHABLE_THRESHOLD,
-    3: _UNREACHABLE_THRESHOLD,
-    4: _UNREACHABLE_THRESHOLD,
+    2: 100,
+}
+
+# Daily signal limits per tier. None = unlimited.
+TIER_DAILY_LIMITS: dict[int, int | None] = {0: 3, 1: 10, 2: None}
+
+# Signal types available per tier.
+TIER_SIGNAL_TYPES: dict[int, list[str]] = {
+    0: ["otc"],
+    1: ["otc", "exchange"],
+    2: ["otc", "exchange", "elite"],
 }

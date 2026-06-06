@@ -1,27 +1,141 @@
 """
-Signal result feedback callbacks (Win/Loss buttons on signal messages).
-The /signal command is removed — signals are delivered automatically by scheduler.
+On-demand signal delivery + Win/Loss feedback callbacks.
+
+User presses "Получить сигнал" button → bot checks tier, daily limit,
+generates a signal, renders chart, sends to user.
 """
 import logging
+import random
 
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
+from aiogram.enums import ParseMode
+from aiogram.types import BufferedInputFile
 
-from database.db import get_user, record_signal_result
+from config import settings
+from constants import TIER_DAILY_LIMITS, TIER_NAMES, TIER_SIGNAL_TYPES
+from database.db import (
+    get_daily_signal_count,
+    get_user,
+    increment_daily_signal,
+    increment_signals_received,
+    record_signal_result,
+    reset_daily_signals_if_expired,
+    save_signal,
+)
 from services.achievements import check_and_award
+from services.formatter import format_otc_minimal, format_pro_signal_caption
+from services.imagegen import make_otc_banner, make_signal_chart_advanced
+from services.keyboards import signal_inline
+from services.price_feed import fetch_ohlc
+from services.signal_generator import generate_signal
 
 logger = logging.getLogger(__name__)
 router = Router()
 
 
+async def _request_signal(user_id: int, bot: object) -> tuple[str | None, bytes | None, int | None]:
+    """
+    Core logic: validate user, check limits, generate signal.
+
+    Returns (error_text, chart_bytes, signal_id).
+    If error_text is not None, the request was denied.
+    """
+    from aiogram import Bot
+    assert isinstance(bot, Bot)
+
+    user = await get_user(user_id)
+    if user is None:
+        return "Сначала нажми /start, чтобы зарегистрироваться.", None, None
+
+    # Must have PO account linked
+    if not user.po_trader_id:
+        return (
+            "Сначала привяжи PocketOption аккаунт.\n"
+            "Используй /link или кнопку «🔗 Привязать ID» в меню."
+        ), None, None
+
+    # Reset daily counter if 24h expired
+    await reset_daily_signals_if_expired(user.telegram_id)
+
+    # Check daily limit
+    daily_limit = TIER_DAILY_LIMITS.get(user.tier)
+    used, limit, can_request = await get_daily_signal_count(user.telegram_id, daily_limit)
+
+    if not can_request:
+        tier_name = TIER_NAMES.get(user.tier, "Free")
+        if user.tier < 2:
+            next_tier = TIER_NAMES.get(user.tier + 1, "Pro")
+            return (
+                f"Лимит исчерпан ({used}/{limit} сигналов сегодня).\n\n"
+                f"Повысь тариф до <b>{next_tier}</b> для большего количества сигналов."
+            ), None, None
+        return (
+            f"Лимит исчерпан ({used}/{limit} сигналов сегодня).\n"
+            "Следующий сигнал будет доступен через несколько часов."
+        ), None, None
+
+    # Pick signal type based on tier
+    allowed_types = TIER_SIGNAL_TYPES.get(user.tier, ["otc"])
+    signal_tier = random.choice(allowed_types)
+
+    # Generate signal
+    signal = generate_signal(signal_tier)
+    sid = await save_signal(signal)
+    signal.id = sid
+
+    # Render chart
+    tier = signal.tier or "otc"
+    is_otc = tier in {"otc", "demo"}
+
+    if is_otc:
+        chart_bytes: bytes = make_otc_banner(signal)
+        caption = format_otc_minimal(signal)
+    else:
+        real_ohlc = await fetch_ohlc(signal.pair)
+        chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
+        caption = format_pro_signal_caption(signal, settings.pocket_option_url)
+
+    # Increment counters
+    await increment_daily_signal(user.telegram_id)
+    await increment_signals_received(user.telegram_id)
+
+    # Send signal
+    await bot.send_photo(
+        chat_id=user.telegram_id,
+        photo=BufferedInputFile(chart_bytes, filename=f"signal_{sid}.png"),
+        caption=caption,
+        parse_mode=ParseMode.HTML,
+        reply_markup=signal_inline(settings.pocket_option_url, sid),
+    )
+
+    # Re-fetch user for achievement check (counters updated)
+    updated_user = await get_user(user.telegram_id)
+    if updated_user:
+        await check_and_award(bot, updated_user)
+
+    # Return None error = success
+    return None, None, None
+
+
 @router.message(Command("signal"))
 async def cmd_signal(message: Message) -> None:
-    """Signals are delivered automatically — inform the user."""
-    await message.answer(
-        "Сигналы приходят автоматически — ничего нажимать не нужно.\n"
-        "Просто жди: как только появится хороший вход, я пришлю его сюда 📊",
-    )
+    """Handle /signal command — request an on-demand signal."""
+    error, _, _ = await _request_signal(message.from_user.id, message.bot)
+    if error:
+        await message.answer(error, parse_mode=ParseMode.HTML)
+
+
+@router.callback_query(F.data == "get_signal")
+async def cb_get_signal(query: CallbackQuery) -> None:
+    """Handle inline 'get_signal' button press."""
+    await query.answer()
+    if query.from_user is None:
+        return
+    error, _, _ = await _request_signal(query.from_user.id, query.bot)
+    if error:
+        await query.message.answer(error, parse_mode=ParseMode.HTML)
 
 
 @router.callback_query(F.data.startswith("sig:"))

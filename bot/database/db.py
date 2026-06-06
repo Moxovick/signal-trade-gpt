@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -41,6 +42,13 @@ async def init_db() -> None:
         await _ensure_column(db, "users", "wins", "wins INTEGER DEFAULT 0")
         await _ensure_column(db, "users", "losses", "losses INTEGER DEFAULT 0")
         await _ensure_column(db, "users", "banned", "banned INTEGER DEFAULT 0")
+        # v3: on-demand signal daily limits
+        await _ensure_column(
+            db, "users", "daily_signals_used", "daily_signals_used INTEGER DEFAULT 0"
+        )
+        await _ensure_column(
+            db, "users", "daily_signals_reset_at", "daily_signals_reset_at TEXT"
+        )
         await db.execute(
             """
             CREATE TABLE IF NOT EXISTS achievements (
@@ -284,3 +292,62 @@ async def get_users_with_notifications() -> list[User]:
         ) as cursor:
             rows = await cursor.fetchall()
             return [_row_to_user(r) for r in rows]
+
+
+# ── Daily signal counter (on-demand delivery) ────────────────────────────────
+
+
+async def reset_daily_signals_if_expired(telegram_id: int) -> None:
+    """Reset the daily signal counter if 24h have passed since reset_at."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT daily_signals_reset_at FROM users WHERE telegram_id = ?",
+            (telegram_id,),
+        ) as cur:
+            row = await cur.fetchone()
+        if not row or not row[0]:
+            return
+        try:
+            reset_at = datetime.fromisoformat(row[0]).replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            return
+        now = datetime.now(timezone.utc)
+        if (now - reset_at).total_seconds() >= 86400:
+            await db.execute(
+                "UPDATE users SET daily_signals_used = 0, daily_signals_reset_at = NULL "
+                "WHERE telegram_id = ?",
+                (telegram_id,),
+            )
+            await db.commit()
+
+
+async def get_daily_signal_count(telegram_id: int, daily_limit: int | None) -> tuple[int, int | None, bool]:
+    """
+    Returns (used, limit, can_request).
+
+    limit is None for unlimited tiers.
+    """
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT daily_signals_used FROM users WHERE telegram_id = ?",
+            (telegram_id,),
+        ) as cur:
+            row = await cur.fetchone()
+        used = row[0] if row and row[0] else 0
+    if daily_limit is None:
+        return used, None, True
+    return used, daily_limit, used < daily_limit
+
+
+async def increment_daily_signal(telegram_id: int) -> None:
+    """Increment the daily signal counter; set reset_at if this is the first signal today."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    async with aiosqlite.connect(DB_PATH) as db:
+        # Set reset_at if not already set (first signal of the day window).
+        await db.execute(
+            "UPDATE users SET daily_signals_used = daily_signals_used + 1, "
+            "daily_signals_reset_at = COALESCE(daily_signals_reset_at, ?) "
+            "WHERE telegram_id = ?",
+            (now_iso, telegram_id),
+        )
+        await db.commit()

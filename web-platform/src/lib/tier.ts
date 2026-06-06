@@ -1,16 +1,18 @@
 /**
  * Tier engine — единственный источник истины о доступе пользователя к перкам.
  *
- * Модель доступа (2 тира):
- *   T0 — PocketOption-аккаунт привязан (любой статус), любой депозит.
- *        Базовый доступ к кабинету и сигналам (с мягким дневным лимитом).
- *   T1 — Привязан + общий депозит ≥ `tier_thresholds.1` (по умолчанию $20).
- *        Полный доступ: безлимит, все типы сигналов.
+ * Модель доступа (3 тира):
+ *   T0 (Free)  — PocketOption-аккаунт привязан (любой статус), депозит $0.
+ *                3 OTC-сигнала в день, доступ к кабинету и боту.
+ *   T1 (Basic) — Привязан + общий депозит ≥ $20.
+ *                10 сигналов в день, OTC + биржевые.
+ *   T2 (Pro)   — Привязан + общий депозит ≥ $100.
+ *                Безлимит сигналов, все типы (OTC + биржа + Elite).
  *
  * Доступ к /dashboard гейтится отдельно (см. `app/dashboard/layout.tsx`):
  * пользователи без привязанного PO-аккаунта попадают на `/onboarding/po-id`.
  *
- * Старшие тиры (T2/T3/T4) на текущем этапе НЕ используются, но поля в
+ * Старшие тиры (T3/T4) на текущем этапе НЕ используются, но поля в
  * `TierThresholds` оставлены для backward-compat: их можно поднять выше
  * MAX_SAFE_INTEGER чтобы они никогда не срабатывали. Если потом понадобится
  * расширить модель — достаточно поменять пороги через `/admin/settings`.
@@ -35,12 +37,12 @@ export type TierThresholds = {
 /**
  * Effective deposit thresholds for each tier (USD).
  *
- * Two-tier model: T1 at $20, остальные пороги выставлены недостижимыми, чтобы
- * никогда не сработать (пока бизнес не решит вернуть 5-уровневую модель).
+ * Three-tier model: T1 (Basic) at $20, T2 (Pro) at $100.
+ * T3/T4 выставлены недостижимыми на случай будущего расширения.
  */
 export const DEFAULT_TIER_THRESHOLDS: TierThresholds = {
   1: 20,
-  2: Number.MAX_SAFE_INTEGER,
+  2: 100,
   3: Number.MAX_SAFE_INTEGER,
   4: Number.MAX_SAFE_INTEGER,
 };
@@ -67,7 +69,8 @@ function toNumber(value: DepositLike): number {
  *
  * Возврат:
  *   0 — нет PO-аккаунта ИЛИ депо < tier_thresholds[1].
- *   1..4 — по сумме депо; в текущей 2-тирной модели реально достижим только T1.
+ *   1 — Basic (депо ≥ $20), 2 — Pro (депо ≥ $100).
+ *   3..4 — зарезервированы, пороги выставлены недостижимыми.
  */
 export function computeTier(
   depositTotal: DepositLike,
@@ -102,30 +105,33 @@ export function distanceToNextTier(
 }
 
 /**
- * Человеко-читаемые названия тиров.
+ * Signal bands accessible at each tier (3-tier model).
  *
- * В 2-тирной модели всё, что выше T0, — это «Pro». Если позже включим
- * 5-уровневую модель, лейблы можно вернуть к Pro / Pro+ / VIP и т.п.
- */
-/**
- * Signal bands accessible at each tier (2-tier model).
- *
- * T0 = OTC only; T1+ = all bands. Higher tiers mirror T1 for forward-compat.
+ * T0 (Free)  = OTC only.
+ * T1 (Basic) = OTC + exchange.
+ * T2 (Pro)   = OTC + exchange + elite (all).
+ * T3/T4 mirror T2 for forward-compat.
  */
 export type SignalBand = "otc" | "exchange" | "elite";
 
 export const TIER_ACCESS: Record<number, SignalBand[]> = {
   0: ["otc"],
-  1: ["otc", "exchange", "elite"],
+  1: ["otc", "exchange"],
   2: ["otc", "exchange", "elite"],
   3: ["otc", "exchange", "elite"],
   4: ["otc", "exchange", "elite"],
 };
 
+/** Human-readable tier labels (Russian UI). */
 export const TIER_LABELS: Record<number, string> = {
-  0: "Обычный",
-  1: "Про",
+  0: "Бесплатный",
+  1: "Базовый",
   2: "Про",
-  3: "Про",
-  4: "Про",
+};
+
+/** Short English tier labels for internal/API use. */
+export const TIER_LABELS_EN: Record<number, string> = {
+  0: "Free",
+  1: "Basic",
+  2: "Pro",
 };
