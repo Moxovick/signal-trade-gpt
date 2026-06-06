@@ -136,6 +136,103 @@ export default async function PocketOptionSettingsPage() {
         )}
       </div>
 
+      {/* Tier comparison */}
+      <Card padding="lg">
+        <h2 className="text-base font-semibold mb-4">Уровни доступа</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {([
+            {
+              tier: 0,
+              name: "Free",
+              deposit: "$0",
+              active: user.tier === 0,
+              perks: [
+                "3 OTC-сигнала в день",
+                "Рандомные сигналы по запросу",
+                "Доступ к боту и кабинету",
+              ],
+            },
+            {
+              tier: 1,
+              name: "Basic",
+              deposit: "от $20",
+              active: user.tier === 1,
+              perks: [
+                "10 сигналов в день",
+                "OTC + биржевые сигналы",
+                "Расширенные графики",
+                "Приоритетная поддержка",
+              ],
+            },
+            {
+              tier: 2,
+              name: "Pro",
+              deposit: "от $100",
+              active: user.tier >= 2,
+              perks: [
+                "Безлимитные сигналы",
+                "Все типы: OTC + биржа + Elite",
+                "Аналитика и индикаторы",
+                "Ранний доступ к функциям",
+                "Полный разбор каждого сигнала",
+              ],
+            },
+          ] as const).map((t) => (
+            <div
+              key={t.tier}
+              className="rounded-xl border p-4 relative"
+              style={{
+                borderColor: t.active ? "var(--brand-gold)" : "var(--b-soft)",
+                background: t.active
+                  ? "linear-gradient(135deg,rgba(212,160,23,0.06) 0%,var(--bg-1) 100%)"
+                  : "var(--bg-1)",
+              }}
+            >
+              {t.active && (
+                <div
+                  className="absolute top-2.5 right-2.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md"
+                  style={{
+                    background: "rgba(212,160,23,0.15)",
+                    color: "var(--brand-gold)",
+                  }}
+                >
+                  Текущий
+                </div>
+              )}
+              <div className="font-bold text-sm mb-0.5">{t.name}</div>
+              <div
+                className="text-[11px] text-[var(--t-3)] mb-3"
+                style={{ fontFamily: "var(--font-jetbrains)" }}
+              >
+                Депозит {t.deposit}
+              </div>
+              <ul className="space-y-1.5">
+                {t.perks.map((p) => (
+                  <li
+                    key={p}
+                    className="flex items-start gap-2 text-[12px] text-[var(--t-2)] leading-snug"
+                  >
+                    <CheckCircle2
+                      size={12}
+                      className="shrink-0 mt-0.5"
+                      style={{
+                        color: t.active ? "var(--brand-gold)" : "var(--t-3)",
+                      }}
+                    />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] text-[var(--t-3)] mt-3 leading-relaxed">
+          Депозит считается по сумме пополнений на привязанном PocketOption аккаунте.
+          Уровень повышается автоматически через постбэки от PocketOption.
+          Чем выше депозит — тем больше типов сигналов и выше дневной лимит.
+        </p>
+      </Card>
+
       {/* PO Account card */}
       <Card padding="lg">
         <div className="flex items-center justify-between mb-4">
