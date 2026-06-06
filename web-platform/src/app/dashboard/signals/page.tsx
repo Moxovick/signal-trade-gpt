@@ -105,12 +105,22 @@ export default async function SignalsPage() {
                 </span>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-sm text-[var(--t-2)]">
-                <Activity size={16} className="text-[var(--brand-gold)]" />
-                <span>
-                  Получено сегодня:{" "}
-                  <span className="font-bold text-[var(--t-1)]">{used}</span>
-                  {" "}<span className="text-[var(--brand-gold)]">Безлимит</span>
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex items-center gap-2 text-sm text-[var(--t-2)]">
+                  <Activity size={16} className="text-[var(--brand-gold)]" />
+                  <span>
+                    Получено сегодня:{" "}
+                    <span className="font-bold text-[var(--t-1)]">{used}</span>
+                  </span>
+                </div>
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full"
+                  style={{
+                    background: "rgba(212,160,23,0.12)",
+                    color: "var(--brand-gold)",
+                  }}
+                >
+                  Безлимитный доступ
                 </span>
               </div>
             )}
