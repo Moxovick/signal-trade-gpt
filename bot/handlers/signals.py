@@ -1,12 +1,17 @@
 """
 On-demand signal delivery + Win/Loss feedback callbacks.
 
-User presses "Получить сигнал" button → bot checks tier, daily limit,
-generates a signal, renders chart, sends to user.
+User presses "Получить сигнал" button → bot calls the web platform API
+to generate a signal (unified pipeline), renders chart locally, sends to user.
+
+If the web API is unreachable (PLATFORM_API_URL not set), falls back to
+local generation via signal_generator.py.
 """
 import logging
 import random
+from typing import Any
 
+import httpx
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
@@ -24,6 +29,7 @@ from database.db import (
     reset_daily_signals_if_expired,
     save_signal,
 )
+from database.models import Signal
 from services.achievements import check_and_award
 from services.formatter import format_otc_minimal, format_pro_signal_caption
 from services.imagegen import make_otc_banner, make_signal_chart_advanced
@@ -35,9 +41,57 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
+def _can_use_web_api() -> bool:
+    """Check whether we have the web platform API configured."""
+    return bool(settings.platform_api_url and settings.bot_sync_secret)
+
+
+async def _request_signal_via_api(telegram_id: int) -> dict[str, Any] | None:
+    """
+    Call the web platform's /api/bot/signal-request endpoint.
+
+    Returns the JSON response dict on success, or None if the API
+    is unreachable / returns a non-parseable response.
+    Raises no exceptions — all errors are logged and return None
+    (so the caller can fall back to local generation).
+    """
+    url = f"{settings.platform_api_url.rstrip('/')}/api/bot/signal-request"
+    headers = {
+        "X-Bot-Secret": settings.bot_sync_secret,
+        "Content-Type": "application/json",
+    }
+    payload = {"telegramId": telegram_id}
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            data: dict[str, Any] = resp.json()
+            data["_status"] = resp.status_code
+            return data
+    except Exception:
+        logger.exception("Web API signal request failed for telegram_id=%s", telegram_id)
+        return None
+
+
+def _api_signal_to_local(data: dict[str, Any]) -> Signal:
+    """Convert the web API signal response to a local Signal model."""
+    sig = data.get("signal", {})
+    return Signal(
+        pair=sig.get("pair", "???"),
+        direction=sig.get("direction", "CALL"),
+        expiration=sig.get("expiration", "60s"),
+        confidence=sig.get("confidence", 80),
+        signal_type=sig.get("type", "ai"),
+        tier=sig.get("tier", "otc"),
+        analysis=sig.get("analysis"),
+        result="pending",
+        id=None,  # We'll save locally for chart / feedback tracking
+    )
+
+
 async def _request_signal(user_id: int, bot: object) -> tuple[str | None, bytes | None, int | None]:
     """
-    Core logic: validate user, check limits, generate signal.
+    Core logic: validate user, generate signal (via API or local fallback).
 
     Returns (error_text, chart_bytes, signal_id).
     If error_text is not None, the request was denied.
@@ -56,15 +110,104 @@ async def _request_signal(user_id: int, bot: object) -> tuple[str | None, bytes 
             "Используй /link или кнопку «🔗 Привязать ID» в меню."
         ), None, None
 
+    # ── Try web API first ──
+    if _can_use_web_api():
+        api_resp = await _request_signal_via_api(user.telegram_id)
+        if api_resp is not None:
+            status = api_resp.get("_status", 500)
+
+            # Limit reached
+            if status == 429:
+                code = api_resp.get("code", "daily_limit")
+                used = api_resp.get("used", 0)
+                daily_limit = api_resp.get("dailyLimit")
+                if code == "daily_limit":
+                    tier = user.tier
+                    if tier < 2:
+                        next_tier = TIER_NAMES.get(tier + 1, "Pro")
+                        return (
+                            f"Лимит исчерпан ({used}/{daily_limit} сигналов сегодня).\n\n"
+                            f"Повысь тариф до <b>{next_tier}</b> для большего количества сигналов."
+                        ), None, None
+                    return (
+                        f"Лимит исчерпан ({used}/{daily_limit} сигналов сегодня).\n"
+                        "Следующий сигнал будет доступен через несколько часов."
+                    ), None, None
+                return "Пользователь не найден на платформе.", None, None
+
+            # User not found on platform
+            if status == 404:
+                return "Пользователь не найден на платформе. Зарегистрируйся на сайте.", None, None
+
+            # Other errors — fall through to local fallback
+            if status >= 400:
+                logger.warning("Web API returned status %s: %s", status, api_resp.get("error"))
+                # Fall through to local generation below
+            else:
+                # Success — use API signal
+                signal = _api_signal_to_local(api_resp)
+                sid = await save_signal(signal)
+                signal.id = sid
+
+                # Render chart locally
+                tier_str = signal.tier or "otc"
+                is_otc = tier_str in {"otc", "demo"}
+
+                if is_otc:
+                    chart_bytes: bytes = make_otc_banner(signal)
+                    caption = format_otc_minimal(signal)
+                else:
+                    # Use chartData from API if available, otherwise fetch locally
+                    chart_data = api_resp.get("signal", {}).get("chartData")
+                    if chart_data and isinstance(chart_data, dict):
+                        # Convert API chart candles to OHLC format for the renderer
+                        candles = chart_data.get("candles", [])
+                        real_ohlc = [
+                            {
+                                "time": c.get("time", 0),
+                                "open": c.get("open", 0),
+                                "high": c.get("high", 0),
+                                "low": c.get("low", 0),
+                                "close": c.get("close", 0),
+                            }
+                            for c in candles
+                        ] if candles else None
+                    else:
+                        real_ohlc = await fetch_ohlc(signal.pair)
+                    chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
+                    caption = format_pro_signal_caption(signal, settings.pocket_option_url)
+
+                # Increment local counters
+                await increment_daily_signal(user.telegram_id)
+                await increment_signals_received(user.telegram_id)
+
+                # Send signal
+                await bot.send_photo(
+                    chat_id=user.telegram_id,
+                    photo=BufferedInputFile(chart_bytes, filename=f"signal_{sid}.png"),
+                    caption=caption,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=signal_inline(settings.pocket_option_url, sid),
+                )
+
+                # Achievement check
+                updated_user = await get_user(user.telegram_id)
+                if updated_user:
+                    await check_and_award(bot, updated_user)
+
+                return None, None, None
+
+    # ── Local fallback (web API unavailable or errored) ──
+    logger.info("Using local signal generation fallback for user %s", user_id)
+
     # Reset daily counter if 24h expired
     await reset_daily_signals_if_expired(user.telegram_id)
 
-    # Check daily limit
+    # Check daily limit locally
     daily_limit = TIER_DAILY_LIMITS.get(user.tier)
     used, limit, can_request = await get_daily_signal_count(user.telegram_id, daily_limit)
 
     if not can_request:
-        tier_name = TIER_NAMES.get(user.tier, "Free")
         if user.tier < 2:
             next_tier = TIER_NAMES.get(user.tier + 1, "Pro")
             return (
@@ -80,17 +223,17 @@ async def _request_signal(user_id: int, bot: object) -> tuple[str | None, bytes 
     allowed_types = TIER_SIGNAL_TYPES.get(user.tier, ["otc"])
     signal_tier = random.choice(allowed_types)
 
-    # Generate signal
+    # Generate signal locally
     signal = generate_signal(signal_tier)
     sid = await save_signal(signal)
     signal.id = sid
 
     # Render chart
-    tier = signal.tier or "otc"
-    is_otc = tier in {"otc", "demo"}
+    tier_str = signal.tier or "otc"
+    is_otc = tier_str in {"otc", "demo"}
 
     if is_otc:
-        chart_bytes: bytes = make_otc_banner(signal)
+        chart_bytes = make_otc_banner(signal)
         caption = format_otc_minimal(signal)
     else:
         real_ohlc = await fetch_ohlc(signal.pair)
@@ -110,12 +253,11 @@ async def _request_signal(user_id: int, bot: object) -> tuple[str | None, bytes 
         reply_markup=signal_inline(settings.pocket_option_url, sid),
     )
 
-    # Re-fetch user for achievement check (counters updated)
+    # Achievement check
     updated_user = await get_user(user.telegram_id)
     if updated_user:
         await check_and_award(bot, updated_user)
 
-    # Return None error = success
     return None, None, None
 
 

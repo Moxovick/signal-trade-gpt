@@ -13,20 +13,13 @@ import { Stat } from "@/components/ui/Stat";
 import { buildReferralLink } from "@/lib/pocketoption";
 import {
   TrendingUp,
-  TrendingDown,
   Activity,
-  Clock,
   Send,
   CircleDot,
 } from "lucide-react";
 import { TierStrip } from "./_components/TierStrip";
 import { SignalRequestButton } from "./_components/SignalRequestButton";
-
-const TIER_BAND_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  otc:      { label: "OTC",   color: "#8888ff", bg: "rgba(136,136,255,0.10)" },
-  exchange: { label: "Биржа", color: "#8ee06b", bg: "rgba(142,224,107,0.10)" },
-  elite:    { label: "Elite", color: "#d4a017", bg: "rgba(212,160,23,0.10)"  },
-};
+import { SignalHistoryList } from "./_components/SignalHistoryList";
 
 const BASIC_THRESHOLD = 20;
 const PRO_THRESHOLD = 100;
@@ -226,153 +219,26 @@ export default async function SignalsPage() {
             </div>
           </Card>
         ) : (
-          <div className="space-y-2">
-            {signals.map((s, idx) => {
-              const isCall = s.direction === "CALL";
-              const conf = Number(s.confidence ?? 0);
-              const band = TIER_BAND_LABELS[s.tier];
-              const isPending = s.result === "pending";
-              const isNewest = idx === 0 && isPending;
-
-              const resultLabel =
-                s.result === "win"
-                  ? "WIN"
-                  : s.result === "loss"
-                  ? "LOSS"
-                  : s.expiration;
-
-              const resultColor =
-                s.result === "win"
-                  ? "var(--green)"
-                  : s.result === "loss"
-                  ? "var(--red)"
-                  : "var(--t-3)";
-
-              const directionColor = isCall ? "var(--green)" : "var(--red)";
-              const directionBg = isCall
-                ? "rgba(142,224,107,0.10)"
-                : "rgba(255,107,61,0.10)";
-
-              const confColor =
-                conf >= 90
-                  ? "var(--brand-gold)"
-                  : conf >= 80
-                  ? "var(--green)"
-                  : "var(--t-2)";
-
-              return (
-                <div
-                  key={s.id}
-                  className={[
-                    "flex items-center gap-3 rounded-xl border bg-[var(--bg-1)] px-4 transition-colors hover:bg-[var(--bg-2)]",
-                    isNewest
-                      ? "py-4 border-[var(--b-hard)] shadow-[var(--glow-gold-soft)]"
-                      : "py-3 border-[var(--b-soft)] hover:border-[var(--b-hard)]",
-                  ].join(" ")}
-                  style={{
-                    borderLeft: `3px solid ${directionColor}`,
-                  }}
-                >
-                  {/* Direction icon */}
-                  <div
-                    className={[
-                      "rounded-lg flex items-center justify-center shrink-0",
-                      isNewest ? "w-11 h-11" : "w-9 h-9",
-                    ].join(" ")}
-                    style={{ background: directionBg, color: directionColor }}
-                  >
-                    {isCall ? (
-                      <TrendingUp size={isNewest ? 20 : 16} />
-                    ) : (
-                      <TrendingDown size={isNewest ? 20 : 16} />
-                    )}
-                  </div>
-
-                  {/* Pair + band + expiration */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={[
-                          "font-semibold truncate",
-                          isNewest ? "text-base" : "text-sm",
-                        ].join(" ")}
-                        style={{ fontFamily: "var(--font-jetbrains)" }}
-                      >
-                        {s.pair}
-                      </span>
-                      {isNewest && (
-                        <span className="text-[9px] uppercase tracking-widest text-[var(--brand-gold)] font-bold animate-pulse">
-                          new
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {band && (
-                        <span
-                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md uppercase tracking-wide"
-                          style={{ color: band.color, background: band.bg }}
-                        >
-                          {band.label}
-                        </span>
-                      )}
-                      {isPending && (
-                        <span className="text-[10px] text-[var(--t-3)] flex items-center gap-1">
-                          <Clock size={9} />
-                          {s.expiration}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Confidence */}
-                  <div className="hidden sm:flex flex-col gap-1 w-28 shrink-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-[var(--t-3)]">Сила</span>
-                      <span
-                        className="text-[12px] font-bold tabular-nums"
-                        style={{
-                          fontFamily: "var(--font-jetbrains)",
-                          color: confColor,
-                        }}
-                      >
-                        {conf}%
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-[var(--bg-3)] overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${conf}%`,
-                          background: confColor,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Result */}
-                  <div className="shrink-0 w-16 text-right">
-                    <span
-                      className="text-xs font-bold"
-                      style={{ color: resultColor }}
-                    >
-                      {resultLabel}
-                    </span>
-                  </div>
-
-                  {/* Time */}
-                  <div
-                    className="shrink-0 w-10 text-right text-[11px] text-[var(--t-3)] tabular-nums hidden md:block"
-                    style={{ fontFamily: "var(--font-jetbrains)" }}
-                  >
-                    {new Date(s.createdAt).toLocaleTimeString("ru", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <SignalHistoryList
+            signals={signals.map((s) => ({
+              id: s.id,
+              pair: s.pair,
+              direction: s.direction as "CALL" | "PUT",
+              confidence: s.confidence ? Number(s.confidence) : null,
+              tier: s.tier,
+              result: s.result,
+              expiration: s.expiration,
+              analysis: s.analysis,
+              chartData: s.chartData as {
+                candles: Array<{ time: number; open: number; high: number; low: number; close: number }>;
+                indicators: { rsi: number; ema20: number; ema50: number };
+                levels: { support: number; resistance: number };
+                entryPrice: number;
+                source?: string;
+              } | null,
+              createdAt: s.createdAt.toISOString(),
+            }))}
+          />
         )}
       </div>
     </div>
