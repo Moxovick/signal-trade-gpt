@@ -36,11 +36,11 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
   const [tierThresholds, setTierThresholds] = useState<TierThresholds>(
     initial.tierThresholds,
   );
-  const [autoEnabled, setAutoEnabled] = useState(initial.autopost.enabled);
-  const [autoInterval, setAutoInterval] = useState(
+  const [autoEnabled] = useState(initial.autopost.enabled);
+  const [autoInterval] = useState(
     initial.autopost.intervalMinutes,
   );
-  const [autoPairs, setAutoPairs] = useState(
+  const [autoPairs] = useState(
     initial.autopost.pairs.join(", "),
   );
   const [faq, setFaq] = useState<BotFaqEntry[]>(initial.faq);

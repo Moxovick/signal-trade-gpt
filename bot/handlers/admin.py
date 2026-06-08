@@ -269,12 +269,9 @@ async def cmd_test_as(message: Message, command: CommandObject) -> None:
 
     from services.imagegen import make_stats_card, make_tier_card
 
-    # 2-tier модель: после T0 — $20 (T1), дальше потолок.
-    next_threshold = (
-        {0: 20, 1: None, 2: None, 3: None, 4: None}[target.tier]
-        if target.tier <= 4
-        else None
-    )
+    # 3-tier model: T0→T1 at $20, T1→T2 at $100.
+    from constants import TIER_DEPOSIT_THRESHOLDS
+    next_threshold = TIER_DEPOSIT_THRESHOLDS.get(target.tier + 1)
     header = (
         f"<b>👤 Просмотр от лица:</b>\n"
         f"  <code>{target.telegram_id}</code> @{target.username or '—'}\n"

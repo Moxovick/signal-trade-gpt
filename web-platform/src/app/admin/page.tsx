@@ -116,7 +116,7 @@ export default async function AdminDashboard() {
             { label: "Регистрация в PO", icon: UserPlus, count: poRegistered },
             { label: "Подтвердили email", icon: Mail, count: poEmailConfirmed },
             { label: "Первый депозит", icon: Wallet, count: poVerified },
-            { label: "Тир Pro (T1+)", icon: Crown, count: poProUsers },
+            { label: "Тир Basic+ (T1+)", icon: Crown, count: poProUsers },
           ];
           const max = stages.reduce((m, s) => Math.max(m, s.count), 0);
           return (

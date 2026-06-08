@@ -33,7 +33,7 @@ export const ACHIEVEMENT_CATALOGUE: AchievementDef[] = [
   {
     code: "first_deposit",
     name: "Первый депозит",
-    description: "Открыл T1 — депозит от $20",
+    description: "Открыл Basic — депозит от $20",
     icon: "trending-up",
     minTier: 1,
   },

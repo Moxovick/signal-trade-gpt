@@ -11,7 +11,7 @@ const PERIODS = [
 
 const TIERS = [
   { v: "all", l: "Все" },
-  { v: "1", l: "Pro (T1+)" },
+  { v: "1", l: "Basic+ (T1+)" },
 ];
 
 export function LeaderboardFilters() {

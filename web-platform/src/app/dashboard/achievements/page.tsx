@@ -70,8 +70,8 @@ const CATALOG: AchievementDef[] = [
   {
     id: "tier_1",
     icon: Rocket,
-    title: "Pro-доступ",
-    description: "Открыл T1 — депозит от $20",
+    title: "Basic-доступ",
+    description: "Открыл Basic — депозит от $20",
     unlocked: (s) => s.tier >= 1,
   },
   {

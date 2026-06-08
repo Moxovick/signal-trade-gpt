@@ -67,12 +67,12 @@ export default async function AdminAnalyticsPage() {
       ],
     },
     {
-      title: "ПОДПИСКИ",
+      title: "ТИРЫ",
       color: "#00e5a0",
       items: [
         { label: "Free", value: (plans.free ?? 0).toLocaleString(), sub: "" },
-        { label: "Premium", value: (plans.premium ?? 0).toLocaleString(), sub: "" },
-        { label: "VIP", value: (plans.vip ?? 0).toLocaleString(), sub: "" },
+        { label: "Basic", value: (plans.basic ?? 0).toLocaleString(), sub: "" },
+        { label: "Pro", value: (plans.pro ?? 0).toLocaleString(), sub: "" },
         { label: "Elite", value: eliteUsers.toLocaleString(), sub: `конверсия ${convRate}%` },
       ],
     },

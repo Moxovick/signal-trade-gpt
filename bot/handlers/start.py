@@ -218,6 +218,6 @@ async def cmd_help(message: Message) -> None:
         "/calc — калькулятор сделки\n"
         "/help — это сообщение\n"
         "\n"
-        "<i>Сигналы приходят автоматически — ждать кнопки не нужно.</i>"
+        "<i>Нажми «🎯 Получить сигнал» в меню, чтобы запросить сигнал.</i>"
     )
     await message.answer(text, parse_mode=ParseMode.HTML, reply_markup=MAIN_MENU)

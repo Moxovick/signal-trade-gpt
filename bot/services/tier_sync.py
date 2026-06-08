@@ -68,15 +68,21 @@ async def _send_upgrade(bot: Bot, telegram_id: int, new_tier: int, deposit: floa
         logger.warning("Could not render tier card on upgrade: %s", exc)
         card = None
 
+    from constants import TIER_DAILY_LIMITS, TIER_SIGNAL_TYPES
+    types = TIER_SIGNAL_TYPES.get(new_tier, ["otc"])
+    signal_access = " + ".join(t.upper() for t in types)
+    daily_limit = TIER_DAILY_LIMITS.get(new_tier)
+    limit_text = "безлимит" if daily_limit is None else f"{daily_limit}/день"
+
     text = (
         f"<b>🎉 Уровень разблокирован: {name}!</b>\n"
         f"\n"
         f"Депозит на PocketOption: <b>${deposit:,.2f}</b>\n"
         f"\n"
-        "Теперь тебе доступны все типы сигналов — OTC, биржевые и Elite — "
-        "с полной аналитикой (RSI, MACD, EMA).\n"
+        f"Доступные сигналы: <b>{signal_access}</b>\n"
+        f"Лимит: <b>{limit_text}</b>\n"
         "\n"
-        "Сигналы приходят автоматически — просто жди 📊"
+        "Нажми «🎯 Получить сигнал» в меню, чтобы запросить сигнал."
     )
     if card:
         await bot.send_photo(

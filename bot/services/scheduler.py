@@ -24,10 +24,11 @@ logger = logging.getLogger(__name__)
 
 
 def _seconds_until_utc_hour(target_hour: int) -> float:
+    from datetime import timedelta
     now = datetime.now(timezone.utc)
     target = now.replace(hour=target_hour, minute=0, second=0, microsecond=0)
     if target <= now:
-        target = target.replace(day=now.day + 1)
+        target += timedelta(days=1)
     return (target - now).total_seconds()
 
 

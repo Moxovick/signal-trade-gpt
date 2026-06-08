@@ -79,17 +79,16 @@ def get_tier_features(tier: int) -> dict[str, Any]:
     """
     Return per-tier feature flags from admin config.
 
-    2-тирные дефолты: T0 — только демо (без indicators / early-access / elite),
-    T1+ — полный Pro-пакет (indicators + early-access 60с + elite-пары).
-    Ключи T2/T3/T4 дублируют T1, чтобы admin-конфиг с устаревшими
-    tierFeatures-ключами продолжал работать. Бот использует:
+    3-tier defaults: T0 — demo only, T1 — Basic (indicators, no elite),
+    T2+ — Pro (indicators + early-access + elite pairs).
+    Keys T3/T4 duplicate T2 for forward-compat. Бот использует:
       - chartIndicators: bool — render chart with RSI/MACD/volume overlay
       - earlyAccessSeconds: int — seconds of early access vs public release
       - elitePairs: bool — may receive 'elite' band signals
     """
     defaults: dict[str, dict[str, Any]] = {
         "0": {"chartIndicators": False, "earlyAccessSeconds": 0, "elitePairs": False},
-        "1": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": True},
+        "1": {"chartIndicators": True, "earlyAccessSeconds": 0, "elitePairs": False},
         "2": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": True},
         "3": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": True},
         "4": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": True},
@@ -111,12 +110,12 @@ def get_tier_features(tier: int) -> dict[str, Any]:
 def get_tier_thresholds() -> dict[str, int]:
     """Return tier deposit thresholds from admin config (USD).
 
-    2-тирные дефолты: T1 = $20, T2/T3/T4 = недостижимые.
-    Совпадает с web-platform/src/lib/tier.ts DEFAULT_TIER_THRESHOLDS.
+    3-tier defaults: T1 = $20, T2 = $100, T3/T4 = unreachable.
+    Matches web-platform/src/lib/tier.ts DEFAULT_TIER_THRESHOLDS.
     """
-    # 2**53 - 1, как Number.MAX_SAFE_INTEGER в JS — эффективно отключает T2-T4.
+    # 2**53 - 1, как Number.MAX_SAFE_INTEGER в JS — эффективно отключает T3-T4.
     _UNREACHABLE = 9_007_199_254_740_991
-    defaults = {"1": 20, "2": _UNREACHABLE, "3": _UNREACHABLE, "4": _UNREACHABLE}
+    defaults = {"1": 20, "2": 100, "3": _UNREACHABLE, "4": _UNREACHABLE}
     thresholds = _state.config.get("tierThresholds")
     if not isinstance(thresholds, dict):
         return defaults

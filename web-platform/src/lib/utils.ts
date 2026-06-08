@@ -24,8 +24,8 @@ export function formatDate(date: Date | string): string {
 export function planLabel(plan: string): string {
   const labels: Record<string, string> = {
     free: "Free",
-    premium: "Premium",
-    vip: "VIP",
+    basic: "Basic",
+    pro: "Pro",
   };
   return labels[plan] ?? plan;
 }

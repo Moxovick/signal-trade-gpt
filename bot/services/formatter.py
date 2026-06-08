@@ -175,12 +175,11 @@ def format_signal(signal: Signal, pocket_option_url: str) -> str:
     return "\n".join(lines)
 
 
-def format_stats(total_signals: int, total_users: int) -> str:
-    win_rate = 87.3
+def format_stats(total_signals: int, total_users: int, win_rate: float = 0.0) -> str:
     return (
         f"<b>Статистика Signal Trade GPT</b>\n"
         f"\n"
-        f"<b>Точность сигналов:</b> {win_rate}%\n"
+        f"<b>Точность сигналов:</b> {win_rate:.1f}%\n"
         f"<b>Всего сигналов:</b> {total_signals:,}\n"
         f"<b>Пользователей:</b> {total_users:,}\n"
         f"<b>Режим работы:</b> 24/7 (OTC) / 08:00-22:00 UTC (биржа)\n"

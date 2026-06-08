@@ -13,10 +13,10 @@ const BOT_URL =
 export const dynamic = "force-dynamic";
 
 const TIER_NAME: Record<number, string> = {
-  1: "Starter",
-  2: "Active",
-  3: "Pro",
-  4: "VIP",
+  0: "Free",
+  1: "Basic",
+  2: "Pro",
+  3: "Elite",
 };
 
 export default async function GiveawayPage() {
