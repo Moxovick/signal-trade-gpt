@@ -6,7 +6,6 @@ import {
   TrendingDown,
   Clock,
   ChevronDown,
-  Database,
 } from "lucide-react";
 import { MiniChart, type ChartCandle } from "./MiniChart";
 
@@ -41,11 +40,6 @@ const TIER_BAND_LABELS: Record<string, { label: string; color: string; bg: strin
   elite:    { label: "Elite", color: "#d4a017", bg: "rgba(212,160,23,0.10)"  },
 };
 
-const SOURCE_LABELS: Record<string, string> = {
-  twelvedata: "Twelve Data",
-  binance: "Binance",
-  synthetic: "Synthetic",
-};
 
 export function SignalHistoryList({ signals }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -311,21 +305,7 @@ export function SignalHistoryList({ signals }: Props) {
                   </div>
                 )}
 
-                {/* Source badge */}
-                {cd.source && (
-                  <div className="flex items-center gap-1.5 text-[10px] text-[var(--t-3)]">
-                    <Database size={10} />
-                    <span
-                      className="uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded-md"
-                      style={{
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid var(--b-soft)",
-                      }}
-                    >
-                      {SOURCE_LABELS[cd.source] ?? cd.source}
-                    </span>
-                  </div>
-                )}
+                {/* Source badge removed — internal detail */}
               </div>
             )}
           </div>
