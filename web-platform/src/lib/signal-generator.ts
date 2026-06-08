@@ -38,6 +38,8 @@ const EXPIRATIONS: Record<SignalBand, readonly string[]> = {
 
 const DIRECTIONS = ["CALL", "PUT"] as const;
 
+const ELITE_PAIRS = PAIRS.elite;
+
 // ─── Helpers ───
 
 function randomItem<T>(arr: readonly T[]): T {
@@ -46,6 +48,47 @@ function randomItem<T>(arr: readonly T[]): T {
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/**
+ * Determine which signal band a pair belongs to.
+ */
+function bandFromPair(pair: string): SignalBand {
+  if (pair.includes("(OTC)")) return "otc";
+  if (ELITE_PAIRS.includes(pair)) return "elite";
+  return "exchange";
+}
+
+/**
+ * Generate synthetic candles for OTC pairs — a gentle trend matching the direction.
+ */
+function generateSyntheticCandles(
+  direction: "CALL" | "PUT",
+  count = 30,
+): { candles: Candle[]; lastClose: number } {
+  const basePrice = 1.0 + Math.random() * 0.5; // e.g. 1.0–1.5
+  const trend = direction === "CALL" ? 0.0003 : -0.0003;
+  const candles: Candle[] = [];
+  let price = basePrice;
+  const now = Math.floor(Date.now() / 1000);
+
+  for (let i = 0; i < count; i++) {
+    const noise = (Math.random() - 0.5) * 0.001;
+    const open = price;
+    const close = price + trend + noise;
+    const high = Math.max(open, close) + Math.random() * 0.0005;
+    const low = Math.min(open, close) - Math.random() * 0.0005;
+    candles.push({
+      t: now - (count - i) * 60,
+      o: +open.toFixed(5),
+      h: +high.toFixed(5),
+      l: +low.toFixed(5),
+      c: +close.toFixed(5),
+    });
+    price = close;
+  }
+
+  return { candles, lastClose: candles[candles.length - 1].c };
 }
 
 // ─── Technical indicators ───
@@ -150,13 +193,43 @@ function buildAnalysis(
   ].join("");
 }
 
-// ─── OTC random signal ───
+// ─── OTC signal (with synthetic chart data) ───
 
-function generateOtcSignal() {
-  const pair = randomItem(PAIRS.otc);
+function generateOtcSignal(overridePair?: string, overrideExpiration?: string) {
+  const pair = overridePair ?? randomItem(PAIRS.otc);
   const direction = randomItem(DIRECTIONS);
-  const expiration = randomItem(EXPIRATIONS.otc);
+  const expiration = overrideExpiration ?? randomItem(EXPIRATIONS.otc);
   const confidence = randomInt(73, 88);
+
+  const { candles, lastClose } = generateSyntheticCandles(direction);
+  const closes = candles.map((c) => c.c);
+  const rsi = calcRSI(closes);
+  const ema20 = calcEMA(closes, 20);
+  const ema50 = calcEMA(closes, 50);
+  const { support, resistance } = findLevels(candles);
+
+  const chartPayload = {
+    pair,
+    direction,
+    source: "otc" as const,
+    candles: candles.map((c) => ({
+      time: c.t * 1000,
+      open: c.o,
+      high: c.h,
+      low: c.l,
+      close: c.c,
+    })),
+    indicators: {
+      rsi,
+      ema20: +ema20.toFixed(5),
+      ema50: +ema50.toFixed(5),
+    },
+    levels: {
+      support: +support.toFixed(5),
+      resistance: +resistance.toFixed(5),
+    },
+    entryPrice: lastClose,
+  };
 
   return {
     pair,
@@ -166,17 +239,17 @@ function generateOtcSignal() {
     tier: "otc" as const,
     type: "ai" as const,
     analysis: null,
-    chartData: Prisma.JsonNull,
-    entryPrice: null,
+    chartData: chartPayload as unknown as Prisma.InputJsonValue,
+    entryPrice: new Prisma.Decimal(lastClose),
     isActive: true,
   };
 }
 
 // ─── Non-OTC signal with real market data ───
 
-async function generateRealSignal(band: "exchange" | "elite") {
-  const pair = randomItem(PAIRS[band]);
-  const expiration = randomItem(EXPIRATIONS[band]);
+async function generateRealSignal(band: "exchange" | "elite", overridePair?: string, overrideExpiration?: string) {
+  const pair = overridePair ?? randomItem(PAIRS[band]);
+  const expiration = overrideExpiration ?? randomItem(EXPIRATIONS[band]);
 
   const { candles, source } = await getCandles(pair, { count: 60, periodSec: 60 });
 
@@ -256,7 +329,7 @@ export type SignalResult = {
 
 export type SignalError = {
   error: string;
-  code: "daily_limit" | "no_user";
+  code: "daily_limit" | "no_user" | "band_not_allowed";
   dailyLimit: number | null;
   used: number;
 };
@@ -268,6 +341,7 @@ export type SignalError = {
  */
 export async function generateSignalForUser(
   userId: string,
+  options?: { pair?: string; expiration?: string },
 ): Promise<{ ok: true; data: SignalResult } | { ok: false; data: SignalError; statusCode: number }> {
   // Check daily limit
   const access = await canReceiveSignal(userId);
@@ -289,12 +363,30 @@ export async function generateSignalForUser(
 
   const tier = access.report?.tier ?? 0;
   const allowedBands = TIER_ACCESS[tier] ?? ["otc"];
-  const band = randomItem(allowedBands) as SignalBand;
+
+  let band: SignalBand;
+  if (options?.pair) {
+    band = bandFromPair(options.pair);
+    if (!allowedBands.includes(band)) {
+      return {
+        ok: false,
+        statusCode: 403,
+        data: {
+          error: "Эта пара недоступна для вашего уровня",
+          code: "band_not_allowed",
+          dailyLimit: access.report?.dailySignalLimit ?? null,
+          used: access.report?.signalsTodayUsed ?? 0,
+        },
+      };
+    }
+  } else {
+    band = randomItem(allowedBands) as SignalBand;
+  }
 
   // Generate signal
   const signalData = band === "otc"
-    ? generateOtcSignal()
-    : await generateRealSignal(band as "exchange" | "elite");
+    ? generateOtcSignal(options?.pair, options?.expiration)
+    : await generateRealSignal(band as "exchange" | "elite", options?.pair, options?.expiration);
 
   // Atomic transaction: re-check daily limit + create signal + log activity
   // This prevents TOCTOU race where two concurrent requests both pass the limit check.

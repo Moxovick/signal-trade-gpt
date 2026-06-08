@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { telegramId?: number };
+  let body: { telegramId?: number; pair?: string; expiration?: string };
   try {
-    body = (await req.json()) as { telegramId?: number };
+    body = (await req.json()) as { telegramId?: number; pair?: string; expiration?: string };
   } catch {
     return NextResponse.json(
       { ok: false, error: "invalid_json" },
@@ -58,7 +58,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const result = await generateSignalForUser(user.id);
+  const pair = typeof body.pair === "string" ? body.pair : undefined;
+  const expiration = typeof body.expiration === "string" ? body.expiration : undefined;
+
+  const result = await generateSignalForUser(user.id, { pair, expiration });
   if (!result.ok) {
     return NextResponse.json(
       { ok: false, ...result.data },

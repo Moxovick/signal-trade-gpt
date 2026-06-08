@@ -139,6 +139,7 @@ export default async function SignalsPage() {
             remaining={remaining}
             tierLabel={tierLabel}
             referralUrl={referralUrl}
+            tier={tier}
           />
 
           {limitReached && (

@@ -17,7 +17,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: session.reason }, { status: 401 });
   }
 
-  const result = await generateSignalForUser(session.userId);
+  let pair: string | undefined;
+  let expiration: string | undefined;
+  try {
+    const body = (await req.json()) as { pair?: string; expiration?: string };
+    pair = typeof body.pair === "string" ? body.pair : undefined;
+    expiration = typeof body.expiration === "string" ? body.expiration : undefined;
+  } catch {
+    // No body or invalid JSON — use defaults (backward compat)
+  }
+
+  const result = await generateSignalForUser(session.userId, { pair, expiration });
   if (!result.ok) {
     return NextResponse.json(result.data, { status: result.statusCode });
   }
