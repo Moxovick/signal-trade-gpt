@@ -301,6 +301,6 @@ async def cmd_leaderboard(message: Message) -> None:
         tier_names = {0: "Free", 1: "Basic", 2: "Pro"}
         for rank, name, _wr, w, _l, t in rows:
             prefix = medals[rank - 1] if rank <= 3 else f"{rank}."
-            tier_label = tier_names.get(t, "Про")
+            tier_label = tier_names.get(t, "Free")
             lines.append(f"{prefix} <b>{name}</b> · {tier_label}")
         await message.answer("\n".join(lines), parse_mode=ParseMode.HTML)

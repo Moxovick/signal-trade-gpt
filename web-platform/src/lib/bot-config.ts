@@ -108,10 +108,10 @@ export const DEFAULT_TIER_FEATURES: TierFeatures = {
 };
 
 export const DEFAULT_BOT_TIER_THRESHOLDS: TierThresholds = {
-  "1": 100,
-  "2": 1000,
-  "3": 5000,
-  "4": 10000,
+  "1": 20,
+  "2": 100,
+  "3": Number.MAX_SAFE_INTEGER,
+  "4": Number.MAX_SAFE_INTEGER,
 };
 
 export const DEFAULT_AUTOPOST: BotAutopost = {

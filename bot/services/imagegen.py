@@ -954,7 +954,7 @@ def make_leaderboard_table(
             name = name[:27] + "…"
         d.text((cols[1][1], row_y + 4), name, font=f_row, fill=TEXT_1)
         d.text((cols[2][1], row_y + 4), str(signals), font=f_row, fill=GOLD)
-        tier_lbl = tier_labels.get(tier, "Pro")
+        tier_lbl = tier_labels.get(tier, "Free")
         d.text((cols[3][1], row_y + 4), tier_lbl, font=f_row, fill=GOLD if tier >= 1 else TEXT_2)
         row_y += row_h
 
@@ -986,7 +986,7 @@ def make_settings_card(
     d.text((60, 80), "ПРОФИЛЬ", font=f_title, fill=GOLD)
     d.text((60, 160), name, font=f_val, fill=TEXT_1)
 
-    tier_label = TIER_NAMES.get(tier, "Про")
+    tier_label = TIER_NAMES.get(tier, "Free")
     # Rows
     rows = [
         ("Уровень доступа", tier_label, GOLD),

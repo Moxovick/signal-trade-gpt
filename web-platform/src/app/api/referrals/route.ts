@@ -6,23 +6,24 @@ export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const userId = session.user.id;
+
   const [referrals, user] = await Promise.all([
     prisma.referral.findMany({
-      where: { referrerId: (session.user as { id: string }).id },
+      where: { referrerId: userId },
       include: {
-        referred: { select: { email: true, createdAt: true, subscriptionPlan: true } },
+        referred: { select: { email: true, createdAt: true, tier: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
     prisma.user.findUnique({
-      where: { id: (session.user as { id: string }).id },
-      select: { referralCode: true, subscriptionPlan: true },
+      where: { id: userId },
+      select: { referralCode: true, tier: true },
     }),
   ]);
 
-  const commissionRate =
-    user?.subscriptionPlan === "vip" ? 20 :
-    user?.subscriptionPlan === "premium" ? 15 : 10;
+  // Commission rate based on tier (v2 model). Flat 5% for now per CLAUDE.md.
+  const commissionRate = 5;
 
   return NextResponse.json({
     referrals,

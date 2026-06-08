@@ -7,7 +7,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAccessReport } from "@/lib/access";
-import { TIER_LABELS } from "@/lib/tier";
+import { TIER_LABELS, getTierThresholds } from "@/lib/tier";
 import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { buildReferralLink } from "@/lib/pocketoption";
@@ -21,18 +21,16 @@ import { TierStrip } from "./_components/TierStrip";
 import { SignalRequestButton } from "./_components/SignalRequestButton";
 import { SignalHistoryList } from "./_components/SignalHistoryList";
 
-const BASIC_THRESHOLD = 20;
-const PRO_THRESHOLD = 100;
-
 export default async function SignalsPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
   const userId = session.user.id;
 
-  const [report, poAccount, referralUrl] = await Promise.all([
+  const [report, poAccount, referralUrl, thresholds] = await Promise.all([
     getAccessReport(userId),
     prisma.pocketOptionAccount.findUnique({ where: { userId } }),
     buildReferralLink(userId),
+    getTierThresholds(),
   ]);
   if (!report) return null;
   const tier = report.tier;
@@ -76,7 +74,7 @@ export default async function SignalsPage() {
       <TierStrip
         tier={tier}
         depositTotal={depositTotal}
-        nextThreshold={tier === 0 ? BASIC_THRESHOLD : tier === 1 ? PRO_THRESHOLD : null}
+        nextThreshold={tier === 0 ? thresholds[1] : tier === 1 ? thresholds[2] : null}
         dailyLimit={dailyLimit}
         signalsRemaining={remaining}
       />

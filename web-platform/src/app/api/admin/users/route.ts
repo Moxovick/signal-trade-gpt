@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
         firstName: true,
         role: true,
         status: true,
-        subscriptionPlan: true,
+        tier: true,
         createdAt: true,
         lastLogin: true,
       },

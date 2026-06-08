@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { TIER_LABELS } from "@/lib/tier";
 
 export default async function AdminUsersPage({
   searchParams,
@@ -22,7 +23,7 @@ export default async function AdminUsersPage({
         username: true,
         role: true,
         status: true,
-        subscriptionPlan: true,
+        tier: true,
         createdAt: true,
         lastLogin: true,
       },
@@ -71,7 +72,7 @@ export default async function AdminUsersPage({
           style={{ borderColor: "rgba(255,255,255,0.06)" }}
         >
           <span className="col-span-4">Email</span>
-          <span className="col-span-2">Тариф</span>
+          <span className="col-span-2">Тир</span>
           <span className="col-span-2">Роль</span>
           <span className="col-span-2">Статус</span>
           <span className="col-span-2">Дата</span>
@@ -89,13 +90,13 @@ export default async function AdminUsersPage({
                 className="text-xs font-semibold px-2 py-0.5 rounded-full"
                 style={{
                   background:
-                    u.subscriptionPlan === "free"
+                    u.tier === 0
                       ? "rgba(136,136,136,0.1)"
                       : "rgba(245,197,24,0.1)",
-                  color: u.subscriptionPlan === "free" ? "#666" : "#f5c518",
+                  color: u.tier === 0 ? "#666" : "#f5c518",
                 }}
               >
-                {u.subscriptionPlan.toUpperCase()}
+                T{u.tier} {TIER_LABELS[u.tier] ?? ""}
               </span>
             </span>
             <span className="col-span-2 text-[#666] capitalize">{u.role}</span>

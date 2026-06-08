@@ -13,7 +13,7 @@ export default async function AdminAnalyticsPage() {
     newToday,
     newWeek,
     newMonth,
-    planCounts,
+    userTierCounts,
     totalSignals,
     signalsToday,
     signalResults,
@@ -23,14 +23,13 @@ export default async function AdminAnalyticsPage() {
     totalReferrals,
     promoTotal,
     promoActive,
-    eliteUsers,
-    trialUsers,
+    poAccounts,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.user.count({ where: { createdAt: { gte: weekStart } } }),
     prisma.user.count({ where: { createdAt: { gte: monthStart } } }),
-    prisma.user.groupBy({ by: ["subscriptionPlan"], _count: true }),
+    prisma.user.groupBy({ by: ["tier"], _count: { _all: true } }),
     prisma.signal.count(),
     prisma.signal.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.signal.groupBy({ by: ["result"], _count: true }),
@@ -40,19 +39,21 @@ export default async function AdminAnalyticsPage() {
     prisma.referral.count(),
     prisma.promoCode.count(),
     prisma.promoCode.count({ where: { isActive: true } }),
-    prisma.user.count({ where: { eliteUnlocked: true } }),
-    prisma.user.count({ where: { trialExpiresAt: { gte: now } } }),
+    prisma.pocketOptionAccount.count(),
   ]);
 
-  const plans = Object.fromEntries(planCounts.map((p) => [p.subscriptionPlan, p._count]));
+  const userTiers = Object.fromEntries(
+    userTierCounts.map((t) => [t.tier, t._count._all]),
+  );
   const results = Object.fromEntries(signalResults.map((r) => [r.result, r._count]));
   const tiers = Object.fromEntries(tierCounts.map((t) => [t.tier, t._count]));
 
   const totalResolved = (results.win ?? 0) + (results.loss ?? 0);
   const winRate = totalResolved > 0 ? ((results.win ?? 0) / totalResolved * 100).toFixed(1) : "—";
 
+  const paidUsers = (userTiers[1] ?? 0) + (userTiers[2] ?? 0);
   const convRate = totalUsers > 0
-    ? (((plans.premium ?? 0) + (plans.vip ?? 0) + (plans.elite ?? 0)) / totalUsers * 100).toFixed(1)
+    ? (paidUsers / totalUsers * 100).toFixed(1)
     : "0";
 
   const sections = [
@@ -70,10 +71,10 @@ export default async function AdminAnalyticsPage() {
       title: "ТИРЫ",
       color: "#00e5a0",
       items: [
-        { label: "Free", value: (plans.free ?? 0).toLocaleString(), sub: "" },
-        { label: "Basic", value: (plans.basic ?? 0).toLocaleString(), sub: "" },
-        { label: "Pro", value: (plans.pro ?? 0).toLocaleString(), sub: "" },
-        { label: "Elite", value: eliteUsers.toLocaleString(), sub: `конверсия ${convRate}%` },
+        { label: "T0 Free", value: (userTiers[0] ?? 0).toLocaleString(), sub: "" },
+        { label: "T1 Basic", value: (userTiers[1] ?? 0).toLocaleString(), sub: "" },
+        { label: "T2 Pro", value: (userTiers[2] ?? 0).toLocaleString(), sub: "" },
+        { label: "PO аккаунтов", value: poAccounts.toLocaleString(), sub: `конверсия ${convRate}%` },
       ],
     },
     {
@@ -102,8 +103,8 @@ export default async function AdminAnalyticsPage() {
       items: [
         { label: "Подтверждено", value: `$${Number(confirmedDeposits._sum.amount ?? 0).toLocaleString()}`, sub: `${confirmedDeposits._count} шт` },
         { label: "Ожидают", value: pendingDeposits.toLocaleString(), sub: "на верификации" },
-        { label: "Trial", value: trialUsers.toLocaleString(), sub: "активных" },
-        { label: "Промо", value: `${promoActive}/${promoTotal}`, sub: "активных/всего" },
+        { label: "Промо (активных)", value: `${promoActive}`, sub: `из ${promoTotal}` },
+        { label: "PO аккаунтов", value: poAccounts.toLocaleString(), sub: "" },
       ],
     },
     {
@@ -112,8 +113,8 @@ export default async function AdminAnalyticsPage() {
       items: [
         { label: "Всего рефералов", value: totalReferrals.toLocaleString(), sub: "" },
         { label: "Промо-коды", value: promoTotal.toLocaleString(), sub: `${promoActive} активных` },
-        { label: "Elite Users", value: eliteUsers.toLocaleString(), sub: "$500+ dep" },
-        { label: "Trial Users", value: trialUsers.toLocaleString(), sub: "по промо" },
+        { label: "T1+ (Basic+)", value: paidUsers.toLocaleString(), sub: "депозит ≥ $20" },
+        { label: "T2 (Pro)", value: (userTiers[2] ?? 0).toLocaleString(), sub: "депозит ≥ $100" },
       ],
     },
   ];

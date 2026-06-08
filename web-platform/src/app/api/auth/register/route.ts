@@ -1,3 +1,11 @@
+/**
+ * POST /api/auth/register — legacy API registration route.
+ *
+ * v2 note: subscriptions removed. Promo codes are logged but no longer grant
+ * a trial/premium plan. All monetization flows through PocketOption tiers.
+ * The primary registration path is the server action in /register/actions.ts;
+ * this route is kept for backward compat (e.g. external integrations).
+ */
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
@@ -15,7 +23,7 @@ export async function POST(req: NextRequest) {
     if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255) {
       return NextResponse.json({ error: GENERIC_ERROR }, { status: 400 });
     }
-    if (typeof password !== "string" || password.length < 8 || password.length > 128) {
+    if (typeof password !== "string" || password.length < 6 || password.length > 128) {
       return NextResponse.json({ error: GENERIC_ERROR }, { status: 400 });
     }
 
@@ -31,8 +39,6 @@ export async function POST(req: NextRequest) {
     }
 
     let promoCodeId: string | null = null;
-    let trialExpiresAt: Date | null = null;
-    let subscriptionPlan: "free" | "premium" = "free";
 
     if (promoCode) {
       const promo = await prisma.promoCode.findUnique({
@@ -45,12 +51,6 @@ export async function POST(req: NextRequest) {
 
         if (notExpired && hasUses) {
           promoCodeId = promo.id;
-
-          if (promo.type === "trial") {
-            trialExpiresAt = new Date();
-            trialExpiresAt.setDate(trialExpiresAt.getDate() + promo.trialDays);
-            subscriptionPlan = "premium";
-          }
 
           await prisma.promoCode.update({
             where: { id: promo.id },
@@ -70,11 +70,9 @@ export async function POST(req: NextRequest) {
         referralCode: code,
         referredById,
         promoCodeUsedId: promoCodeId,
-        subscriptionPlan,
-        trialExpiresAt,
-        subscriptionExpiresAt: trialExpiresAt,
+        subscriptionPlan: "free",
       },
-      select: { id: true, email: true, referralCode: true, subscriptionPlan: true, trialExpiresAt: true },
+      select: { id: true, email: true, referralCode: true, tier: true },
     });
 
     if (referredById) {

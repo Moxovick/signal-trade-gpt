@@ -296,39 +296,73 @@ export async function generateSignalForUser(
     ? generateOtcSignal()
     : await generateRealSignal(band as "exchange" | "elite");
 
-  // Save to DB
-  const signal = await prisma.signal.create({
-    data: {
-      ...signalData,
-      createdById: userId,
-    },
-  });
+  // Atomic transaction: re-check daily limit + create signal + log activity
+  // This prevents TOCTOU race where two concurrent requests both pass the limit check.
+  const dailyLimit = access.report?.dailySignalLimit ?? null;
 
-  // Log activity
-  await prisma.activityLog.create({
-    data: {
-      userId,
-      action: "signal_received",
-      details: {
-        signalId: signal.id,
-        pair: signal.pair,
-        direction: signal.direction,
-        tier: signal.tier,
+  const signal = await prisma.$transaction(async (tx) => {
+    // Re-count usage inside the transaction to prevent race conditions
+    if (dailyLimit != null) {
+      const startOfDay = new Date();
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const currentUsed = await tx.activityLog.count({
+        where: {
+          userId,
+          action: { in: ["signal_view", "signal_received"] },
+          createdAt: { gte: startOfDay },
+        },
+      });
+      if (currentUsed >= dailyLimit) {
+        return null; // limit exceeded
+      }
+    }
+
+    const created = await tx.signal.create({
+      data: {
+        ...signalData,
+        createdById: userId,
       },
-    },
+    });
+
+    await tx.activityLog.create({
+      data: {
+        userId,
+        action: "signal_received",
+        details: {
+          signalId: created.id,
+          pair: created.pair,
+          direction: created.direction,
+          tier: created.tier,
+        },
+      },
+    });
+
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        signalsReceived: { increment: 1 },
+        lastSignalAt: new Date(),
+      },
+    });
+
+    return created;
   });
 
-  // Update user stats
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      signalsReceived: { increment: 1 },
-      lastSignalAt: new Date(),
-    },
-  });
+  // If the transaction returned null, the limit was hit during the race window
+  if (!signal) {
+    return {
+      ok: false as const,
+      statusCode: 429,
+      data: {
+        error: "Дневной лимит сигналов исчерпан",
+        code: "daily_limit" as const,
+        dailyLimit,
+        used: dailyLimit ?? 0,
+      },
+    };
+  }
 
   const used = (access.report?.signalsTodayUsed ?? 0) + 1;
-  const dailyLimit = access.report?.dailySignalLimit ?? null;
 
   return {
     ok: true,

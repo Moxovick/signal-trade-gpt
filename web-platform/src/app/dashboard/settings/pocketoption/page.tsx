@@ -16,7 +16,7 @@ import {
   ChevronRight,
   Star,
 } from "lucide-react";
-import { TIER_LABELS } from "@/lib/tier";
+import { TIER_LABELS, getTierThresholds } from "@/lib/tier";
 import Link from "next/link";
 
 export default async function PocketOptionSettingsPage() {
@@ -63,10 +63,9 @@ export default async function PocketOptionSettingsPage() {
     ) ?? [];
 
   const depositTotal = Number(user.depositTotal ?? 0);
-  const BASIC_THRESHOLD = 20;
-  const PRO_THRESHOLD = 100;
+  const thresholds = await getTierThresholds();
   const isPro = user.tier >= 2;
-  const nextThreshold = user.tier === 0 ? BASIC_THRESHOLD : user.tier === 1 ? PRO_THRESHOLD : null;
+  const nextThreshold = user.tier === 0 ? thresholds[1] : user.tier === 1 ? thresholds[2] : null;
   const progressPct = nextThreshold ? Math.min((depositTotal / nextThreshold) * 100, 100) : 100;
   const nextLabel = user.tier === 0 ? "Базового" : user.tier === 1 ? "Про" : null;
 
@@ -155,7 +154,7 @@ export default async function PocketOptionSettingsPage() {
             {
               tier: 1,
               name: "Basic",
-              deposit: "от $20",
+              deposit: `от $${thresholds[1]}`,
               active: user.tier === 1,
               perks: [
                 "10 сигналов в день",
@@ -167,7 +166,7 @@ export default async function PocketOptionSettingsPage() {
             {
               tier: 2,
               name: "Pro",
-              deposit: "от $100",
+              deposit: `от $${thresholds[2]}`,
               active: user.tier >= 2,
               perks: [
                 "Безлимитные сигналы",

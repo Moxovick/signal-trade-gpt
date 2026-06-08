@@ -62,9 +62,9 @@ const CAT_LABEL: Record<Asset["category"], string> = {
 };
 
 const TIER_LABEL: Record<Asset["signalTier"], string> = {
-  otc: "OTC (T1+)",
-  exchange: "Биржа (T2+)",
-  elite: "Elite (T3+)",
+  otc: "OTC (T0+)",
+  exchange: "Биржа (T1+)",
+  elite: "Elite (T2+)",
 };
 
 export default function AdminAssetsPage() {

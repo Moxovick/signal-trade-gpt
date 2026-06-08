@@ -390,8 +390,8 @@ async def cmd_seed_data(message: Message) -> None:
         await message.answer("⛔ Доступ запрещён.")
         return
     fakes = [
-        (9_000_001, "alex_pro", "Alex", 4, 15000.0, 24, 6),
-        (9_000_002, "maria_fx", "Maria", 3, 4500.0, 31, 9),
+        (9_000_001, "alex_pro", "Alex", 2, 15000.0, 24, 6),
+        (9_000_002, "maria_fx", "Maria", 2, 4500.0, 31, 9),
         (9_000_003, "john_otc", "John", 2, 800.0, 18, 8),
         (9_000_004, "lena_demo", "Lena", 1, 120.0, 9, 5),
         (9_000_005, "guest_t0", "Guest", 0, 0.0, 1, 1),

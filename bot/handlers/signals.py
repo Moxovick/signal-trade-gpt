@@ -12,7 +12,7 @@ import random
 from typing import Any
 
 import httpx
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from aiogram.enums import ParseMode
@@ -89,15 +89,13 @@ def _api_signal_to_local(data: dict[str, Any]) -> Signal:
     )
 
 
-async def _request_signal(user_id: int, bot: object) -> tuple[str | None, bytes | None, int | None]:
+async def _request_signal(user_id: int, bot: Bot) -> tuple[str | None, bytes | None, int | None]:
     """
     Core logic: validate user, generate signal (via API or local fallback).
 
     Returns (error_text, chart_bytes, signal_id).
     If error_text is not None, the request was denied.
     """
-    from aiogram import Bot
-    assert isinstance(bot, Bot)
 
     user = await get_user(user_id)
     if user is None:
@@ -163,13 +161,12 @@ async def _request_signal(user_id: int, bot: object) -> tuple[str | None, bytes 
                         # Convert API chart candles to OHLC format for the renderer
                         candles = chart_data.get("candles", [])
                         real_ohlc = [
-                            {
-                                "time": c.get("time", 0),
-                                "open": c.get("open", 0),
-                                "high": c.get("high", 0),
-                                "low": c.get("low", 0),
-                                "close": c.get("close", 0),
-                            }
+                            (
+                                float(c.get("open", 0)),
+                                float(c.get("high", 0)),
+                                float(c.get("low", 0)),
+                                float(c.get("close", 0)),
+                            )
                             for c in candles
                         ] if candles else None
                     else:

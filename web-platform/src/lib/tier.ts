@@ -49,6 +49,21 @@ export const DEFAULT_TIER_THRESHOLDS: TierThresholds = {
 
 export const SITE_SETTING_TIER_THRESHOLDS = "tier_thresholds";
 
+import { prisma } from "@/lib/prisma";
+
+/**
+ * Load tier thresholds from SiteSettings (DB), falling back to defaults.
+ */
+export async function getTierThresholds(): Promise<TierThresholds> {
+  const setting = await prisma.siteSettings.findUnique({
+    where: { key: SITE_SETTING_TIER_THRESHOLDS },
+  });
+  if (!setting) return DEFAULT_TIER_THRESHOLDS;
+  const v = setting.value as unknown;
+  if (typeof v !== "object" || v === null) return DEFAULT_TIER_THRESHOLDS;
+  return v as TierThresholds;
+}
+
 type DepositLike = DecimalLike | number | string;
 
 function toNumber(value: DepositLike): number {

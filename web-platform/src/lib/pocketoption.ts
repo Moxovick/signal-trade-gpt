@@ -26,8 +26,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   computeTier,
-  DEFAULT_TIER_THRESHOLDS,
-  SITE_SETTING_TIER_THRESHOLDS,
+  getTierThresholds,
   type TierThresholds,
 } from "@/lib/tier";
 import { fetchTraderInfo, isValidTraderIdFormat } from "@/lib/po-api";
@@ -313,15 +312,7 @@ export async function verifyPostbackSecret(provided: string | null): Promise<boo
   }
 }
 
-async function getTierThresholds(): Promise<TierThresholds> {
-  const setting = await prisma.siteSettings.findUnique({
-    where: { key: SITE_SETTING_TIER_THRESHOLDS },
-  });
-  if (!setting) return DEFAULT_TIER_THRESHOLDS;
-  const v = setting.value as unknown;
-  if (typeof v !== "object" || v === null) return DEFAULT_TIER_THRESHOLDS;
-  return v as TierThresholds;
-}
+// getTierThresholds is imported from @/lib/tier
 
 /**
  * Recompute and persist `User.tier` based on the current PO account state.
