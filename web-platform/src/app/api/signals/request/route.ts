@@ -6,13 +6,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { generateSignalForUser } from "@/lib/signal-generator";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
+
+/** 30 signal requests per user per minute (well above daily limits, catches abuse). */
+const SIGNAL_RL_LIMIT = 30;
+const SIGNAL_RL_WINDOW_MS = 60_000;
 
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rl = rateLimit(`signal:${session.user.id}`, SIGNAL_RL_LIMIT, SIGNAL_RL_WINDOW_MS);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Слишком много запросов. Подождите." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    );
   }
 
   let pair: string | undefined;

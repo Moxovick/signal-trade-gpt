@@ -8,14 +8,15 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyBotSecret } from "@/lib/bot-secret";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const secret = process.env["BOT_SYNC_SECRET"];
-  if (!secret || req.headers.get("x-bot-secret") !== secret) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const check = verifyBotSecret(req.headers.get("x-bot-secret"));
+  if (!check.ok) {
+    return NextResponse.json({ error: "unauthorized" }, { status: check.reason === "not_configured" ? 503 : 401 });
   }
 
   const body = (await req.json().catch(() => null)) as { signalId?: string } | null;

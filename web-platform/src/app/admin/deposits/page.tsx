@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Check } from "lucide-react";
 
 export default async function AdminDepositsPage() {
   const [deposits, stats] = await Promise.all([
@@ -58,7 +59,7 @@ export default async function AdminDepositsPage() {
                 <span>{dep.user.email}</span>
                 <span>·</span>
                 <span className={`tier-${dep.user.subscriptionPlan}`}>{dep.user.subscriptionPlan.toUpperCase()}</span>
-                {dep.user.eliteUnlocked && <span className="tier-elite">ELITE ✓</span>}
+                {dep.user.eliteUnlocked && <span className="tier-elite flex items-center gap-1">ELITE <Check className="w-3 h-3" /></span>}
               </div>
             </div>
             <div className="flex items-center gap-4 text-sm">

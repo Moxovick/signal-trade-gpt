@@ -26,18 +26,19 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyBotSecret } from "@/lib/bot-secret";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const secret = process.env["BOT_SYNC_SECRET"];
-  if (!secret) {
-    return NextResponse.json({ ok: false, reason: "not_configured" }, { status: 503 });
-  }
-  const provided = req.headers.get("x-bot-secret");
-  if (provided !== secret) {
-    return NextResponse.json({ ok: false, reason: "bad_secret" }, { status: 401 });
+  const check = verifyBotSecret(req.headers.get("x-bot-secret"));
+  if (!check.ok) {
+    const status = check.reason === "not_configured" ? 503 : 401;
+    return NextResponse.json(
+      { ok: false, reason: check.reason === "not_configured" ? "not_configured" : "bad_secret" },
+      { status },
+    );
   }
 
   const body = (await req.json().catch(() => null)) as

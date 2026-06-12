@@ -10,9 +10,23 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { generateReferralCode } from "@/lib/utils";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
+
+/** 5 registrations per IP per 15 minutes. */
+const REG_LIMIT = 5;
+const REG_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = clientIp(req);
+    const rl = rateLimit(`register:${ip}`, REG_LIMIT, REG_WINDOW_MS);
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Слишком много попыток. Попробуйте позже." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+      );
+    }
+
     const { email, password, referralCode, promoCode } = await req.json();
 
     const GENERIC_ERROR = "Регистрация не удалась. Попробуйте снова или войдите.";

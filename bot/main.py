@@ -60,6 +60,7 @@ async def main() -> None:
     dp = Dispatcher()
 
     dp.message.middleware(BannedUserMiddleware())
+    dp.callback_query.middleware(BannedUserMiddleware())
 
     # Order matters: specific command routers first, generic menu/text last.
     dp.include_router(admin.router)

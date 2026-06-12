@@ -43,6 +43,9 @@ from services.signal_generator import generate_signal
 logger = logging.getLogger(__name__)
 router = Router()
 
+# Per-user lock to prevent concurrent signal requests bypassing daily limits.
+_user_locks: dict[int, asyncio.Lock] = {}
+
 ANALYSIS_STEPS = [
     "Анализируем рынок...",
     "Проверяем индикаторы...",
@@ -244,12 +247,28 @@ async def _generate_signal_data(
     return None, signal, chart_bytes, None
 
 
+def _get_user_lock(user_id: int) -> asyncio.Lock:
+    if user_id not in _user_locks:
+        _user_locks[user_id] = asyncio.Lock()
+    return _user_locks[user_id]
+
+
 async def _send_signal_with_animation(user_id: int, bot: Bot) -> str | None:
     """
     Full signal flow: validate, animate, generate, send.
 
     Returns error text or None on success.
     """
+    lock = _get_user_lock(user_id)
+    if lock.locked():
+        return "Подожди — предыдущий сигнал ещё генерируется."
+
+    async with lock:
+        return await _send_signal_with_animation_inner(user_id, bot)
+
+
+async def _send_signal_with_animation_inner(user_id: int, bot: Bot) -> str | None:
+    """Inner implementation of signal flow (runs under per-user lock)."""
     # Step 1: Validate user
     error, user = await _validate_user(user_id)
     if error:

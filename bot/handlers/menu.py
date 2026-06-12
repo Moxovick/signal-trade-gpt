@@ -38,12 +38,12 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 from handlers.link import cmd_link as do_link  # noqa: E402
-from handlers.signals import _request_signal  # noqa: E402
+from handlers.signals import _send_signal_with_animation  # noqa: E402
 
 
 @router.message(F.text == BTN_SIGNAL)
 async def btn_signal(message: Message) -> None:
-    error, _, _ = await _request_signal(message.from_user.id, message.bot)
+    error = await _send_signal_with_animation(message.from_user.id, message.bot)
     if error:
         from aiogram.enums import ParseMode as _PM
         await message.answer(error, parse_mode=_PM.HTML)
@@ -210,9 +210,19 @@ async def cmd_calc(message: Message) -> None:
     Example: /calc 500 3 80 → bet $15 (3% of $500), profit at 80% payout = $12
     """
     parts = (message.text or "").split()
-    deposit = float(parts[1]) if len(parts) > 1 else 500
-    pct = float(parts[2]) if len(parts) > 2 else 2.0
-    payout = float(parts[3]) if len(parts) > 3 else 82.0
+    try:
+        deposit = float(parts[1]) if len(parts) > 1 else 500
+        pct = float(parts[2]) if len(parts) > 2 else 2.0
+        payout = float(parts[3]) if len(parts) > 3 else 82.0
+    except (ValueError, IndexError):
+        await message.answer(
+            "Неверный формат. Используй: <code>/calc 500 2 82</code>",
+            parse_mode=ParseMode.HTML,
+        )
+        return
+    if deposit <= 0 or pct <= 0 or payout <= 0:
+        await message.answer("Все значения должны быть положительными.")
+        return
     bet = deposit * pct / 100
     profit = bet * payout / 100
     text = (

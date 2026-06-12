@@ -23,23 +23,18 @@ import {
   SITE_SETTING_TIER_THRESHOLDS,
   type TierThresholds,
 } from "@/lib/tier";
+import { verifyBotSecret } from "@/lib/bot-secret";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const secret = process.env["BOT_SYNC_SECRET"];
-  if (!secret) {
+  const check = verifyBotSecret(req.headers.get("x-bot-secret"));
+  if (!check.ok) {
+    const status = check.reason === "not_configured" ? 503 : 401;
     return NextResponse.json(
-      { ok: false, reason: "sync_disabled" },
-      { status: 503 },
-    );
-  }
-  const provided = req.headers.get("x-bot-secret");
-  if (provided !== secret) {
-    return NextResponse.json(
-      { ok: false, reason: "bad_secret" },
-      { status: 401 },
+      { ok: false, reason: check.reason === "not_configured" ? "sync_disabled" : "bad_secret" },
+      { status },
     );
   }
 

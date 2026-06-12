@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { X } from "lucide-react";
 
 type Result = "pending" | "win" | "loss";
 
@@ -96,7 +97,7 @@ export function SignalRowActions({
         disabled={pending}
         className={`${btn} bg-red-500/10 text-red-400/80 hover:bg-red-500/20`}
       >
-        ✕
+        <X className="w-3 h-3" />
       </button>
       {error && (
         <span className="text-[10px] text-red-400 ml-2">{error}</span>
