@@ -1,4 +1,4 @@
-import { TIER_LABELS } from "@/lib/tier";
+import { TIER_LABELS } from "@/lib/tier-constants";
 
 type Props = {
   tier: number;

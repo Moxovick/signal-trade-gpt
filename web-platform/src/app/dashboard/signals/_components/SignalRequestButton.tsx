@@ -14,7 +14,7 @@ import {
   Lock,
 } from "lucide-react";
 import { MiniChart, type ChartCandle } from "./MiniChart";
-import { OtcSignalVisual } from "./OtcSignalVisual";
+
 
 // ─── Types ───
 
@@ -135,6 +135,22 @@ export function SignalRequestButton({
   // Analysis animation state
   const [analysisTextIdx, setAnalysisTextIdx] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [delayConfig, setDelayConfig] = useState({ min: 5, max: 12 });
+
+  // Fetch analysis delay config on mount
+  useEffect(() => {
+    fetch("/api/signals/config")
+      .then((res) => res.json())
+      .then((data: { analysisDelayMin: number; analysisDelayMax: number }) => {
+        setDelayConfig({
+          min: data.analysisDelayMin,
+          max: data.analysisDelayMax,
+        });
+      })
+      .catch(() => {
+        // keep defaults
+      });
+  }, []);
 
   const reset = useCallback(() => {
     setStep("pair");
@@ -164,7 +180,7 @@ export function SignalRequestButton({
   useEffect(() => {
     if (step !== "analysis" || !selectedPair || !selectedExpiration) return;
 
-    const totalMs = 5000 + Math.random() * 7000; // 5-12s
+    const totalMs = (delayConfig.min + Math.random() * (delayConfig.max - delayConfig.min)) * 1000;
     const startTime = Date.now();
     let cancelled = false;
 
@@ -217,7 +233,7 @@ export function SignalRequestButton({
       clearInterval(progressInterval);
       clearInterval(textInterval);
     };
-  }, [step, selectedPair, selectedExpiration, router]);
+  }, [step, selectedPair, selectedExpiration, router, delayConfig]);
 
   // Back button handler
   function handleBack() {
@@ -430,20 +446,10 @@ export function SignalRequestButton({
 
   // ─── Render: Step 4 — Show signal result ───
   if (step === "result" && lastSignal) {
-    const isOtc = lastSignal.tier === "otc";
-
     return (
       <div className="w-full max-w-2xl space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-        {/* OTC visual or chart-based card */}
-        {isOtc ? (
-          <OtcSignalVisual
-            pair={lastSignal.pair}
-            direction={lastSignal.direction}
-            confidence={lastSignal.confidence}
-            expiration={lastSignal.expiration}
-          />
-        ) : (
-          <div
+        {/* Signal card (same layout for OTC and non-OTC) */}
+        <div
             className="rounded-2xl border-2 overflow-hidden w-full"
             style={{
               borderColor: lastSignal.direction === "CALL" ? "var(--green)" : "var(--red)",
@@ -554,7 +560,6 @@ export function SignalRequestButton({
               )}
             </div>
           </div>
-        )}
 
         {/* New signal button */}
         <button

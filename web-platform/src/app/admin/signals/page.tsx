@@ -58,6 +58,8 @@ export default async function AdminSignalsPage() {
     dailyLimits: Record<string, number | null>;
     allowedTypes: Record<string, string[]>;
     proFrequencySeconds: number;
+    analysisDelayMin: number;
+    analysisDelayMax: number;
   };
 
   const defaultConfig: OnDemandConfig = {
@@ -68,6 +70,8 @@ export default async function AdminSignalsPage() {
       "2": ["otc", "exchange", "elite"],
     },
     proFrequencySeconds: 0,
+    analysisDelayMin: 5,
+    analysisDelayMax: 20,
   };
 
   const config: OnDemandConfig = tierSettings?.value

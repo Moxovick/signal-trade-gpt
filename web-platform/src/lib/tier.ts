@@ -18,6 +18,19 @@
  * расширить модель — достаточно поменять пороги через `/admin/settings`.
  */
 
+// Re-export client-safe constants so existing server-side imports keep working.
+export {
+  type TierThresholds,
+  DEFAULT_TIER_THRESHOLDS,
+  type SignalBand,
+  TIER_ACCESS,
+  TIER_LABELS,
+  TIER_LABELS_EN,
+} from "@/lib/tier-constants";
+
+import type { TierThresholds } from "@/lib/tier-constants";
+import { DEFAULT_TIER_THRESHOLDS } from "@/lib/tier-constants";
+
 /**
  * Duck-typed Decimal: anything with `toNumber()` works (covers Prisma.Decimal,
  * decimal.js, and our own wrappers in tests).
@@ -25,27 +38,6 @@
 interface DecimalLike {
   toNumber(): number;
 }
-
-export type TierThresholds = {
-  /** Депозит, при котором открывается T1, T2, T3, T4 (USD). */
-  1: number;
-  2: number;
-  3: number;
-  4: number;
-};
-
-/**
- * Effective deposit thresholds for each tier (USD).
- *
- * Three-tier model: T1 (Basic) at $20, T2 (Pro) at $100.
- * T3/T4 выставлены недостижимыми на случай будущего расширения.
- */
-export const DEFAULT_TIER_THRESHOLDS: TierThresholds = {
-  1: 20,
-  2: 100,
-  3: Number.MAX_SAFE_INTEGER,
-  4: Number.MAX_SAFE_INTEGER,
-};
 
 export const SITE_SETTING_TIER_THRESHOLDS = "tier_thresholds";
 
@@ -119,34 +111,3 @@ export function distanceToNextTier(
   return { nextTier: next, needed: Math.max(0, cap - total) };
 }
 
-/**
- * Signal bands accessible at each tier (3-tier model).
- *
- * T0 (Free)  = OTC only.
- * T1 (Basic) = OTC + exchange.
- * T2 (Pro)   = OTC + exchange + elite (all).
- * T3/T4 mirror T2 for forward-compat.
- */
-export type SignalBand = "otc" | "exchange" | "elite";
-
-export const TIER_ACCESS: Record<number, SignalBand[]> = {
-  0: ["otc"],
-  1: ["otc", "exchange"],
-  2: ["otc", "exchange", "elite"],
-  3: ["otc", "exchange", "elite"],
-  4: ["otc", "exchange", "elite"],
-};
-
-/** Human-readable tier labels (Russian UI). */
-export const TIER_LABELS: Record<number, string> = {
-  0: "Бесплатный",
-  1: "Базовый",
-  2: "Про",
-};
-
-/** Short English tier labels for internal/API use. */
-export const TIER_LABELS_EN: Record<number, string> = {
-  0: "Free",
-  1: "Basic",
-  2: "Pro",
-};

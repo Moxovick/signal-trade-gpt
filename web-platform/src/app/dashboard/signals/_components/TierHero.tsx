@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { Copy, Check, ExternalLink, ShieldCheck, Sparkles } from "lucide-react";
 import { TierBadge } from "@/components/ui/TierBadge";
-import { TIER_LABELS } from "@/lib/tier";
+import { TIER_LABELS } from "@/lib/tier-constants";
 
 type Props = {
   tier: number;

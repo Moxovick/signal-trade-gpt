@@ -6,7 +6,10 @@ to generate a signal (unified pipeline), renders chart locally, sends to user.
 
 If the web API is unreachable (PLATFORM_API_URL not set), falls back to
 local generation via signal_generator.py.
+
+An analysis animation is shown while the signal is being generated.
 """
+import asyncio
 import logging
 import random
 from typing import Any
@@ -39,6 +42,14 @@ from services.signal_generator import generate_signal
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+ANALYSIS_STEPS = [
+    "Анализируем рынок...",
+    "Проверяем индикаторы...",
+    "Оцениваем точку входа...",
+    "Рассчитываем вероятность...",
+    "Формируем сигнал...",
+]
 
 
 def _can_use_web_api() -> bool:
@@ -85,28 +96,55 @@ def _api_signal_to_local(data: dict[str, Any]) -> Signal:
         tier=sig.get("tier", "otc"),
         analysis=sig.get("analysis"),
         result="pending",
-        id=None,  # We'll save locally for chart / feedback tracking
+        id=None,
     )
 
 
-async def _request_signal(user_id: int, bot: Bot) -> tuple[str | None, bytes | None, int | None]:
-    """
-    Core logic: validate user, generate signal (via API or local fallback).
+async def _show_analysis_animation(bot: Bot, chat_id: int, delay_seconds: float) -> Message:
+    """Send and animate analysis progress messages."""
+    msg = await bot.send_message(chat_id, f"⏳ {ANALYSIS_STEPS[0]}")
+    step_interval = delay_seconds / len(ANALYSIS_STEPS)
 
-    Returns (error_text, chart_bytes, signal_id).
-    If error_text is not None, the request was denied.
-    """
+    for i, text in enumerate(ANALYSIS_STEPS[1:], 1):
+        await asyncio.sleep(step_interval)
+        progress = "▓" * i + "░" * (len(ANALYSIS_STEPS) - i)
+        try:
+            await msg.edit_text(
+                f"⏳ {text}\n\n[{progress}] {int(i / len(ANALYSIS_STEPS) * 100)}%"
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
+    return msg
+
+
+async def _validate_user(user_id: int) -> tuple[str | None, Any]:
+    """
+    Validate that a user exists and has PO linked.
+
+    Returns (error_text, user). If error_text is not None, request is denied.
+    """
     user = await get_user(user_id)
     if user is None:
-        return "Сначала нажми /start, чтобы зарегистрироваться.", None, None
+        return "Сначала нажми /start, чтобы зарегистрироваться.", None
 
-    # Must have PO account linked
     if not user.po_trader_id:
         return (
             "Сначала привяжи PocketOption аккаунт.\n"
             "Используй /link или кнопку «🔗 Привязать ID» в меню."
-        ), None, None
+        ), None
+
+    return None, user
+
+
+async def _generate_signal_data(
+    user: Any,
+) -> tuple[str | None, Signal | None, bytes | None, dict[str, Any] | None]:
+    """
+    Generate a signal via API or local fallback.
+
+    Returns (error_text, signal, chart_bytes, api_resp).
+    """
 
     # ── Try web API first ──
     if _can_use_web_api():
@@ -114,7 +152,6 @@ async def _request_signal(user_id: int, bot: Bot) -> tuple[str | None, bytes | N
         if api_resp is not None:
             status = api_resp.get("_status", 500)
 
-            # Limit reached
             if status == 429:
                 code = api_resp.get("code", "daily_limit")
                 used = api_resp.get("used", 0)
@@ -126,39 +163,32 @@ async def _request_signal(user_id: int, bot: Bot) -> tuple[str | None, bytes | N
                         return (
                             f"Лимит исчерпан ({used}/{daily_limit} сигналов сегодня).\n\n"
                             f"Повысь тариф до <b>{next_tier}</b> для большего количества сигналов."
-                        ), None, None
+                        ), None, None, None
                     return (
                         f"Лимит исчерпан ({used}/{daily_limit} сигналов сегодня).\n"
                         "Следующий сигнал будет доступен через несколько часов."
-                    ), None, None
-                return "Пользователь не найден на платформе.", None, None
+                    ), None, None, None
+                return "Пользователь не найден на платформе.", None, None, None
 
-            # User not found on platform
             if status == 404:
-                return "Пользователь не найден на платформе. Зарегистрируйся на сайте.", None, None
+                return "Пользователь не найден на платформе. Зарегистрируйся на сайте.", None, None, None
 
-            # Other errors — fall through to local fallback
             if status >= 400:
                 logger.warning("Web API returned status %s: %s", status, api_resp.get("error"))
                 # Fall through to local generation below
             else:
-                # Success — use API signal
                 signal = _api_signal_to_local(api_resp)
                 sid = await save_signal(signal)
                 signal.id = sid
 
-                # Render chart locally
                 tier_str = signal.tier or "otc"
                 is_otc = tier_str in {"otc", "demo"}
 
                 if is_otc:
                     chart_bytes: bytes = make_otc_banner(signal)
-                    caption = format_otc_minimal(signal)
                 else:
-                    # Use chartData from API if available, otherwise fetch locally
                     chart_data = api_resp.get("signal", {}).get("chartData")
                     if chart_data and isinstance(chart_data, dict):
-                        # Convert API chart candles to OHLC format for the renderer
                         candles = chart_data.get("candles", [])
                         real_ohlc = [
                             (
@@ -172,35 +202,14 @@ async def _request_signal(user_id: int, bot: Bot) -> tuple[str | None, bytes | N
                     else:
                         real_ohlc = await fetch_ohlc(signal.pair)
                     chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
-                    caption = format_pro_signal_caption(signal, settings.pocket_option_url)
 
-                # Increment local counters
-                await increment_daily_signal(user.telegram_id)
-                await increment_signals_received(user.telegram_id)
+                return None, signal, chart_bytes, api_resp
 
-                # Send signal
-                await bot.send_photo(
-                    chat_id=user.telegram_id,
-                    photo=BufferedInputFile(chart_bytes, filename=f"signal_{sid}.png"),
-                    caption=caption,
-                    parse_mode=ParseMode.HTML,
-                    reply_markup=signal_inline(settings.pocket_option_url, sid),
-                )
+    # ── Local fallback ──
+    logger.info("Using local signal generation fallback for user %s", user.telegram_id)
 
-                # Achievement check
-                updated_user = await get_user(user.telegram_id)
-                if updated_user:
-                    await check_and_award(bot, updated_user)
-
-                return None, None, None
-
-    # ── Local fallback (web API unavailable or errored) ──
-    logger.info("Using local signal generation fallback for user %s", user_id)
-
-    # Reset daily counter if 24h expired
     await reset_daily_signals_if_expired(user.telegram_id)
 
-    # Check daily limit locally
     daily_limit = TIER_DAILY_LIMITS.get(user.tier)
     used, limit, can_request = await get_daily_signal_count(user.telegram_id, daily_limit)
 
@@ -210,58 +219,114 @@ async def _request_signal(user_id: int, bot: Bot) -> tuple[str | None, bytes | N
             return (
                 f"Лимит исчерпан ({used}/{limit} сигналов сегодня).\n\n"
                 f"Повысь тариф до <b>{next_tier}</b> для большего количества сигналов."
-            ), None, None
+            ), None, None, None
         return (
             f"Лимит исчерпан ({used}/{limit} сигналов сегодня).\n"
             "Следующий сигнал будет доступен через несколько часов."
-        ), None, None
+        ), None, None, None
 
-    # Pick signal type based on tier
     allowed_types = TIER_SIGNAL_TYPES.get(user.tier, ["otc"])
     signal_tier = random.choice(allowed_types)
 
-    # Generate signal locally
     signal = generate_signal(signal_tier)
     sid = await save_signal(signal)
     signal.id = sid
 
-    # Render chart
     tier_str = signal.tier or "otc"
     is_otc = tier_str in {"otc", "demo"}
 
     if is_otc:
         chart_bytes = make_otc_banner(signal)
-        caption = format_otc_minimal(signal)
     else:
         real_ohlc = await fetch_ohlc(signal.pair)
         chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
-        caption = format_pro_signal_caption(signal, settings.pocket_option_url)
 
-    # Increment counters
-    await increment_daily_signal(user.telegram_id)
-    await increment_signals_received(user.telegram_id)
+    return None, signal, chart_bytes, None
 
-    # Send signal
-    await bot.send_photo(
-        chat_id=user.telegram_id,
-        photo=BufferedInputFile(chart_bytes, filename=f"signal_{sid}.png"),
-        caption=caption,
-        parse_mode=ParseMode.HTML,
-        reply_markup=signal_inline(settings.pocket_option_url, sid),
-    )
 
-    # Achievement check
-    updated_user = await get_user(user.telegram_id)
-    if updated_user:
-        await check_and_award(bot, updated_user)
+async def _send_signal_with_animation(user_id: int, bot: Bot) -> str | None:
+    """
+    Full signal flow: validate, animate, generate, send.
 
-    return None, None, None
+    Returns error text or None on success.
+    """
+    # Step 1: Validate user
+    error, user = await _validate_user(user_id)
+    if error:
+        return error
+
+    # Step 2: Run animation and signal generation in parallel
+    delay = random.uniform(settings.analysis_delay_min, settings.analysis_delay_max)
+
+    async def _animate() -> Message:
+        return await _show_analysis_animation(bot, user.telegram_id, delay)
+
+    async def _generate() -> tuple[str | None, Signal | None, bytes | None, dict[str, Any] | None]:
+        return await _generate_signal_data(user)
+
+    analysis_msg: Message | None = None
+    try:
+        animation_task = asyncio.create_task(_animate())
+        generation_task = asyncio.create_task(_generate())
+
+        gen_error, signal, chart_bytes, api_resp = await generation_task
+        analysis_msg = await animation_task
+
+        # Clean up analysis message
+        try:
+            await analysis_msg.delete()
+        except Exception:  # noqa: BLE001
+            pass
+
+        if gen_error:
+            return gen_error
+
+        if signal is None or chart_bytes is None:
+            return "Не удалось сгенерировать сигнал. Попробуй позже."
+
+        # Build caption
+        tier_str = signal.tier or "otc"
+        is_otc = tier_str in {"otc", "demo"}
+        if is_otc:
+            caption = format_otc_minimal(signal)
+        else:
+            caption = format_pro_signal_caption(signal, settings.pocket_option_url)
+
+        # Increment counters
+        await increment_daily_signal(user.telegram_id)
+        await increment_signals_received(user.telegram_id)
+
+        # Send signal photo
+        await bot.send_photo(
+            chat_id=user.telegram_id,
+            photo=BufferedInputFile(chart_bytes, filename=f"signal_{signal.id}.png"),
+            caption=caption,
+            parse_mode=ParseMode.HTML,
+            reply_markup=signal_inline(settings.pocket_option_url, signal.id),
+        )
+
+        # Achievement check
+        updated_user = await get_user(user.telegram_id)
+        if updated_user:
+            await check_and_award(bot, updated_user)
+
+        return None
+
+    except Exception:
+        logger.exception("Signal request failed for user %s", user_id)
+        # Clean up analysis message if it was sent
+        if analysis_msg is not None:
+            try:
+                await analysis_msg.delete()
+            except Exception:  # noqa: BLE001
+                pass
+        return "Произошла ошибка при генерации сигнала. Попробуй позже."
 
 
 @router.message(Command("signal"))
 async def cmd_signal(message: Message) -> None:
     """Handle /signal command — request an on-demand signal."""
-    error, _, _ = await _request_signal(message.from_user.id, message.bot)
+    error = await _send_signal_with_animation(message.from_user.id, message.bot)
     if error:
         await message.answer(error, parse_mode=ParseMode.HTML)
 
@@ -272,7 +337,7 @@ async def cb_get_signal(query: CallbackQuery) -> None:
     await query.answer()
     if query.from_user is None:
         return
-    error, _, _ = await _request_signal(query.from_user.id, query.bot)
+    error = await _send_signal_with_animation(query.from_user.id, query.bot)
     if error:
         await query.message.answer(error, parse_mode=ParseMode.HTML)
 

@@ -11,6 +11,8 @@ type OnDemandConfig = {
   dailyLimits: Record<string, number | null>;
   allowedTypes: Record<string, string[]>;
   proFrequencySeconds: number;
+  analysisDelayMin: number;
+  analysisDelayMax: number;
 };
 
 const TIER_INFO = [
@@ -27,7 +29,11 @@ const SIGNAL_TYPES = [
 
 export function TierSignalSettings({ initial }: { initial: OnDemandConfig }) {
   const router = useRouter();
-  const [config, setConfig] = useState<OnDemandConfig>(initial);
+  const [config, setConfig] = useState<OnDemandConfig>({
+    ...initial,
+    analysisDelayMin: initial.analysisDelayMin ?? 5,
+    analysisDelayMax: initial.analysisDelayMax ?? 20,
+  });
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -187,6 +193,51 @@ export function TierSignalSettings({ initial }: { initial: OnDemandConfig }) {
             className={`${FIELD} w-40`}
           />
         </label>
+      </div>
+
+      <div>
+        <span className="text-xs text-[#777] block mb-1">
+          Задержка анализа (секунды)
+        </span>
+        <div className="flex items-center gap-3">
+          <label className="text-xs text-[#777] flex flex-col gap-1">
+            Min
+            <input
+              type="number"
+              min={0}
+              value={config.analysisDelayMin}
+              onChange={(e) => {
+                const val = Math.max(0, Number(e.target.value));
+                setConfig((prev) => ({
+                  ...prev,
+                  analysisDelayMin: val,
+                  analysisDelayMax: Math.max(val, prev.analysisDelayMax),
+                }));
+              }}
+              className={`${FIELD} w-24`}
+            />
+          </label>
+          <label className="text-xs text-[#777] flex flex-col gap-1">
+            Max
+            <input
+              type="number"
+              min={0}
+              value={config.analysisDelayMax}
+              onChange={(e) => {
+                const val = Math.max(0, Number(e.target.value));
+                setConfig((prev) => ({
+                  ...prev,
+                  analysisDelayMax: val,
+                  analysisDelayMin: Math.min(val, prev.analysisDelayMin),
+                }));
+              }}
+              className={`${FIELD} w-24`}
+            />
+          </label>
+        </div>
+        <p className="text-xs text-[#555] mt-1">
+          Время &quot;анализа&quot; перед выдачей сигнала. Рандомное значение между min и max.
+        </p>
       </div>
     </div>
   );

@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     pocket_option_api_token: str = Field("", env="POCKETOPTION_API_TOKEN")
     pocket_option_partner_id: str = Field("", env="POCKETOPTION_PARTNER_ID")
 
+    # Analysis animation delay (seconds) before showing signal
+    analysis_delay_min: int = Field(5, env="ANALYSIS_DELAY_MIN")
+    analysis_delay_max: int = Field(20, env="ANALYSIS_DELAY_MAX")
+
     log_level: str = Field("INFO", env="LOG_LEVEL")
 
     @model_validator(mode="after")
