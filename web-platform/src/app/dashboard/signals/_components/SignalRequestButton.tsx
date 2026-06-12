@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Zap,
   TrendingUp,
   TrendingDown,
   Clock,
@@ -12,9 +11,15 @@ import {
   ArrowLeft,
   RefreshCw,
   Lock,
+  ChevronRight,
+  Search,
+  BarChart3,
+  Shield,
+  Target,
+  Activity,
 } from "lucide-react";
 import { MiniChart, type ChartCandle } from "./MiniChart";
-
+import { OtcSignalVisual } from "./OtcSignalVisual";
 
 // ─── Types ───
 
@@ -52,65 +57,70 @@ type PairBand = "otc" | "exchange" | "elite";
 
 type PairInfo = {
   name: string;
+  display: string;
+  flag: string;
   band: PairBand;
   minTier: number;
 };
 
 const ALL_PAIRS: PairInfo[] = [
   // OTC — tier 0
-  { name: "EUR/USD (OTC)", band: "otc", minTier: 0 },
-  { name: "GBP/USD (OTC)", band: "otc", minTier: 0 },
-  { name: "USD/JPY (OTC)", band: "otc", minTier: 0 },
-  { name: "AUD/USD (OTC)", band: "otc", minTier: 0 },
-  { name: "EUR/GBP (OTC)", band: "otc", minTier: 0 },
-  { name: "USD/CHF (OTC)", band: "otc", minTier: 0 },
-  { name: "NZD/USD (OTC)", band: "otc", minTier: 0 },
-  { name: "EUR/JPY (OTC)", band: "otc", minTier: 0 },
+  { name: "EUR/USD (OTC)", display: "EUR/USD", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "GBP/USD (OTC)", display: "GBP/USD", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "USD/JPY (OTC)", display: "USD/JPY", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "AUD/USD (OTC)", display: "AUD/USD", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "EUR/GBP (OTC)", display: "EUR/GBP", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "USD/CHF (OTC)", display: "USD/CHF", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "NZD/USD (OTC)", display: "NZD/USD", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "EUR/JPY (OTC)", display: "EUR/JPY", flag: "OTC", band: "otc", minTier: 0 },
   // Exchange — tier 1
-  { name: "EUR/USD", band: "exchange", minTier: 1 },
-  { name: "GBP/USD", band: "exchange", minTier: 1 },
-  { name: "USD/JPY", band: "exchange", minTier: 1 },
-  { name: "AUD/USD", band: "exchange", minTier: 1 },
-  { name: "EUR/GBP", band: "exchange", minTier: 1 },
-  { name: "USD/CHF", band: "exchange", minTier: 1 },
+  { name: "EUR/USD", display: "EUR/USD", flag: "", band: "exchange", minTier: 1 },
+  { name: "GBP/USD", display: "GBP/USD", flag: "", band: "exchange", minTier: 1 },
+  { name: "USD/JPY", display: "USD/JPY", flag: "", band: "exchange", minTier: 1 },
+  { name: "AUD/USD", display: "AUD/USD", flag: "", band: "exchange", minTier: 1 },
+  { name: "EUR/GBP", display: "EUR/GBP", flag: "", band: "exchange", minTier: 1 },
+  { name: "USD/CHF", display: "USD/CHF", flag: "", band: "exchange", minTier: 1 },
   // Elite — tier 2
-  { name: "AAPL", band: "elite", minTier: 2 },
-  { name: "TSLA", band: "elite", minTier: 2 },
-  { name: "GOLD", band: "elite", minTier: 2 },
-  { name: "BTC/USD", band: "elite", minTier: 2 },
-  { name: "ETH/USD", band: "elite", minTier: 2 },
+  { name: "AAPL", display: "AAPL", flag: "Stock", band: "elite", minTier: 2 },
+  { name: "TSLA", display: "TSLA", flag: "Stock", band: "elite", minTier: 2 },
+  { name: "GOLD", display: "GOLD", flag: "Commodity", band: "elite", minTier: 2 },
+  { name: "BTC/USD", display: "BTC/USD", flag: "Crypto", band: "elite", minTier: 2 },
+  { name: "ETH/USD", display: "ETH/USD", flag: "Crypto", band: "elite", minTier: 2 },
 ];
 
-const EXPIRATIONS: Record<PairBand, string[]> = {
-  otc: ["30s", "60s", "2m"],
-  exchange: ["60s", "2m", "5m"],
-  elite: ["60s", "2m", "5m", "15m"],
+const EXPIRATIONS: Record<PairBand, { value: string; label: string }[]> = {
+  otc: [
+    { value: "30s", label: "30 сек" },
+    { value: "60s", label: "1 мин" },
+    { value: "2m", label: "2 мин" },
+  ],
+  exchange: [
+    { value: "60s", label: "1 мин" },
+    { value: "2m", label: "2 мин" },
+    { value: "5m", label: "5 мин" },
+  ],
+  elite: [
+    { value: "60s", label: "1 мин" },
+    { value: "2m", label: "2 мин" },
+    { value: "5m", label: "5 мин" },
+    { value: "15m", label: "15 мин" },
+  ],
 };
 
-const BAND_LABELS: Record<PairBand, string> = {
-  otc: "OTC",
-  exchange: "Биржа",
-  elite: "Elite",
+const BAND_META: Record<PairBand, { label: string; color: string; bg: string; desc: string }> = {
+  otc: { label: "OTC", color: "#8888ff", bg: "rgba(136,136,255,0.08)", desc: "Внебиржевые пары" },
+  exchange: { label: "Биржа", color: "#8ee06b", bg: "rgba(142,224,107,0.08)", desc: "Реальные котировки" },
+  elite: { label: "Elite", color: "#d4a017", bg: "rgba(212,160,23,0.08)", desc: "Акции, крипто, сырьё" },
 };
 
-const BAND_COLORS: Record<PairBand, { color: string; bg: string }> = {
-  otc: { color: "#8888ff", bg: "rgba(136,136,255,0.10)" },
-  exchange: { color: "#8ee06b", bg: "rgba(142,224,107,0.10)" },
-  elite: { color: "#d4a017", bg: "rgba(212,160,23,0.10)" },
-};
+// ─── Analysis animation ───
 
-const TIER_REQUIRED_LABELS: Record<number, string> = {
-  1: "Basic",
-  2: "Pro",
-};
-
-// ─── Analysis animation texts ───
-
-const ANALYSIS_TEXTS = [
-  "Анализируем рынок...",
-  "Проверяем индикаторы...",
-  "Оцениваем точку входа...",
-  "Рассчитываем вероятность...",
+const ANALYSIS_STEPS = [
+  { icon: Search, text: "Сканируем рынок" },
+  { icon: BarChart3, text: "Анализируем индикаторы" },
+  { icon: Target, text: "Определяем точку входа" },
+  { icon: Shield, text: "Оценка рисков" },
+  { icon: Activity, text: "Формируем сигнал" },
 ];
 
 type Step = "pair" | "expiration" | "analysis" | "result";
@@ -131,11 +141,13 @@ export function SignalRequestButton({
   const [selectedExpiration, setSelectedExpiration] = useState<string | null>(null);
   const [lastSignal, setLastSignal] = useState<GeneratedSignal | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<PairBand>("otc");
 
   // Analysis animation state
-  const [analysisTextIdx, setAnalysisTextIdx] = useState(0);
+  const [analysisStep, setAnalysisStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [delayConfig, setDelayConfig] = useState({ min: 5, max: 12 });
+  const completedStepsRef = useRef<Set<number>>(new Set());
 
   // Fetch analysis delay config on mount
   useEffect(() => {
@@ -159,17 +171,16 @@ export function SignalRequestButton({
     setLastSignal(null);
     setError(null);
     setProgress(0);
-    setAnalysisTextIdx(0);
+    setAnalysisStep(0);
+    completedStepsRef.current = new Set();
   }, []);
 
-  // Select pair → go to expiration
   function handlePairSelect(p: PairInfo) {
     if (p.minTier > tier) return;
     setSelectedPair(p);
     setStep("expiration");
   }
 
-  // Select expiration → start analysis
   function handleExpirationSelect(exp: string) {
     if (!selectedPair) return;
     setSelectedExpiration(exp);
@@ -183,21 +194,30 @@ export function SignalRequestButton({
     const totalMs = (delayConfig.min + Math.random() * (delayConfig.max - delayConfig.min)) * 1000;
     const startTime = Date.now();
     let cancelled = false;
+    completedStepsRef.current = new Set();
 
-    // Progress bar
+    const stepDuration = totalMs / ANALYSIS_STEPS.length;
+
+    // Progress + step advancement
     const progressInterval = setInterval(() => {
       if (cancelled) return;
       const elapsed = Date.now() - startTime;
-      setProgress(Math.min(95, (elapsed / totalMs) * 100));
-    }, 50);
+      const pct = Math.min(97, (elapsed / totalMs) * 100);
+      setProgress(pct);
 
-    // Rotating text
-    const textInterval = setInterval(() => {
-      if (cancelled) return;
-      setAnalysisTextIdx((prev) => (prev + 1) % ANALYSIS_TEXTS.length);
-    }, 2000);
+      const currentStep = Math.min(
+        ANALYSIS_STEPS.length - 1,
+        Math.floor(elapsed / stepDuration),
+      );
+      setAnalysisStep(currentStep);
 
-    // Fire API call immediately, but show result only after animation
+      // Mark previous steps as completed
+      for (let i = 0; i < currentStep; i++) {
+        completedStepsRef.current.add(i);
+      }
+    }, 60);
+
+    // Fire API call immediately
     const fetchPromise = fetch("/api/signals/request", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -209,7 +229,6 @@ export function SignalRequestButton({
     Promise.all([fetchPromise, timerPromise]).then(([res]) => {
       if (cancelled) return;
       clearInterval(progressInterval);
-      clearInterval(textInterval);
       setProgress(100);
 
       if (!res.ok) {
@@ -223,19 +242,16 @@ export function SignalRequestButton({
     }).catch(() => {
       if (cancelled) return;
       clearInterval(progressInterval);
-      clearInterval(textInterval);
-      setError("Не удалось получить сигнал. Попробуйте ещё раз.");
+      setError("Не удалось получить сигнал. Попробуйте позже.");
       setStep("pair");
     });
 
     return () => {
       cancelled = true;
       clearInterval(progressInterval);
-      clearInterval(textInterval);
     };
   }, [step, selectedPair, selectedExpiration, router, delayConfig]);
 
-  // Back button handler
   function handleBack() {
     if (step === "expiration") {
       setSelectedPair(null);
@@ -253,7 +269,7 @@ export function SignalRequestButton({
           className="w-full h-14 rounded-2xl font-bold text-base flex items-center justify-center"
           style={{ background: "var(--bg-2)", color: "var(--t-3)" }}
         >
-          Лимит исчерпан
+          Лимит исчерпан на сегодня
         </div>
         <Link
           href={referralUrl}
@@ -270,83 +286,121 @@ export function SignalRequestButton({
 
   // ─── Render: Step 1 — Select pair ───
   if (step === "pair") {
-    const groups: { band: PairBand; pairs: PairInfo[] }[] = [
-      { band: "otc", pairs: ALL_PAIRS.filter((p) => p.band === "otc") },
-      { band: "exchange", pairs: ALL_PAIRS.filter((p) => p.band === "exchange") },
-      { band: "elite", pairs: ALL_PAIRS.filter((p) => p.band === "elite") },
-    ];
+    const tabs: PairBand[] = ["otc", "exchange", "elite"];
+    const activePairs = ALL_PAIRS.filter((p) => p.band === activeTab);
+    const tabLocked = (band: PairBand) => ALL_PAIRS.find((p) => p.band === band)?.minTier ?? 0 > tier;
 
     return (
-      <div className="w-full max-w-2xl space-y-5">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <Zap size={20} className="text-[var(--brand-gold)]" />
-          <span className="font-semibold text-[var(--t-1)]">Выберите пару</span>
-          {remaining != null && (
-            <span className="text-xs text-[var(--t-3)] ml-auto">
-              ({remaining} осталось)
-            </span>
-          )}
-        </div>
-
+      <div className="w-full max-w-2xl space-y-4">
         {error && (
-          <div className="px-4 py-3 rounded-xl text-sm border border-red-500/30 bg-red-500/10 text-red-400 text-center">
+          <div className="px-4 py-3 rounded-xl text-sm border border-red-500/20 bg-red-500/5 text-red-400 text-center">
             {error}
           </div>
         )}
 
-        {groups.map(({ band, pairs }) => {
-          const bc = BAND_COLORS[band];
-          const locked = pairs[0]?.minTier > tier;
+        {/* Tab navigation */}
+        <div
+          className="flex rounded-xl p-1 gap-1"
+          style={{ background: "var(--bg-2)" }}
+        >
+          {tabs.map((band) => {
+            const meta = BAND_META[band];
+            const locked = (ALL_PAIRS.find((p) => p.band === band)?.minTier ?? 0) > tier;
+            const active = activeTab === band;
 
-          return (
-            <div key={band}>
-              <div className="flex items-center gap-2 mb-2">
-                <span
-                  className="text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide"
-                  style={{ color: bc.color, background: bc.bg }}
+            return (
+              <button
+                key={band}
+                onClick={() => !locked && setActiveTab(band)}
+                disabled={locked}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all relative"
+                style={{
+                  background: active ? "var(--bg-1)" : "transparent",
+                  color: active ? meta.color : locked ? "var(--t-3)" : "var(--t-2)",
+                  boxShadow: active ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
+                  cursor: locked ? "not-allowed" : "pointer",
+                  opacity: locked ? 0.4 : 1,
+                }}
+              >
+                {locked && <Lock size={12} />}
+                <span>{meta.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Category description */}
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs text-[var(--t-3)]">
+            {BAND_META[activeTab].desc}
+          </span>
+          {remaining != null && (
+            <span className="text-xs text-[var(--t-3)]">
+              {remaining} {remaining === 1 ? "сигнал" : remaining < 5 ? "сигнала" : "сигналов"} осталось
+            </span>
+          )}
+        </div>
+
+        {/* Pair list */}
+        <div className="space-y-1.5">
+          {activePairs.map((p) => {
+            const locked = p.minTier > tier;
+            return (
+              <button
+                key={p.name}
+                onClick={() => handlePairSelect(p)}
+                disabled={locked}
+                className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all group"
+                style={{
+                  background: "var(--bg-1)",
+                  border: "1px solid var(--b-soft)",
+                  cursor: locked ? "not-allowed" : "pointer",
+                  opacity: locked ? 0.4 : 1,
+                }}
+              >
+                {/* Currency pair icon placeholder */}
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-sm font-bold"
+                  style={{
+                    background: BAND_META[p.band].bg,
+                    color: BAND_META[p.band].color,
+                    fontFamily: "var(--font-jetbrains)",
+                  }}
                 >
-                  {BAND_LABELS[band]}
-                </span>
-                {locked && (
-                  <span className="text-[10px] text-[var(--t-3)] flex items-center gap-1">
-                    <Lock size={10} />
-                    {TIER_REQUIRED_LABELS[pairs[0].minTier] ?? `T${pairs[0].minTier}`}
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {pairs.map((p) => {
-                  const isLocked = p.minTier > tier;
-                  return (
-                    <button
-                      key={p.name}
-                      onClick={() => handlePairSelect(p)}
-                      disabled={isLocked}
-                      className="relative rounded-xl border px-3 py-2.5 text-sm font-medium transition-all text-left"
-                      style={{
-                        background: isLocked ? "var(--bg-2)" : "var(--bg-1)",
-                        borderColor: isLocked ? "var(--b-soft)" : "var(--b-hard)",
-                        color: isLocked ? "var(--t-3)" : "var(--t-1)",
-                        opacity: isLocked ? 0.5 : 1,
-                        cursor: isLocked ? "not-allowed" : "pointer",
-                        fontFamily: "var(--font-jetbrains)",
-                      }}
+                  {p.display.slice(0, 2)}
+                </div>
+
+                <div className="flex-1 text-left min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="font-semibold text-sm group-hover:text-[var(--brand-gold)] transition-colors"
+                      style={{ fontFamily: "var(--font-jetbrains)" }}
                     >
-                      {p.name}
-                      {isLocked && (
-                        <Lock
-                          size={12}
-                          className="absolute top-1.5 right-1.5 text-[var(--t-3)]"
-                        />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+                      {p.display}
+                    </span>
+                    {p.flag && (
+                      <span
+                        className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider"
+                        style={{ color: BAND_META[p.band].color, background: BAND_META[p.band].bg }}
+                      >
+                        {p.flag}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {locked ? (
+                  <Lock size={14} className="text-[var(--t-3)] shrink-0" />
+                ) : (
+                  <ChevronRight
+                    size={16}
+                    className="text-[var(--t-3)] shrink-0 group-hover:text-[var(--brand-gold)] transition-colors"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
     );
   }
@@ -354,40 +408,69 @@ export function SignalRequestButton({
   // ─── Render: Step 2 — Select expiration ───
   if (step === "expiration" && selectedPair) {
     const exps = EXPIRATIONS[selectedPair.band];
+    const bandMeta = BAND_META[selectedPair.band];
 
     return (
       <div className="w-full max-w-2xl space-y-5">
+        {/* Header with back + selected pair */}
         <div className="flex items-center gap-3">
           <button
             onClick={handleBack}
-            className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--bg-2)]"
+            className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--bg-2)]"
             style={{ color: "var(--t-2)" }}
           >
             <ArrowLeft size={18} />
           </button>
-          <span className="font-semibold text-[var(--t-1)]">
-            Экспирация для{" "}
-            <span style={{ fontFamily: "var(--font-jetbrains)", color: "var(--brand-gold)" }}>
-              {selectedPair.name}
-            </span>
-          </span>
+          <div className="flex items-center gap-2">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
+              style={{ background: bandMeta.bg, color: bandMeta.color, fontFamily: "var(--font-jetbrains)" }}
+            >
+              {selectedPair.display.slice(0, 2)}
+            </div>
+            <div>
+              <span className="font-semibold text-sm" style={{ fontFamily: "var(--font-jetbrains)" }}>
+                {selectedPair.display}
+              </span>
+              {selectedPair.flag && (
+                <span
+                  className="ml-2 text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider"
+                  style={{ color: bandMeta.color, background: bandMeta.bg }}
+                >
+                  {selectedPair.flag}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        {/* Expiration heading */}
+        <p className="text-sm text-[var(--t-2)]">Выберите время экспирации</p>
+
+        {/* Expiration cards */}
+        <div className="grid grid-cols-2 gap-3">
           {exps.map((exp) => (
             <button
-              key={exp}
-              onClick={() => handleExpirationSelect(exp)}
-              className="rounded-xl border px-6 py-3 text-base font-bold transition-all hover:border-[var(--brand-gold)] hover:shadow-[0_0_20px_rgba(212,160,23,0.15)]"
+              key={exp.value}
+              onClick={() => handleExpirationSelect(exp.value)}
+              className="group relative rounded-xl border px-5 py-5 text-center transition-all hover:border-[var(--brand-gold)]/50 hover:shadow-[0_0_24px_rgba(212,160,23,0.08)]"
               style={{
                 background: "var(--bg-1)",
-                borderColor: "var(--b-hard)",
-                color: "var(--t-1)",
-                fontFamily: "var(--font-jetbrains)",
+                borderColor: "var(--b-soft)",
               }}
             >
-              <Clock size={14} className="inline-block mr-1.5 text-[var(--brand-gold)]" />
-              {exp}
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <Clock size={16} className="text-[var(--brand-gold)] opacity-60 group-hover:opacity-100 transition-opacity" />
+              </div>
+              <div
+                className="text-xl font-bold group-hover:text-[var(--brand-gold)] transition-colors"
+                style={{ fontFamily: "var(--font-jetbrains)" }}
+              >
+                {exp.label}
+              </div>
+              <div className="text-[10px] text-[var(--t-3)] mt-0.5 uppercase tracking-wider">
+                экспирация
+              </div>
             </button>
           ))}
         </div>
@@ -398,46 +481,95 @@ export function SignalRequestButton({
   // ─── Render: Step 3 — Analysis animation ───
   if (step === "analysis") {
     return (
-      <div className="w-full max-w-2xl space-y-6">
-        <div className="flex flex-col items-center py-8">
-          {/* Pulsing icon */}
+      <div className="w-full max-w-2xl">
+        {/* Header */}
+        <div className="text-center mb-6">
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5 animate-pulse"
-            style={{
-              background: "rgba(212,160,23,0.10)",
-              border: "1px solid rgba(212,160,23,0.2)",
-            }}
+            className="text-sm text-[var(--t-2)] mb-1"
+            style={{ fontFamily: "var(--font-jetbrains)" }}
           >
-            <Zap size={28} className="text-[var(--brand-gold)]" />
+            {selectedPair?.display}
+            {selectedPair?.flag ? ` (${selectedPair.flag})` : ""}
+            {" / "}
+            {selectedExpiration}
           </div>
+          <h3 className="text-lg font-semibold text-[var(--t-1)]">
+            Анализ в процессе
+          </h3>
+        </div>
 
-          {/* Pair + expiration */}
-          <div className="text-sm text-[var(--t-2)] mb-2" style={{ fontFamily: "var(--font-jetbrains)" }}>
-            {selectedPair?.name} / {selectedExpiration}
-          </div>
+        {/* Steps list */}
+        <div
+          className="rounded-2xl border p-5 space-y-3 mb-4"
+          style={{ background: "var(--bg-1)", borderColor: "var(--b-soft)" }}
+        >
+          {ANALYSIS_STEPS.map((s, i) => {
+            const isActive = i === analysisStep;
+            const isDone = i < analysisStep || progress >= 100;
+            const Icon = s.icon;
 
-          {/* Rotating text */}
-          <div
-            className="text-lg font-semibold mb-6 transition-opacity duration-500"
-            style={{ color: "var(--brand-gold)" }}
-          >
-            {ANALYSIS_TEXTS[analysisTextIdx]}
-          </div>
-
-          {/* Progress bar */}
-          <div className="w-full max-w-sm">
-            <div className="h-2 rounded-full bg-[var(--bg-2)] overflow-hidden">
+            return (
               <div
-                className="h-full rounded-full transition-all duration-100"
-                style={{
-                  width: `${progress}%`,
-                  background: "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
-                }}
-              />
-            </div>
-            <div className="text-xs text-[var(--t-3)] text-center mt-2 tabular-nums" style={{ fontFamily: "var(--font-jetbrains)" }}>
-              {Math.round(progress)}%
-            </div>
+                key={i}
+                className="flex items-center gap-3 py-1 transition-all duration-300"
+                style={{ opacity: isDone ? 0.5 : isActive ? 1 : 0.25 }}
+              >
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300"
+                  style={{
+                    background: isActive
+                      ? "rgba(212,160,23,0.15)"
+                      : isDone
+                        ? "rgba(142,224,107,0.10)"
+                        : "var(--bg-2)",
+                    color: isActive
+                      ? "var(--brand-gold)"
+                      : isDone
+                        ? "var(--green)"
+                        : "var(--t-3)",
+                  }}
+                >
+                  {isDone ? (
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M2.5 7L5.5 10L11.5 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  ) : (
+                    <Icon size={15} className={isActive ? "animate-pulse" : ""} />
+                  )}
+                </div>
+                <span
+                  className="text-sm transition-colors duration-300"
+                  style={{
+                    color: isActive ? "var(--t-1)" : isDone ? "var(--t-2)" : "var(--t-3)",
+                    fontWeight: isActive ? 600 : 400,
+                  }}
+                >
+                  {s.text}
+                </span>
+                {isActive && (
+                  <div className="ml-auto flex gap-0.5">
+                    <div className="w-1 h-1 rounded-full bg-[var(--brand-gold)] animate-pulse" />
+                    <div className="w-1 h-1 rounded-full bg-[var(--brand-gold)] animate-pulse" style={{ animationDelay: "0.2s" }} />
+                    <div className="w-1 h-1 rounded-full bg-[var(--brand-gold)] animate-pulse" style={{ animationDelay: "0.4s" }} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Progress bar */}
+        <div className="w-full">
+          <div className="h-1.5 rounded-full bg-[var(--bg-2)] overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-200 ease-out"
+              style={{
+                width: `${progress}%`,
+                background: progress >= 100
+                  ? "var(--green)"
+                  : "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+              }}
+            />
           </div>
         </div>
       </div>
@@ -446,28 +578,39 @@ export function SignalRequestButton({
 
   // ─── Render: Step 4 — Show signal result ───
   if (step === "result" && lastSignal) {
+    const isOtc = lastSignal.tier === "otc";
+    const hasChart = !isOtc && lastSignal.chartData && lastSignal.chartData.candles.length > 0;
+
     return (
       <div className="w-full max-w-2xl space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-        {/* Signal card (same layout for OTC and non-OTC) */}
-        <div
-            className="rounded-2xl border-2 overflow-hidden w-full"
+        {/* OTC → decorative visual, non-OTC → chart card */}
+        {isOtc ? (
+          <OtcSignalVisual
+            pair={lastSignal.pair}
+            direction={lastSignal.direction}
+            confidence={lastSignal.confidence}
+            expiration={lastSignal.expiration}
+          />
+        ) : (
+          <div
+            className="rounded-2xl border overflow-hidden w-full"
             style={{
-              borderColor: lastSignal.direction === "CALL" ? "var(--green)" : "var(--red)",
+              borderColor: `color-mix(in srgb, ${lastSignal.direction === "CALL" ? "#00e5a0" : "#ff6b3d"} 40%, transparent)`,
               background: lastSignal.direction === "CALL"
-                ? "rgba(0,229,160,0.05)"
-                : "rgba(255,107,61,0.05)",
+                ? "rgba(0,229,160,0.03)"
+                : "rgba(255,107,61,0.03)",
             }}
           >
             <div className="px-5 py-4">
               {/* Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
                   <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    className="w-11 h-11 rounded-xl flex items-center justify-center"
                     style={{
                       background: lastSignal.direction === "CALL"
-                        ? "rgba(0,229,160,0.15)"
-                        : "rgba(255,107,61,0.15)",
+                        ? "rgba(0,229,160,0.12)"
+                        : "rgba(255,107,61,0.12)",
                       color: lastSignal.direction === "CALL" ? "var(--green)" : "var(--red)",
                     }}
                   >
@@ -484,53 +627,36 @@ export function SignalRequestButton({
                     >
                       {lastSignal.pair}
                     </div>
-                    <div className="text-xs text-[var(--t-3)]">
-                      {lastSignal.direction === "CALL" ? "CALL (Вверх)" : "PUT (Вниз)"}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span
+                        className="text-xs font-semibold"
+                        style={{ color: lastSignal.direction === "CALL" ? "var(--green)" : "var(--red)" }}
+                      >
+                        {lastSignal.direction === "CALL" ? "CALL" : "PUT"}
+                      </span>
+                      <span className="text-[10px] text-[var(--t-3)]">
+                        {lastSignal.expiration}
+                      </span>
                     </div>
                   </div>
                 </div>
 
+                {/* Confidence */}
                 <div className="text-right">
                   <div
-                    className="text-2xl font-bold"
+                    className="text-2xl font-bold tabular-nums"
                     style={{ color: "var(--brand-gold)", fontFamily: "var(--font-jetbrains)" }}
                   >
                     {lastSignal.confidence}%
                   </div>
                   <div className="text-[10px] text-[var(--t-3)] uppercase tracking-wider">
-                    Уверенность
+                    Точность
                   </div>
                 </div>
               </div>
 
-              {/* Meta row */}
-              <div className="flex items-center gap-3 text-xs text-[var(--t-2)] mb-3">
-                <span className="flex items-center gap-1">
-                  <Clock size={11} />
-                  {lastSignal.expiration}
-                </span>
-                <span
-                  className="uppercase text-[10px] font-semibold px-1.5 py-0.5 rounded-md"
-                  style={{
-                    background: lastSignal.tier === "otc" ? "rgba(136,136,255,0.12)"
-                      : lastSignal.tier === "exchange" ? "rgba(142,224,107,0.12)"
-                      : "rgba(212,160,23,0.12)",
-                    color: lastSignal.tier === "otc" ? "#8888ff"
-                      : lastSignal.tier === "exchange" ? "#8ee06b"
-                      : "#d4a017",
-                  }}
-                >
-                  {lastSignal.tier === "otc" ? "OTC" : lastSignal.tier === "exchange" ? "Биржа" : "Elite"}
-                </span>
-                {lastSignal.entryPrice != null && (
-                  <span style={{ fontFamily: "var(--font-jetbrains)" }}>
-                    Вход: {lastSignal.entryPrice.toFixed(5)}
-                  </span>
-                )}
-              </div>
-
-              {/* Mini chart for non-OTC */}
-              {lastSignal.chartData && lastSignal.chartData.candles.length > 0 && (
+              {/* Chart */}
+              {hasChart && lastSignal.chartData && (
                 <div className="mb-3">
                   <MiniChart
                     candles={lastSignal.chartData.candles}
@@ -538,11 +664,22 @@ export function SignalRequestButton({
                     support={lastSignal.chartData.levels.support}
                     resistance={lastSignal.chartData.levels.resistance}
                   />
-                  <div className="flex gap-3 mt-2 text-[10px] text-[var(--t-3)]" style={{ fontFamily: "var(--font-jetbrains)" }}>
-                    <span>RSI: <span className="text-[var(--t-2)]">{lastSignal.chartData.indicators.rsi}</span></span>
-                    <span>EMA20: <span className="text-[var(--t-2)]">{lastSignal.chartData.indicators.ema20.toFixed(4)}</span></span>
-                    <span>EMA50: <span className="text-[var(--t-2)]">{lastSignal.chartData.indicators.ema50.toFixed(4)}</span></span>
+                  <div className="flex gap-4 mt-2 text-[10px] text-[var(--t-3)]" style={{ fontFamily: "var(--font-jetbrains)" }}>
+                    <span>RSI <span className="text-[var(--t-2)]">{lastSignal.chartData.indicators.rsi}</span></span>
+                    <span>EMA20 <span className="text-[var(--t-2)]">{lastSignal.chartData.indicators.ema20.toFixed(4)}</span></span>
+                    <span>EMA50 <span className="text-[var(--t-2)]">{lastSignal.chartData.indicators.ema50.toFixed(4)}</span></span>
                   </div>
+                </div>
+              )}
+
+              {/* Entry price for non-OTC */}
+              {lastSignal.entryPrice != null && (
+                <div
+                  className="flex items-center gap-2 text-xs text-[var(--t-2)] mb-3 px-3 py-2 rounded-lg"
+                  style={{ background: "rgba(212,160,23,0.06)", fontFamily: "var(--font-jetbrains)" }}
+                >
+                  <Target size={12} className="text-[var(--brand-gold)]" />
+                  Вход: <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryPrice.toFixed(5)}</span>
                 </div>
               )}
 
@@ -550,33 +687,33 @@ export function SignalRequestButton({
               {lastSignal.analysis && (
                 <div
                   className="rounded-xl px-4 py-3 text-[12px] leading-relaxed text-[var(--t-2)] whitespace-pre-line"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--b-soft)" }}
+                  style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--b-soft)" }}
                 >
-                  <div className="text-[10px] uppercase tracking-wider text-[var(--brand-gold)] font-semibold mb-1.5">
-                    Разбор сигнала
+                  <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] font-semibold mb-1.5">
+                    Аналитика
                   </div>
                   {lastSignal.analysis}
                 </div>
               )}
             </div>
           </div>
+        )}
 
         {/* New signal button */}
         <button
           onClick={reset}
-          className="w-full h-12 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90"
+          className="w-full h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90"
           style={{
             background: "linear-gradient(135deg, var(--brand-gold-deep), var(--brand-gold-bright))",
             color: "#1a1208",
           }}
         >
-          <RefreshCw size={16} />
-          Новый сигнал
+          <RefreshCw size={15} />
+          Получить новый сигнал
         </button>
       </div>
     );
   }
 
-  // Fallback (shouldn't happen)
   return null;
 }

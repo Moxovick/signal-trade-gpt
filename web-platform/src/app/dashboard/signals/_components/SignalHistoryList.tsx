@@ -45,7 +45,8 @@ export function SignalHistoryList({ signals }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   function toggle(id: string, tier: string, chartData: ChartData | null) {
-    if (!chartData) return;
+    // OTC signals have no real chart — don't expand them
+    if (tier === "otc" || !chartData) return;
     setExpandedId((prev) => (prev === id ? null : id));
   }
 
@@ -57,7 +58,7 @@ export function SignalHistoryList({ signals }: Props) {
         const band = TIER_BAND_LABELS[s.tier];
         const isPending = s.result === "pending";
         const isNewest = idx === 0 && isPending;
-        const isExpandable = s.chartData !== null;
+        const isExpandable = s.tier !== "otc" && s.chartData !== null;
         const isExpanded = expandedId === s.id;
 
         const resultLabel =

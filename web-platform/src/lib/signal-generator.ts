@@ -201,36 +201,7 @@ function generateOtcSignal(overridePair?: string, overrideExpiration?: string) {
   const expiration = overrideExpiration ?? randomItem(EXPIRATIONS.otc);
   const confidence = randomInt(73, 88);
 
-  const { candles, lastClose } = generateSyntheticCandles(direction);
-  const closes = candles.map((c) => c.c);
-  const rsi = calcRSI(closes);
-  const ema20 = calcEMA(closes, 20);
-  const ema50 = calcEMA(closes, 50);
-  const { support, resistance } = findLevels(candles);
-
-  const chartPayload = {
-    pair,
-    direction,
-    source: "otc" as const,
-    candles: candles.map((c) => ({
-      time: c.t * 1000,
-      open: c.o,
-      high: c.h,
-      low: c.l,
-      close: c.c,
-    })),
-    indicators: {
-      rsi,
-      ema20: +ema20.toFixed(5),
-      ema50: +ema50.toFixed(5),
-    },
-    levels: {
-      support: +support.toFixed(5),
-      resistance: +resistance.toFixed(5),
-    },
-    entryPrice: lastClose,
-  };
-
+  // OTC has no real market data — direction-only signal, no chart.
   return {
     pair,
     direction: direction as "CALL" | "PUT",
@@ -239,8 +210,8 @@ function generateOtcSignal(overridePair?: string, overrideExpiration?: string) {
     tier: "otc" as const,
     type: "ai" as const,
     analysis: null,
-    chartData: chartPayload as unknown as Prisma.InputJsonValue,
-    entryPrice: new Prisma.Decimal(lastClose),
+    chartData: Prisma.JsonNull,
+    entryPrice: null,
     isActive: true,
   };
 }
