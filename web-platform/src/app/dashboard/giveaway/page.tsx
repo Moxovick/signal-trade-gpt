@@ -15,6 +15,8 @@ import {
   TrendingUp,
   Zap,
   Star,
+  Trophy,
+  Crown,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -30,11 +32,17 @@ export default async function DashboardBonusesPage() {
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
-  const [account, prizes] = await Promise.all([
+  const [account, prizes, topProUsers] = await Promise.all([
     prisma.pocketOptionAccount.findUnique({ where: { userId } }),
     prisma.prize.findMany({
       where: { isActive: true },
       orderBy: [{ tier: "asc" }, { position: "asc" }],
+    }),
+    prisma.user.findMany({
+      where: { tier: { gte: 2 }, role: { not: "admin" } },
+      orderBy: [{ signalsReceived: "desc" }],
+      take: 3,
+      select: { id: true, firstName: true, username: true, signalsReceived: true },
     }),
   ]);
 
@@ -265,6 +273,66 @@ export default async function DashboardBonusesPage() {
           );
         })}
       </div>
+
+      {/* Pro Leaderboard connection */}
+      {(grouped.get(2) ?? []).length > 0 && (
+        <Card variant="highlight" padding="lg">
+          <div className="flex flex-col md:flex-row md:items-center gap-5">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <Trophy size={18} className="text-[var(--brand-gold)]" />
+                <h3 className="text-base font-bold">Pro-призы за лидерство</h3>
+              </div>
+              <p className="text-sm text-[var(--t-2)] leading-relaxed">
+                Pro-трейдеры соревнуются в рейтинге за эксклюзивные призы.
+                Топ лидерборда каждый месяц получает награды — от AirPods до iPhone.
+              </p>
+              <Link
+                href="/dashboard/leaderboard"
+                className="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
+              >
+                Открыть рейтинг <ChevronRight size={14} />
+              </Link>
+            </div>
+            {topProUsers.length > 0 && (
+              <div className="md:w-56 w-full space-y-2">
+                <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">
+                  Топ Pro-трейдеров
+                </div>
+                {topProUsers.map((u, i) => (
+                  <div
+                    key={u.id}
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2"
+                    style={{
+                      background: i === 0 ? "rgba(212,160,23,0.08)" : "var(--bg-0)",
+                      border: "1px solid var(--b-soft)",
+                    }}
+                  >
+                    <div
+                      className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 text-[10px] font-bold"
+                      style={{
+                        background: i === 0 ? "rgba(212,160,23,0.15)" : "var(--bg-2)",
+                        color: i === 0 ? "var(--brand-gold)" : "var(--t-3)",
+                      }}
+                    >
+                      {i === 0 ? <Crown size={12} /> : `#${i + 1}`}
+                    </div>
+                    <span className="text-sm font-medium truncate flex-1">
+                      {u.firstName ?? u.username ?? "Аноним"}
+                    </span>
+                    <span
+                      className="text-[10px] text-[var(--t-3)] shrink-0"
+                      style={{ fontFamily: "var(--font-jetbrains)" }}
+                    >
+                      {u.signalsReceived} сигн.
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* How it works */}
       <Card padding="lg">

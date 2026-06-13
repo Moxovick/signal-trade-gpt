@@ -10,8 +10,9 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { TIER_LABELS } from "@/lib/tier";
-import { Trophy, Medal, Award, Crown } from "lucide-react";
+import { Trophy, Medal, Award, Crown, Gift, ChevronRight } from "lucide-react";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { LeaderboardFilters } from "./_components/LeaderboardFilters";
 
 const MEDAL_COLORS = {
@@ -66,7 +67,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
     ...(periodFrom ? { lastLogin: { gte: periodFrom } } : {}),
   };
 
-  const [topUsers, me, myStats] = await Promise.all([
+  const [topUsers, me, myStats, proPrizes] = await Promise.all([
     prisma.user.findMany({
       where,
       orderBy: [{ tier: "desc" }, { signalsReceived: "desc" }],
@@ -94,6 +95,11 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
       },
     }),
     prisma.user.count({ where }),
+    prisma.prize.findMany({
+      where: { isActive: true, tier: 2 },
+      orderBy: { position: "asc" },
+      take: 4,
+    }),
   ]);
 
   const rows: Row[] = topUsers.slice(0, 10).map((u, i) => ({
@@ -270,6 +276,63 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
           </>
         )}
       </Card>
+
+      {/* Pro Rewards — linked to giveaway */}
+      {proPrizes.length > 0 && (
+        <Card padding="lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Gift size={18} className="text-[var(--brand-gold)]" />
+              <h2 className="text-lg font-semibold">Награды для Pro</h2>
+            </div>
+            <Link
+              href="/dashboard/giveaway"
+              className="flex items-center gap-1 text-xs text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
+            >
+              Все бонусы <ChevronRight size={12} />
+            </Link>
+          </div>
+          <p className="text-xs text-[var(--t-3)] mb-4">
+            Pro-трейдеры из топа рейтинга получают эксклюзивные призы каждый месяц.
+            Депозит от $100 открывает участие.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {proPrizes.map((p, i) => {
+              const placeLabel = i < 3 ? [`1-е место`, `2-е место`, `3-е место`][i] : null;
+              return (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-3 rounded-xl border border-[var(--b-soft)] bg-[var(--bg-0)] px-4 py-3"
+                >
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: "rgba(212,160,23,0.08)",
+                      border: "1px solid rgba(212,160,23,0.15)",
+                    }}
+                  >
+                    <Gift size={16} className="text-[var(--brand-gold)]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold truncate">{p.title}</span>
+                      <span
+                        className="text-xs font-bold shrink-0 text-[var(--brand-gold)]"
+                        style={{ fontFamily: "var(--font-jetbrains)" }}
+                      >
+                        {p.valueLabel}
+                      </span>
+                    </div>
+                    {placeLabel && (
+                      <span className="text-[10px] text-[var(--t-3)]">{placeLabel} в рейтинге</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
