@@ -167,41 +167,112 @@ const PAIR_PAYOUTS: Record<string, number> = {
   "BTC/USD": 15, "ETH/USD": 80, "SOL/USD": 80, "SP500": 45, "US100": 45,
 };
 
-// ─── Pair icons (country flags for currencies, symbols for others) ───
+// ─── Pair icons — circular flag SVGs via CDN + branded asset badges ───
 
-const CURRENCY_ICONS: Record<string, string> = {
-  EUR: "\u{1F1EA}\u{1F1FA}", USD: "\u{1F1FA}\u{1F1F8}", GBP: "\u{1F1EC}\u{1F1E7}",
-  JPY: "\u{1F1EF}\u{1F1F5}", AUD: "\u{1F1E6}\u{1F1FA}", CAD: "\u{1F1E8}\u{1F1E6}",
-  CHF: "\u{1F1E8}\u{1F1ED}", NZD: "\u{1F1F3}\u{1F1FF}",
+const CURRENCY_FLAG: Record<string, string> = {
+  EUR: "eu", USD: "us", GBP: "gb", JPY: "jp", AUD: "au",
+  CAD: "ca", CHF: "ch", NZD: "nz",
 };
 
-const ASSET_ICONS: Record<string, string> = {
-  BTC: "\u{20BF}", ETH: "\u{039E}", SOL: "\u{25C6}", DOGE: "\u{1D3D1}",
-  ADA: "\u{25C7}", TON: "\u{25C8}", BNB: "\u{25C9}", LTC: "\u{0141}",
-  Gold: "\u{2728}", Silver: "\u{25C7}", "Brent Oil": "\u{1F6E2}", "WTI Oil": "\u{1F6E2}",
-  AAPL: "\uF8FF", TSLA: "T", AMZN: "A", MSFT: "M", META: "M", NFLX: "N", NVDA: "N",
-  "S&P 500": "\u{1F4C8}", NASDAQ: "\u{1F4C8}", "Dow Jones": "\u{1F4C8}",
-  Apple: "\uF8FF", Tesla: "T", Amazon: "A", Microsoft: "M", Meta: "M",
-  Netflix: "N", NVIDIA: "N", Bitcoin: "\u{20BF}", Ethereum: "\u{039E}", Solana: "\u{25C6}",
+// Branded colors for non-currency assets
+const ASSET_BRAND: Record<string, { bg: string; color: string; label: string }> = {
+  BTC:  { bg: "#f7931a", color: "#fff", label: "BTC" },
+  ETH:  { bg: "#627eea", color: "#fff", label: "ETH" },
+  SOL:  { bg: "#9945ff", color: "#fff", label: "SOL" },
+  DOGE: { bg: "#c3a634", color: "#fff", label: "DOGE" },
+  ADA:  { bg: "#0033ad", color: "#fff", label: "ADA" },
+  TON:  { bg: "#0098ea", color: "#fff", label: "TON" },
+  BNB:  { bg: "#f3ba2f", color: "#1a1a1a", label: "BNB" },
+  LTC:  { bg: "#bfbbbb", color: "#1a1a1a", label: "LTC" },
+  Gold: { bg: "#d4a017", color: "#1a1a1a", label: "AU" },
+  Silver: { bg: "#c0c0c0", color: "#1a1a1a", label: "AG" },
+  "Brent Oil": { bg: "#2d5016", color: "#fff", label: "OIL" },
+  "WTI Oil":   { bg: "#2d5016", color: "#fff", label: "WTI" },
+  AAPL: { bg: "#555", color: "#fff", label: "AAPL" },
+  TSLA: { bg: "#cc0000", color: "#fff", label: "TSLA" },
+  AMZN: { bg: "#ff9900", color: "#1a1a1a", label: "AMZN" },
+  MSFT: { bg: "#00a4ef", color: "#fff", label: "MSFT" },
+  META: { bg: "#1877f2", color: "#fff", label: "META" },
+  NFLX: { bg: "#e50914", color: "#fff", label: "NFLX" },
+  NVDA: { bg: "#76b900", color: "#1a1a1a", label: "NVDA" },
+  "S&P 500":   { bg: "#1a3c6e", color: "#fff", label: "S&P" },
+  NASDAQ:      { bg: "#0096d6", color: "#fff", label: "NDQ" },
+  "Dow Jones": { bg: "#1a3c6e", color: "#fff", label: "DJI" },
+  Apple:    { bg: "#555", color: "#fff", label: "AAPL" },
+  Tesla:    { bg: "#cc0000", color: "#fff", label: "TSLA" },
+  Amazon:   { bg: "#ff9900", color: "#1a1a1a", label: "AMZN" },
+  Microsoft:{ bg: "#00a4ef", color: "#fff", label: "MSFT" },
+  Meta:     { bg: "#1877f2", color: "#fff", label: "META" },
+  Netflix:  { bg: "#e50914", color: "#fff", label: "NFLX" },
+  NVIDIA:   { bg: "#76b900", color: "#1a1a1a", label: "NVDA" },
+  Bitcoin:  { bg: "#f7931a", color: "#fff", label: "BTC" },
+  Ethereum: { bg: "#627eea", color: "#fff", label: "ETH" },
+  Solana:   { bg: "#9945ff", color: "#fff", label: "SOL" },
 };
 
-function getPairIcon(p: PairInfo): { icon: string; isFlagPair: boolean } {
-  // Currency pairs: show first currency flag
-  const parts = p.display.split("/");
-  if (parts.length === 2 && CURRENCY_ICONS[parts[0]!]) {
-    return { icon: CURRENCY_ICONS[parts[0]!]!, isFlagPair: true };
+function PairIcon({ pair }: { pair: PairInfo }) {
+  const parts = pair.display.split("/");
+  // Currency pair → show two overlapping circular flags
+  if (parts.length === 2 && CURRENCY_FLAG[parts[0]!] && CURRENCY_FLAG[parts[1]!]) {
+    const f1 = CURRENCY_FLAG[parts[0]!];
+    const f2 = CURRENCY_FLAG[parts[1]!];
+    return (
+      <div className="relative w-9 h-7 shrink-0">
+        <img
+          src={`https://hatscripts.github.io/circle-flags/flags/${f1}.svg`}
+          alt={parts[0]}
+          className="absolute left-0 top-0 w-7 h-7 rounded-full"
+          style={{ border: "2px solid var(--bg-2)", zIndex: 2 }}
+        />
+        <img
+          src={`https://hatscripts.github.io/circle-flags/flags/${f2}.svg`}
+          alt={parts[1]}
+          className="absolute left-3.5 top-0 w-7 h-7 rounded-full"
+          style={{ border: "2px solid var(--bg-2)", zIndex: 1 }}
+        />
+      </div>
+    );
   }
-  // Named assets
-  if (ASSET_ICONS[p.display]) {
-    return { icon: ASSET_ICONS[p.display]!, isFlagPair: false };
+  // Single currency flag
+  if (parts.length === 1 || (parts.length === 2 && !CURRENCY_FLAG[parts[1]!])) {
+    const code = CURRENCY_FLAG[parts[0]!];
+    if (code) {
+      return (
+        <img
+          src={`https://hatscripts.github.io/circle-flags/flags/${code}.svg`}
+          alt={parts[0]}
+          className="w-7 h-7 rounded-full shrink-0"
+        />
+      );
+    }
   }
-  return { icon: p.display.slice(0, 2), isFlagPair: false };
+  // Asset badge
+  const brand = ASSET_BRAND[pair.display];
+  if (brand) {
+    return (
+      <div
+        className="w-7 h-7 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 tracking-tight"
+        style={{ background: brand.bg, color: brand.color }}
+      >
+        {brand.label}
+      </div>
+    );
+  }
+  // Fallback
+  return (
+    <div
+      className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+      style={{ background: "var(--bg-3)", color: "var(--t-2)" }}
+    >
+      {pair.display.slice(0, 2)}
+    </div>
+  );
 }
 
 function getPayoutColor(pct: number): string {
   if (pct >= 80) return "#8ee06b";
   if (pct >= 60) return "#e6b840";
-  if (pct >= 40) return "#e6a040";
+  if (pct >= 40) return "#c4b496";
   return "#ff6b3d";
 }
 
@@ -428,7 +499,9 @@ export function SignalRequestButton({
   // ─── Render: Step 1 — Select pair ───
   if (step === "pair") {
     const tabs: PairBand[] = ["otc", "exchange", "elite"];
-    const activePairs = ALL_PAIRS.filter((p) => p.band === activeTab);
+    const activePairs = ALL_PAIRS
+      .filter((p) => p.band === activeTab)
+      .sort((a, b) => (PAIR_PAYOUTS[b.name] ?? 0) - (PAIR_PAYOUTS[a.name] ?? 0));
     const groups = groupByFlag(activePairs);
     const meta = BAND_META[activeTab];
 
@@ -441,7 +514,7 @@ export function SignalRequestButton({
         )}
 
         {/* Tab navigation */}
-        <div className="flex border-b border-[var(--b-soft)]">
+        <div className="flex gap-2">
           {tabs.map((band) => {
             const bm = BAND_META[band];
             const locked = (ALL_PAIRS.find((p) => p.band === band)?.minTier ?? 0) > tier;
@@ -451,119 +524,97 @@ export function SignalRequestButton({
                 key={band}
                 onClick={() => !locked && setActiveTab(band)}
                 disabled={locked}
-                className="relative flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-all"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all"
                 style={{
+                  background: active ? `${bm.color}18` : "transparent",
                   color: active ? bm.color : locked ? "var(--t-3)" : "var(--t-2)",
+                  border: `1px solid ${active ? `${bm.color}35` : "var(--b-soft)"}`,
                   cursor: locked ? "not-allowed" : "pointer",
                   opacity: locked ? 0.35 : 1,
                 }}
               >
-                {locked && <Lock size={12} />}
-                <span>{bm.label}</span>
-                <span className="text-[10px] opacity-60">
-                  ({ALL_PAIRS.filter((p) => p.band === band).length})
-                </span>
-                {active && (
-                  <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full" style={{ background: bm.color }} />
-                )}
+                {locked && <Lock size={10} />}
+                {bm.label}
+                <span className="opacity-50">{ALL_PAIRS.filter((p) => p.band === band).length}</span>
               </button>
             );
           })}
+          {remaining != null && (
+            <span className="ml-auto flex items-center text-[11px] text-[var(--t-3)]">
+              {remaining} осталось
+            </span>
+          )}
         </div>
 
-        {/* Remaining counter */}
-        {remaining != null && (
-          <div className="flex justify-end px-1">
-            <span className="text-xs text-[var(--t-3)]">
-              {remaining} {remaining === 1 ? "сигнал" : remaining < 5 ? "сигнала" : "сигналов"} осталось
-            </span>
-          </div>
-        )}
-
         {/* Grouped pairs */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {groups.map((group) => (
             <div key={group.flag}>
-              <div className="flex items-center gap-3 mb-2 px-1">
-                <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: meta.color }}>
+              {/* Group header — minimal */}
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--t-3)]">
                   {group.label}
                 </span>
-                <div className="flex-1 h-[1px]" style={{ background: `linear-gradient(90deg, ${meta.color}25, transparent)` }} />
-                <span className="text-[10px] text-[var(--t-3)]">{group.items.length}</span>
+                <div className="flex-1 h-[1px] bg-[var(--b-soft)]" />
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {group.items.map((p) => {
+              {/* Pair rows */}
+              <div className="space-y-[2px] rounded-xl overflow-hidden">
+                {group.items.map((p, idx) => {
                   const locked = p.minTier > tier;
                   const payout = PAIR_PAYOUTS[p.name];
-                  const { icon, isFlagPair } = getPairIcon(p);
-                  const payoutColor = payout ? getPayoutColor(payout) : "#8a7a68";
+                  const payoutColor = payout ? getPayoutColor(payout) : "var(--t-3)";
+                  const isEven = idx % 2 === 0;
 
                   return (
                     <button
                       key={p.name}
                       onClick={() => handlePairSelect(p)}
                       disabled={locked}
-                      className="relative group rounded-xl overflow-hidden text-left"
+                      className="relative group w-full text-left"
                       style={{
                         cursor: locked ? "not-allowed" : "pointer",
-                        opacity: locked ? 0.3 : 1,
+                        opacity: locked ? 0.35 : 1,
                       }}
                     >
                       <div
-                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all duration-150"
-                        style={{
-                          background: "var(--bg-2)",
-                          borderColor: "var(--b-soft)",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (locked) return;
-                          e.currentTarget.style.borderColor = `${meta.color}40`;
-                          e.currentTarget.style.background = "var(--bg-3)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = "var(--b-soft)";
-                          e.currentTarget.style.background = "var(--bg-2)";
-                        }}
+                        className="flex items-center gap-3 px-3 py-2.5 transition-colors duration-100"
+                        style={{ background: isEven ? "var(--bg-2)" : "var(--bg-1)" }}
+                        onMouseEnter={(e) => { if (!locked) e.currentTarget.style.background = "var(--bg-3)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = isEven ? "var(--bg-2)" : "var(--bg-1)"; }}
                       >
                         {/* Icon */}
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                          style={{
-                            background: isFlagPair ? "transparent" : `${meta.color}12`,
-                            fontSize: isFlagPair ? "20px" : "13px",
-                            fontWeight: isFlagPair ? 400 : 700,
-                            color: meta.color,
-                            fontFamily: isFlagPair ? undefined : "var(--font-jetbrains)",
-                            lineHeight: 1,
-                          }}
-                        >
-                          {icon}
-                        </div>
+                        <PairIcon pair={p} />
 
-                        {/* Name + payout */}
-                        <div className="flex flex-col min-w-0 flex-1">
+                        {/* Pair name */}
+                        <span
+                          className="font-semibold text-[13px] text-[var(--t-1)] group-hover:text-[var(--brand-gold-bright)] transition-colors flex-1 min-w-0 truncate"
+                          style={{ fontFamily: "var(--font-jetbrains)" }}
+                        >
+                          {p.display}
+                        </span>
+
+                        {/* Payout badge */}
+                        {payout != null && (
                           <span
-                            className="font-semibold text-[12px] text-[var(--t-1)] truncate group-hover:text-[var(--brand-gold-bright)] transition-colors"
-                            style={{ fontFamily: "var(--font-jetbrains)" }}
+                            className="text-[11px] font-bold tabular-nums shrink-0 px-2 py-0.5 rounded-md"
+                            style={{
+                              color: payoutColor,
+                              background: `color-mix(in srgb, ${payoutColor} 12%, transparent)`,
+                            }}
                           >
-                            {p.display}
+                            +{payout}%
                           </span>
-                          {payout != null && (
-                            <span className="text-[10px] font-bold" style={{ color: payoutColor }}>
-                              +{payout}%
-                            </span>
-                          )}
-                        </div>
+                        )}
 
                         <ChevronRight
-                          size={13}
+                          size={14}
                           className="shrink-0 text-[var(--t-3)] opacity-0 group-hover:opacity-50 transition-opacity"
                         />
                       </div>
 
                       {locked && (
-                        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-[var(--bg-0)]/60 backdrop-blur-[2px]">
+                        <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-0)]/60 backdrop-blur-[2px]">
                           <Lock size={14} className="text-[var(--t-3)]" />
                         </div>
                       )}
