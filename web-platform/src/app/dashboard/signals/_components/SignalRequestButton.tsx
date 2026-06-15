@@ -174,97 +174,107 @@ const CURRENCY_FLAG: Record<string, string> = {
   CAD: "ca", CHF: "ch", NZD: "nz",
 };
 
-// Branded colors for non-currency assets
-const ASSET_BRAND: Record<string, { bg: string; color: string; label: string }> = {
-  BTC:  { bg: "#f7931a", color: "#fff", label: "BTC" },
-  ETH:  { bg: "#627eea", color: "#fff", label: "ETH" },
-  SOL:  { bg: "#9945ff", color: "#fff", label: "SOL" },
-  DOGE: { bg: "#c3a634", color: "#fff", label: "DOGE" },
-  ADA:  { bg: "#0033ad", color: "#fff", label: "ADA" },
-  TON:  { bg: "#0098ea", color: "#fff", label: "TON" },
-  BNB:  { bg: "#f3ba2f", color: "#1a1a1a", label: "BNB" },
-  LTC:  { bg: "#bfbbbb", color: "#1a1a1a", label: "LTC" },
+// CDN image URLs for crypto coins (CoinGecko)
+const CRYPTO_IMG: Record<string, string> = {
+  BTC: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
+  ETH: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+  SOL: "https://assets.coingecko.com/coins/images/4128/small/solana.png",
+  DOGE: "https://assets.coingecko.com/coins/images/5/small/dogecoin.png",
+  ADA: "https://assets.coingecko.com/coins/images/975/small/cardano.png",
+  TON: "https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png",
+  BNB: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
+  LTC: "https://assets.coingecko.com/coins/images/2/small/litecoin.png",
+  Bitcoin: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
+  Ethereum: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+  Solana: "https://assets.coingecko.com/coins/images/4128/small/solana.png",
+};
+
+// Clearbit logos for stocks
+const STOCK_IMG: Record<string, string> = {
+  AAPL: "https://logo.clearbit.com/apple.com",
+  TSLA: "https://logo.clearbit.com/tesla.com",
+  AMZN: "https://logo.clearbit.com/amazon.com",
+  MSFT: "https://logo.clearbit.com/microsoft.com",
+  META: "https://logo.clearbit.com/meta.com",
+  NFLX: "https://logo.clearbit.com/netflix.com",
+  NVDA: "https://logo.clearbit.com/nvidia.com",
+  Apple: "https://logo.clearbit.com/apple.com",
+  Tesla: "https://logo.clearbit.com/tesla.com",
+  Amazon: "https://logo.clearbit.com/amazon.com",
+  Microsoft: "https://logo.clearbit.com/microsoft.com",
+  Meta: "https://logo.clearbit.com/meta.com",
+  Netflix: "https://logo.clearbit.com/netflix.com",
+  NVIDIA: "https://logo.clearbit.com/nvidia.com",
+};
+
+// Fallback colored badges for commodities/indices
+const ASSET_BADGE: Record<string, { bg: string; color: string; label: string }> = {
   Gold: { bg: "#d4a017", color: "#1a1a1a", label: "AU" },
   Silver: { bg: "#c0c0c0", color: "#1a1a1a", label: "AG" },
   "Brent Oil": { bg: "#2d5016", color: "#fff", label: "OIL" },
   "WTI Oil":   { bg: "#2d5016", color: "#fff", label: "WTI" },
-  AAPL: { bg: "#555", color: "#fff", label: "AAPL" },
-  TSLA: { bg: "#cc0000", color: "#fff", label: "TSLA" },
-  AMZN: { bg: "#ff9900", color: "#1a1a1a", label: "AMZN" },
-  MSFT: { bg: "#00a4ef", color: "#fff", label: "MSFT" },
-  META: { bg: "#1877f2", color: "#fff", label: "META" },
-  NFLX: { bg: "#e50914", color: "#fff", label: "NFLX" },
-  NVDA: { bg: "#76b900", color: "#1a1a1a", label: "NVDA" },
   "S&P 500":   { bg: "#1a3c6e", color: "#fff", label: "S&P" },
   NASDAQ:      { bg: "#0096d6", color: "#fff", label: "NDQ" },
   "Dow Jones": { bg: "#1a3c6e", color: "#fff", label: "DJI" },
-  Apple:    { bg: "#555", color: "#fff", label: "AAPL" },
-  Tesla:    { bg: "#cc0000", color: "#fff", label: "TSLA" },
-  Amazon:   { bg: "#ff9900", color: "#1a1a1a", label: "AMZN" },
-  Microsoft:{ bg: "#00a4ef", color: "#fff", label: "MSFT" },
-  Meta:     { bg: "#1877f2", color: "#fff", label: "META" },
-  Netflix:  { bg: "#e50914", color: "#fff", label: "NFLX" },
-  NVIDIA:   { bg: "#76b900", color: "#1a1a1a", label: "NVDA" },
-  Bitcoin:  { bg: "#f7931a", color: "#fff", label: "BTC" },
-  Ethereum: { bg: "#627eea", color: "#fff", label: "ETH" },
-  Solana:   { bg: "#9945ff", color: "#fff", label: "SOL" },
 };
 
-function PairIcon({ pair }: { pair: PairInfo }) {
+function PairIcon({ pair, size = 28 }: { pair: PairInfo; size?: number }) {
   const parts = pair.display.split("/");
-  // Currency pair → show two overlapping circular flags
+  const cls = `rounded-full shrink-0 object-cover`;
+  const px = `${size}px`;
+
+  // Currency pair → two overlapping flags
   if (parts.length === 2 && CURRENCY_FLAG[parts[0]!] && CURRENCY_FLAG[parts[1]!]) {
-    const f1 = CURRENCY_FLAG[parts[0]!];
-    const f2 = CURRENCY_FLAG[parts[1]!];
     return (
-      <div className="relative w-9 h-7 shrink-0">
+      <div className="relative shrink-0" style={{ width: size + 10, height: size }}>
         <img
-          src={`https://hatscripts.github.io/circle-flags/flags/${f1}.svg`}
-          alt={parts[0]}
-          className="absolute left-0 top-0 w-7 h-7 rounded-full"
+          src={`https://hatscripts.github.io/circle-flags/flags/${CURRENCY_FLAG[parts[0]!]}.svg`}
+          alt={parts[0]} width={size} height={size}
+          className={`absolute left-0 top-0 ${cls}`}
           style={{ border: "2px solid var(--bg-2)", zIndex: 2 }}
         />
         <img
-          src={`https://hatscripts.github.io/circle-flags/flags/${f2}.svg`}
-          alt={parts[1]}
-          className="absolute left-3.5 top-0 w-7 h-7 rounded-full"
-          style={{ border: "2px solid var(--bg-2)", zIndex: 1 }}
+          src={`https://hatscripts.github.io/circle-flags/flags/${CURRENCY_FLAG[parts[1]!]}.svg`}
+          alt={parts[1]} width={size} height={size}
+          className={`absolute top-0 ${cls}`}
+          style={{ left: size * 0.4, border: "2px solid var(--bg-2)", zIndex: 1 }}
         />
       </div>
     );
   }
+
   // Single currency flag
-  if (parts.length === 1 || (parts.length === 2 && !CURRENCY_FLAG[parts[1]!])) {
-    const code = CURRENCY_FLAG[parts[0]!];
-    if (code) {
-      return (
-        <img
-          src={`https://hatscripts.github.io/circle-flags/flags/${code}.svg`}
-          alt={parts[0]}
-          className="w-7 h-7 rounded-full shrink-0"
-        />
-      );
-    }
+  const flagCode = CURRENCY_FLAG[parts[0]!];
+  if (flagCode) {
+    return <img src={`https://hatscripts.github.io/circle-flags/flags/${flagCode}.svg`} alt={parts[0]} width={size} height={size} className={cls} />;
   }
-  // Asset badge
-  const brand = ASSET_BRAND[pair.display];
-  if (brand) {
+
+  // Crypto icon from CoinGecko
+  const cryptoUrl = CRYPTO_IMG[pair.display];
+  if (cryptoUrl) {
+    return <img src={cryptoUrl} alt={pair.display} width={size} height={size} className={cls} style={{ background: "#222" }} />;
+  }
+
+  // Stock logo from Clearbit
+  const stockUrl = STOCK_IMG[pair.display];
+  if (stockUrl) {
+    return <img src={stockUrl} alt={pair.display} width={size} height={size} className={`${cls} bg-white p-0.5`} />;
+  }
+
+  // Badge fallback (commodities, indices)
+  const badge = ASSET_BADGE[pair.display];
+  if (badge) {
     return (
-      <div
-        className="w-7 h-7 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 tracking-tight"
-        style={{ background: brand.bg, color: brand.color }}
-      >
-        {brand.label}
+      <div className={`${cls} flex items-center justify-center text-[9px] font-black tracking-tight`} style={{ width: px, height: px, background: badge.bg, color: badge.color }}>
+        {badge.label}
       </div>
     );
   }
-  // Fallback
+
+  // Generic fallback
   return (
-    <div
-      className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
-      style={{ background: "var(--bg-3)", color: "var(--t-2)" }}
-    >
-      {pair.display.slice(0, 2)}
+    <div className={`${cls} flex items-center justify-center text-[9px] font-bold`} style={{ width: px, height: px, background: "var(--bg-3)", color: "var(--t-2)" }}>
+      {pair.display.slice(0, 3)}
     </div>
   );
 }
@@ -503,7 +513,6 @@ export function SignalRequestButton({
       .filter((p) => p.band === activeTab)
       .sort((a, b) => (PAIR_PAYOUTS[b.name] ?? 0) - (PAIR_PAYOUTS[a.name] ?? 0));
     const groups = groupByFlag(activePairs);
-    const meta = BAND_META[activeTab];
 
     return (
       <div className="w-full max-w-2xl space-y-4">
@@ -558,63 +567,68 @@ export function SignalRequestButton({
                 <div className="flex-1 h-[1px] bg-[var(--b-soft)]" />
               </div>
 
-              {/* Pair rows */}
-              <div className="space-y-[2px] rounded-xl overflow-hidden">
-                {group.items.map((p, idx) => {
+              {/* Pair grid — 2 columns on mobile, 3 on md+ */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+                  gap: "6px",
+                }}
+              >
+                {group.items.map((p) => {
                   const locked = p.minTier > tier;
                   const payout = PAIR_PAYOUTS[p.name];
                   const payoutColor = payout ? getPayoutColor(payout) : "var(--t-3)";
-                  const isEven = idx % 2 === 0;
 
                   return (
                     <button
                       key={p.name}
                       onClick={() => handlePairSelect(p)}
                       disabled={locked}
-                      className="relative group w-full text-left"
+                      className="relative group text-left rounded-xl transition-all duration-150"
                       style={{
                         cursor: locked ? "not-allowed" : "pointer",
                         opacity: locked ? 0.35 : 1,
+                        background: "var(--bg-1)",
+                        border: "1px solid var(--b-soft)",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!locked) {
+                          e.currentTarget.style.borderColor = "var(--brand-gold)";
+                          e.currentTarget.style.background = "var(--bg-2)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "var(--b-soft)";
+                        e.currentTarget.style.background = "var(--bg-1)";
                       }}
                     >
-                      <div
-                        className="flex items-center gap-3 px-3 py-2.5 transition-colors duration-100"
-                        style={{ background: isEven ? "var(--bg-2)" : "var(--bg-1)" }}
-                        onMouseEnter={(e) => { if (!locked) e.currentTarget.style.background = "var(--bg-3)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = isEven ? "var(--bg-2)" : "var(--bg-1)"; }}
-                      >
-                        {/* Icon */}
-                        <PairIcon pair={p} />
-
-                        {/* Pair name */}
-                        <span
-                          className="font-semibold text-[13px] text-[var(--t-1)] group-hover:text-[var(--brand-gold-bright)] transition-colors flex-1 min-w-0 truncate"
-                          style={{ fontFamily: "var(--font-jetbrains)" }}
-                        >
-                          {p.display}
-                        </span>
-
-                        {/* Payout badge */}
-                        {payout != null && (
+                      <div className="flex items-center gap-2.5 px-3 py-2.5">
+                        <PairIcon pair={p} size={24} />
+                        <div className="flex-1 min-w-0">
                           <span
-                            className="text-[11px] font-bold tabular-nums shrink-0 px-2 py-0.5 rounded-md"
-                            style={{
-                              color: payoutColor,
-                              background: `color-mix(in srgb, ${payoutColor} 12%, transparent)`,
-                            }}
+                            className="font-semibold text-[12px] text-[var(--t-1)] block truncate"
+                            style={{ fontFamily: "var(--font-jetbrains)" }}
                           >
-                            +{payout}%
+                            {p.display}
                           </span>
-                        )}
-
+                          {payout != null && (
+                            <span
+                              className="text-[10px] font-bold tabular-nums"
+                              style={{ color: payoutColor }}
+                            >
+                              +{payout}%
+                            </span>
+                          )}
+                        </div>
                         <ChevronRight
-                          size={14}
-                          className="shrink-0 text-[var(--t-3)] opacity-0 group-hover:opacity-50 transition-opacity"
+                          size={12}
+                          className="shrink-0 text-[var(--t-3)] opacity-0 group-hover:opacity-60 transition-opacity"
                         />
                       </div>
 
                       {locked && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-0)]/60 backdrop-blur-[2px]">
+                        <div className="absolute inset-0 rounded-xl flex items-center justify-center bg-[var(--bg-0)]/60 backdrop-blur-[2px]">
                           <Lock size={14} className="text-[var(--t-3)]" />
                         </div>
                       )}

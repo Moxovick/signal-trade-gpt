@@ -4,9 +4,31 @@ from database.models import Signal
 CURRENCY_PAIRS = [
     "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "EUR/GBP", "GBP/JPY",
     "USD/CHF", "NZD/USD", "EUR/JPY", "AUD/JPY", "USD/CAD", "EUR/AUD",
+    "AUD/CHF", "AUD/NZD", "EUR/CHF", "CAD/JPY", "GBP/AUD", "EUR/NZD",
+    "CHF/JPY",
 ]
 
-OTC_PAIRS = [f"{pair} OTC" for pair in CURRENCY_PAIRS[:6]]
+OTC_CURRENCY_PAIRS = [f"{pair} (OTC)" for pair in CURRENCY_PAIRS[:16]]
+
+OTC_CRYPTO = [
+    "Bitcoin (OTC)", "Ethereum (OTC)", "Solana (OTC)", "Dogecoin (OTC)",
+    "Cardano (OTC)", "Toncoin (OTC)", "BNB (OTC)", "Litecoin (OTC)",
+]
+
+OTC_COMMODITIES = [
+    "Gold (OTC)", "Silver (OTC)", "Brent Oil (OTC)", "WTI Oil (OTC)",
+]
+
+OTC_STOCKS = [
+    "Apple (OTC)", "Tesla (OTC)", "Amazon (OTC)",
+    "Microsoft (OTC)", "Meta (OTC)", "Netflix (OTC)",
+]
+
+OTC_INDICES = [
+    "S&P 500 (OTC)", "NASDAQ 100 (OTC)", "Dow Jones (OTC)",
+]
+
+OTC_PAIRS = OTC_CURRENCY_PAIRS + OTC_CRYPTO + OTC_COMMODITIES + OTC_STOCKS + OTC_INDICES
 
 EXPIRATIONS = {
     "otc": ["30 сек", "1 мин", "2 мин"],
