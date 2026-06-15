@@ -7,11 +7,10 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAccessReport } from "@/lib/access";
-import { TIER_LABELS, getTierThresholds } from "@/lib/tier";
+import { TIER_LABELS } from "@/lib/tier";
 import { Card } from "@/components/ui/Card";
 import { buildReferralLink } from "@/lib/pocketoption";
 import { Activity } from "lucide-react";
-import { TierStrip } from "./_components/TierStrip";
 import { SignalRequestButton } from "./_components/SignalRequestButton";
 import { SignalHistoryList } from "./_components/SignalHistoryList";
 import { SpaceBackground } from "./_components/SpaceBackground";
@@ -21,11 +20,9 @@ export default async function SignalsPage() {
   if (!session?.user?.id) return null;
   const userId = session.user.id;
 
-  const [report, poAccount, referralUrl, thresholds] = await Promise.all([
+  const [report, referralUrl] = await Promise.all([
     getAccessReport(userId),
-    prisma.pocketOptionAccount.findUnique({ where: { userId } }),
     buildReferralLink(userId),
-    getTierThresholds(),
   ]);
   if (!report) return null;
   const tier = report.tier;
@@ -38,10 +35,6 @@ export default async function SignalsPage() {
     orderBy: { createdAt: "desc" },
     take: 60,
   });
-
-  const depositTotal = poAccount?.totalDeposit
-    ? Number(poAccount.totalDeposit)
-    : 0;
 
   const dailyLimit = report.dailySignalLimit;
   const used = report.signalsTodayUsed;
@@ -62,15 +55,6 @@ export default async function SignalsPage() {
         </p>
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Сигналы</h1>
       </div>
-
-      {/* Tier strip */}
-      <TierStrip
-        tier={tier}
-        depositTotal={depositTotal}
-        nextThreshold={tier === 0 ? thresholds[1] : tier === 1 ? thresholds[2] : null}
-        dailyLimit={dailyLimit}
-        signalsRemaining={remaining}
-      />
 
       {/* Signal request — daily usage bar + pair picker (no Card wrapper) */}
       <div>

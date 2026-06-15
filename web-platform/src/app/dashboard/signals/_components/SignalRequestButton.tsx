@@ -187,29 +187,30 @@ const CRYPTO_IMG: Record<string, string> = {
   Solana: "https://assets.coingecko.com/coins/images/4128/small/solana.png",
 };
 
-// All non-currency, non-crypto assets get a colored text badge
-const TICKER_BADGE: Record<string, { bg: string; color: string; label: string }> = {
-  // Stocks
-  AAPL:  { bg: "#333", color: "#fff", label: "AAPL" },
-  Apple: { bg: "#333", color: "#fff", label: "AAPL" },
-  TSLA:  { bg: "#c00", color: "#fff", label: "TSLA" },
-  Tesla: { bg: "#c00", color: "#fff", label: "TSLA" },
-  AMZN:  { bg: "#f90", color: "#1a1a1a", label: "AMZN" },
-  Amazon:{ bg: "#f90", color: "#1a1a1a", label: "AMZN" },
-  MSFT:  { bg: "#05a", color: "#fff", label: "MSFT" },
-  Microsoft: { bg: "#05a", color: "#fff", label: "MSFT" },
-  META:  { bg: "#0668e1", color: "#fff", label: "META" },
-  Meta:  { bg: "#0668e1", color: "#fff", label: "META" },
-  NFLX:  { bg: "#e50914", color: "#fff", label: "NFLX" },
-  Netflix: { bg: "#e50914", color: "#fff", label: "NFLX" },
-  NVDA:  { bg: "#76b900", color: "#1a1a1a", label: "NVDA" },
-  NVIDIA: { bg: "#76b900", color: "#1a1a1a", label: "NVDA" },
-  // Commodities
+// Stock icons via Simple Icons CDN
+const STOCK_ICON: Record<string, string> = {
+  AAPL: "https://cdn.simpleicons.org/apple/white",
+  Apple: "https://cdn.simpleicons.org/apple/white",
+  TSLA: "https://cdn.simpleicons.org/tesla/white",
+  Tesla: "https://cdn.simpleicons.org/tesla/white",
+  AMZN: "https://cdn.simpleicons.org/amazon/white",
+  Amazon: "https://cdn.simpleicons.org/amazon/white",
+  MSFT: "https://cdn.simpleicons.org/microsoft/white",
+  Microsoft: "https://cdn.simpleicons.org/microsoft/white",
+  META: "https://cdn.simpleicons.org/meta/white",
+  Meta: "https://cdn.simpleicons.org/meta/white",
+  NFLX: "https://cdn.simpleicons.org/netflix/white",
+  Netflix: "https://cdn.simpleicons.org/netflix/white",
+  NVDA: "https://cdn.simpleicons.org/nvidia/white",
+  NVIDIA: "https://cdn.simpleicons.org/nvidia/white",
+};
+
+// Commodities + indices get colored text badges
+const BADGE_ICON: Record<string, { bg: string; color: string; label: string }> = {
   Gold:   { bg: "#d4a017", color: "#1a1a1a", label: "GOLD" },
   Silver: { bg: "#a0a0a0", color: "#1a1a1a", label: "SLVR" },
   "Brent Oil": { bg: "#3a6b35", color: "#fff", label: "BRENT" },
   "WTI Oil":   { bg: "#3a6b35", color: "#fff", label: "WTI" },
-  // Indices
   "S&P 500":   { bg: "#1a3c6e", color: "#fff", label: "S&P" },
   NASDAQ:      { bg: "#0096d6", color: "#fff", label: "NDQ" },
   "Dow Jones": { bg: "#1a3c6e", color: "#fff", label: "DJI" },
@@ -243,10 +244,25 @@ function PairIcon({ pair, size = 28 }: { pair: PairInfo; size?: number }) {
     return <img src={cryptoUrl} alt={pair.display} width={size} height={size} style={{ borderRadius: "50%", flexShrink: 0, background: "#222" }} />;
   }
 
-  // Ticker badge (stocks, commodities, indices)
-  const badge = TICKER_BADGE[pair.display];
+  // Stock icon (SVG from Simple Icons CDN)
+  const stockUrl = STOCK_ICON[pair.display];
+  if (stockUrl) {
+    return (
+      <div style={{
+        width: px, height: px, flexShrink: 0,
+        borderRadius: 4,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "#222",
+      }}>
+        <img src={stockUrl} alt={pair.display} width={size * 0.65} height={size * 0.65} style={{ objectFit: "contain" }} />
+      </div>
+    );
+  }
+
+  // Badge icon (commodities, indices)
+  const badge = BADGE_ICON[pair.display];
   if (badge) {
-    const fontSize = badge.label.length > 4 ? 7 : 8;
+    const fontSize = badge.label.length > 4 ? 8 : 9;
     return (
       <div style={{
         width: px, height: px, flexShrink: 0,
@@ -254,6 +270,7 @@ function PairIcon({ pair, size = 28 }: { pair: PairInfo; size?: number }) {
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize, fontWeight: 900, letterSpacing: "0.02em",
         background: badge.bg, color: badge.color,
+        border: "1px solid rgba(255,255,255,0.12)",
       }}>
         {badge.label}
       </div>
@@ -776,7 +793,7 @@ export function SignalRequestButton({
   // ─── Render: Step 3 — Analysis animation ───
   if (step === "analysis") {
     return (
-      <div className="w-full max-w-xl">
+      <div className="w-full" style={{ maxWidth: 400, margin: "0 auto", textAlign: "center" }}>
         {/* Header */}
         <div className="text-center mb-6">
           <div
@@ -796,7 +813,7 @@ export function SignalRequestButton({
         {/* Steps list */}
         <div
           className="rounded-2xl border p-5 space-y-3 mb-4"
-          style={{ background: "var(--bg-1)", borderColor: "var(--b-soft)" }}
+          style={{ background: "var(--bg-1)", borderColor: "var(--b-soft)", textAlign: "left" }}
         >
           {ANALYSIS_STEPS.map((s, i) => {
             const isActive = i === analysisStep;
