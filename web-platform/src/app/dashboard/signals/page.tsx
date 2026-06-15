@@ -84,12 +84,7 @@ export default async function SignalsPage() {
       />
 
       {/* Signal request CTA */}
-      <Card padding="lg" className="relative overflow-hidden"
-        style={{
-          background: "var(--bg-1)",
-          borderColor: "var(--b-soft)",
-        }}
-      >
+      <Card padding="lg" className="relative overflow-hidden">
         <div className="relative flex flex-col items-center text-center py-4">
           {/* Daily limit indicator */}
           <div className="mb-4">
