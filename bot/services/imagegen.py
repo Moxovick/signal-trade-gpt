@@ -691,16 +691,12 @@ def make_stats_card(
     d.text((60, 50), "Личный кабинет", font=f_sub, fill=TEXT_2)
     d.text((60, 80), name, font=f_title, fill=GOLD)
 
-    total = wins + losses
-    winrate = (wins / total * 100) if total else 0.0
-
     cards = [
         (f"T{tier}", "ТИР", GOLD),
         (f"${deposit:,.0f}", "ДЕПОЗИТ", TEXT_1),
-        (f"{winrate:.1f}%", "ВИНРЕЙТ", GREEN if winrate >= 55 else RED if winrate < 45 else GOLD),
         (str(signals_received), "СИГНАЛОВ", TEXT_1),
     ]
-    card_w = (w - 60 * 2 - 30 * 3) // 4
+    card_w = (w - 60 * 2 - 30 * 2) // 3
     card_h = 180
     y = 200
     for i, (val, label, color) in enumerate(cards):
@@ -714,26 +710,6 @@ def make_stats_card(
         lw = d.textlength(label, font=f_label)
         d.text((x + (card_w - lw) // 2, y + 120), label, font=f_label, fill=TEXT_2)
 
-    # Win/Loss bar
-    bar_y = 460
-    bar_h = 28
-    bar_x = 60
-    bar_w = w - 120
-    d.rounded_rectangle(
-        [bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], radius=14, fill=_hex(BG_2)
-    )
-    if total:
-        wpx = int(bar_w * (wins / total))
-        d.rounded_rectangle(
-            [bar_x, bar_y, bar_x + wpx, bar_y + bar_h], radius=14, fill=_hex(GREEN)
-        )
-        d.rounded_rectangle(
-            [bar_x + wpx, bar_y, bar_x + bar_w, bar_y + bar_h], radius=14, fill=_hex(RED)
-        )
-    d.text((bar_x, bar_y - 36), f"Wins: {wins}", font=f_label, fill=GREEN)
-    losses_label = f"Losses: {losses}"
-    lw = d.textlength(losses_label, font=f_label)
-    d.text((bar_x + bar_w - lw, bar_y - 36), losses_label, font=f_label, fill=RED)
 
     _watermark(d, w, h)
     buf = io.BytesIO()

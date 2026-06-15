@@ -9,14 +9,8 @@ import { prisma } from "@/lib/prisma";
 import { getAccessReport } from "@/lib/access";
 import { TIER_LABELS, getTierThresholds } from "@/lib/tier";
 import { Card } from "@/components/ui/Card";
-import { Stat } from "@/components/ui/Stat";
 import { buildReferralLink } from "@/lib/pocketoption";
-import {
-  TrendingUp,
-  Activity,
-  Send,
-  CircleDot,
-} from "lucide-react";
+import { Activity } from "lucide-react";
 import { TierStrip } from "./_components/TierStrip";
 import { SignalRequestButton } from "./_components/SignalRequestButton";
 import { SignalHistoryList } from "./_components/SignalHistoryList";
@@ -44,11 +38,6 @@ export default async function SignalsPage() {
     orderBy: { createdAt: "desc" },
     take: 60,
   });
-
-  const wins = signals.filter((s) => s.result === "win").length;
-  const losses = signals.filter((s) => s.result === "loss").length;
-  const completed = wins + losses;
-  const winrate = completed > 0 ? Math.round((wins / completed) * 100) : 0;
 
   const depositTotal = poAccount?.totalDeposit
     ? Number(poAccount.totalDeposit)
@@ -161,39 +150,6 @@ export default async function SignalsPage() {
           )}
         </div>
       </Card>
-
-      {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat
-          icon={<Activity size={16} />}
-          label="Сегодня"
-          value={
-            dailyLimit == null
-              ? `${used}`
-              : `${used} / ${dailyLimit}`
-          }
-        />
-        <Stat
-          icon={<TrendingUp size={16} />}
-          label="Винрейт"
-          value={completed > 0 ? `${winrate}%` : "--"}
-          delta={
-            completed > 0
-              ? { value: `${wins}W / ${losses}L`, positive: winrate >= 60 }
-              : undefined
-          }
-        />
-        <Stat
-          icon={<Send size={16} />}
-          label="Всего получено"
-          value={signals.length.toString()}
-        />
-        <Stat
-          icon={<CircleDot size={16} />}
-          label="В работе"
-          value={signals.filter((s) => s.result === "pending").length.toString()}
-        />
-      </div>
 
       {/* Signal history */}
       <div>

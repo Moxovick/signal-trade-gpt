@@ -18,7 +18,6 @@ import {
   Mail,
   ShieldCheck,
   TrendingUp,
-  Trophy,
   Users,
   XCircle,
   Clock,
@@ -62,10 +61,6 @@ export default async function ProfilePage() {
     take: 500,
     orderBy: { createdAt: "desc" },
   });
-  const wins = signals.filter((s) => s.result === "win").length;
-  const losses = signals.filter((s) => s.result === "loss").length;
-  const completed = wins + losses;
-  const winrate = completed > 0 ? Math.round((wins / completed) * 100) : 0;
 
   const displayName =
     user.firstName ?? user.username ?? user.email?.split("@")[0] ?? "User";
@@ -148,11 +143,9 @@ export default async function ProfilePage() {
         </div>
 
         {/* Stats row */}
-        <div className="mt-5 pt-5 border-t border-[var(--b-soft)] grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="mt-5 pt-5 border-t border-[var(--b-soft)] grid grid-cols-2 gap-4">
           {[
             { icon: <TrendingUp size={14} />, label: "Сигналов", value: user.signalsReceived.toString() },
-            { icon: <Trophy size={14} />, label: "Побед", value: wins.toString() },
-            { icon: <Award size={14} />, label: "Винрейт", value: completed > 0 ? `${winrate}%` : "—" },
             { icon: <Users size={14} />, label: "Рефералов", value: user._count.referrals.toString() },
           ].map(({ icon, label, value }) => (
             <div key={label}>

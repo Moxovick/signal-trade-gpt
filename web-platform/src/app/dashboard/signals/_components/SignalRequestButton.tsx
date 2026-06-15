@@ -522,38 +522,61 @@ export function SignalRequestButton({
           </div>
         )}
 
-        {/* Tab navigation */}
-        <div className="flex gap-2">
+        {/* Tab navigation — prominent segmented control */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${tabs.length}, 1fr)`,
+            gap: 4,
+            padding: 4,
+            borderRadius: 14,
+            background: "var(--bg-2)",
+            border: "1px solid var(--b-soft)",
+          }}
+        >
           {tabs.map((band) => {
             const bm = BAND_META[band];
             const locked = (ALL_PAIRS.find((p) => p.band === band)?.minTier ?? 0) > tier;
             const active = activeTab === band;
+            const count = ALL_PAIRS.filter((p) => p.band === band).length;
             return (
               <button
                 key={band}
                 onClick={() => !locked && setActiveTab(band)}
                 disabled={locked}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold transition-all"
                 style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
+                  padding: "10px 8px",
+                  borderRadius: 10,
+                  fontWeight: 700,
+                  fontSize: 13,
+                  transition: "all 0.15s",
                   background: active ? `${bm.color}18` : "transparent",
                   color: active ? bm.color : locked ? "var(--t-3)" : "var(--t-2)",
-                  border: `1px solid ${active ? `${bm.color}35` : "var(--b-soft)"}`,
+                  border: active ? `1px solid ${bm.color}40` : "1px solid transparent",
                   cursor: locked ? "not-allowed" : "pointer",
                   opacity: locked ? 0.35 : 1,
                 }}
               >
-                {locked && <Lock size={10} />}
-                {bm.label}
-                <span className="opacity-50">{ALL_PAIRS.filter((p) => p.band === band).length}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  {locked && <Lock size={12} />}
+                  {bm.label}
+                </span>
+                <span style={{ fontSize: 10, opacity: 0.5, fontWeight: 500 }}>
+                  {count} пар
+                </span>
               </button>
             );
           })}
-          {remaining != null && (
-            <span className="ml-auto flex items-center text-[11px] text-[var(--t-3)]">
-              {remaining} осталось
-            </span>
-          )}
         </div>
+        {remaining != null && (
+          <div style={{ textAlign: "right", fontSize: 11, color: "var(--t-3)" }}>
+            {remaining} осталось
+          </div>
+        )}
 
         {/* Grouped pairs */}
         <div className="space-y-3">
@@ -567,12 +590,12 @@ export function SignalRequestButton({
                 <div className="flex-1 h-[1px] bg-[var(--b-soft)]" />
               </div>
 
-              {/* Pair grid — 2 columns on mobile, 3 on md+ */}
+              {/* Pair grid */}
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
-                  gap: "6px",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                  gap: "8px",
                 }}
               >
                 {group.items.map((p) => {
@@ -603,18 +626,18 @@ export function SignalRequestButton({
                         e.currentTarget.style.background = "var(--bg-1)";
                       }}
                     >
-                      <div className="flex items-center gap-2.5 px-3 py-2.5">
-                        <PairIcon pair={p} size={24} />
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        <PairIcon pair={p} size={30} />
                         <div className="flex-1 min-w-0">
                           <span
-                            className="font-semibold text-[12px] text-[var(--t-1)] block truncate"
+                            className="font-semibold text-sm text-[var(--t-1)] block truncate"
                             style={{ fontFamily: "var(--font-jetbrains)" }}
                           >
                             {p.display}
                           </span>
                           {payout != null && (
                             <span
-                              className="text-[10px] font-bold tabular-nums"
+                              className="text-[11px] font-bold tabular-nums"
                               style={{ color: payoutColor }}
                             >
                               +{payout}%
@@ -622,7 +645,7 @@ export function SignalRequestButton({
                           )}
                         </div>
                         <ChevronRight
-                          size={12}
+                          size={14}
                           className="shrink-0 text-[var(--t-3)] opacity-0 group-hover:opacity-60 transition-opacity"
                         />
                       </div>

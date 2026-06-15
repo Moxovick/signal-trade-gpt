@@ -101,17 +101,13 @@ async def btn_stats(message: Message) -> None:
     if user is None:
         await message.answer("Сначала /start.")
         return
-    total = user.wins + user.losses
-    winrate = (user.wins / total * 100) if total else 0.0
     from constants import TIER_NAMES
     level = TIER_NAMES.get(user.tier, "Free")
     caption = (
         "<b>📊 Твоя статистика</b>\n"
         "\n"
         f"<b>Уровень:</b> {level}  ·  <b>Депозит:</b> ${user.deposit_total:,.0f}\n"
-        f"<b>Сигналов получено:</b> {user.signals_received}\n"
-        f"<b>Wins / Losses:</b> {user.wins} / {user.losses}\n"
-        f"<b>Винрейт:</b> {winrate:.1f}%"
+        f"<b>Сигналов получено:</b> {user.signals_received}"
     )
     try:
         card = make_stats_card(
