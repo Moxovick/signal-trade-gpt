@@ -64,7 +64,7 @@ type PairInfo = {
 };
 
 const ALL_PAIRS: PairInfo[] = [
-  // OTC — tier 0
+  // ── OTC Currencies (tier 0) ──
   { name: "EUR/USD (OTC)", display: "EUR/USD", flag: "OTC", band: "otc", minTier: 0 },
   { name: "GBP/USD (OTC)", display: "GBP/USD", flag: "OTC", band: "otc", minTier: 0 },
   { name: "USD/JPY (OTC)", display: "USD/JPY", flag: "OTC", band: "otc", minTier: 0 },
@@ -73,19 +73,73 @@ const ALL_PAIRS: PairInfo[] = [
   { name: "USD/CHF (OTC)", display: "USD/CHF", flag: "OTC", band: "otc", minTier: 0 },
   { name: "NZD/USD (OTC)", display: "NZD/USD", flag: "OTC", band: "otc", minTier: 0 },
   { name: "EUR/JPY (OTC)", display: "EUR/JPY", flag: "OTC", band: "otc", minTier: 0 },
-  // Exchange — tier 1
+  { name: "AUD/CHF (OTC)", display: "AUD/CHF", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "AUD/NZD (OTC)", display: "AUD/NZD", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "EUR/CHF (OTC)", display: "EUR/CHF", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "GBP/JPY (OTC)", display: "GBP/JPY", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "USD/CAD (OTC)", display: "USD/CAD", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "CAD/JPY (OTC)", display: "CAD/JPY", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "GBP/AUD (OTC)", display: "GBP/AUD", flag: "OTC", band: "otc", minTier: 0 },
+  { name: "EUR/NZD (OTC)", display: "EUR/NZD", flag: "OTC", band: "otc", minTier: 0 },
+  // OTC Crypto
+  { name: "Bitcoin (OTC)", display: "BTC", flag: "Crypto", band: "otc", minTier: 0 },
+  { name: "Ethereum (OTC)", display: "ETH", flag: "Crypto", band: "otc", minTier: 0 },
+  { name: "Solana (OTC)", display: "SOL", flag: "Crypto", band: "otc", minTier: 0 },
+  { name: "Dogecoin (OTC)", display: "DOGE", flag: "Crypto", band: "otc", minTier: 0 },
+  { name: "Cardano (OTC)", display: "ADA", flag: "Crypto", band: "otc", minTier: 0 },
+  { name: "Toncoin (OTC)", display: "TON", flag: "Crypto", band: "otc", minTier: 0 },
+  { name: "BNB (OTC)", display: "BNB", flag: "Crypto", band: "otc", minTier: 0 },
+  { name: "Litecoin (OTC)", display: "LTC", flag: "Crypto", band: "otc", minTier: 0 },
+  // OTC Commodities
+  { name: "Gold (OTC)", display: "Gold", flag: "Commodity", band: "otc", minTier: 0 },
+  { name: "Silver (OTC)", display: "Silver", flag: "Commodity", band: "otc", minTier: 0 },
+  { name: "Brent Oil (OTC)", display: "Brent Oil", flag: "Commodity", band: "otc", minTier: 0 },
+  { name: "WTI Oil (OTC)", display: "WTI Oil", flag: "Commodity", band: "otc", minTier: 0 },
+  // OTC Stocks
+  { name: "Apple (OTC)", display: "AAPL", flag: "Stock", band: "otc", minTier: 0 },
+  { name: "Tesla (OTC)", display: "TSLA", flag: "Stock", band: "otc", minTier: 0 },
+  { name: "Amazon (OTC)", display: "AMZN", flag: "Stock", band: "otc", minTier: 0 },
+  { name: "Microsoft (OTC)", display: "MSFT", flag: "Stock", band: "otc", minTier: 0 },
+  { name: "Meta (OTC)", display: "META", flag: "Stock", band: "otc", minTier: 0 },
+  { name: "Netflix (OTC)", display: "NFLX", flag: "Stock", band: "otc", minTier: 0 },
+  // OTC Indices
+  { name: "S&P 500 (OTC)", display: "S&P 500", flag: "Index", band: "otc", minTier: 0 },
+  { name: "NASDAQ 100 (OTC)", display: "NASDAQ", flag: "Index", band: "otc", minTier: 0 },
+  { name: "Dow Jones (OTC)", display: "Dow Jones", flag: "Index", band: "otc", minTier: 0 },
+
+  // ── Exchange (tier 1) ──
   { name: "EUR/USD", display: "EUR/USD", flag: "", band: "exchange", minTier: 1 },
   { name: "GBP/USD", display: "GBP/USD", flag: "", band: "exchange", minTier: 1 },
   { name: "USD/JPY", display: "USD/JPY", flag: "", band: "exchange", minTier: 1 },
   { name: "AUD/USD", display: "AUD/USD", flag: "", band: "exchange", minTier: 1 },
   { name: "EUR/GBP", display: "EUR/GBP", flag: "", band: "exchange", minTier: 1 },
   { name: "USD/CHF", display: "USD/CHF", flag: "", band: "exchange", minTier: 1 },
-  // Elite — tier 2
-  { name: "AAPL", display: "AAPL", flag: "Stock", band: "elite", minTier: 2 },
-  { name: "TSLA", display: "TSLA", flag: "Stock", band: "elite", minTier: 2 },
-  { name: "GOLD", display: "GOLD", flag: "Commodity", band: "elite", minTier: 2 },
-  { name: "BTC/USD", display: "BTC/USD", flag: "Crypto", band: "elite", minTier: 2 },
-  { name: "ETH/USD", display: "ETH/USD", flag: "Crypto", band: "elite", minTier: 2 },
+  { name: "USD/CAD", display: "USD/CAD", flag: "", band: "exchange", minTier: 1 },
+  { name: "EUR/JPY", display: "EUR/JPY", flag: "", band: "exchange", minTier: 1 },
+  { name: "GBP/JPY", display: "GBP/JPY", flag: "", band: "exchange", minTier: 1 },
+  { name: "EUR/CHF", display: "EUR/CHF", flag: "", band: "exchange", minTier: 1 },
+  { name: "AUD/CAD", display: "AUD/CAD", flag: "", band: "exchange", minTier: 1 },
+  { name: "EUR/AUD", display: "EUR/AUD", flag: "", band: "exchange", minTier: 1 },
+  { name: "GBP/AUD", display: "GBP/AUD", flag: "", band: "exchange", minTier: 1 },
+  { name: "AUD/JPY", display: "AUD/JPY", flag: "", band: "exchange", minTier: 1 },
+  { name: "CAD/JPY", display: "CAD/JPY", flag: "", band: "exchange", minTier: 1 },
+  { name: "CHF/JPY", display: "CHF/JPY", flag: "", band: "exchange", minTier: 1 },
+
+  // ── Elite (tier 2) — Stocks, Crypto, Commodities, Indices ──
+  { name: "AAPL", display: "Apple", flag: "Stock", band: "elite", minTier: 2 },
+  { name: "TSLA", display: "Tesla", flag: "Stock", band: "elite", minTier: 2 },
+  { name: "AMZN", display: "Amazon", flag: "Stock", band: "elite", minTier: 2 },
+  { name: "MSFT", display: "Microsoft", flag: "Stock", band: "elite", minTier: 2 },
+  { name: "META", display: "Meta", flag: "Stock", band: "elite", minTier: 2 },
+  { name: "NFLX", display: "Netflix", flag: "Stock", band: "elite", minTier: 2 },
+  { name: "NVDA", display: "NVIDIA", flag: "Stock", band: "elite", minTier: 2 },
+  { name: "GOLD", display: "Gold", flag: "Commodity", band: "elite", minTier: 2 },
+  { name: "SILVER", display: "Silver", flag: "Commodity", band: "elite", minTier: 2 },
+  { name: "BTC/USD", display: "Bitcoin", flag: "Crypto", band: "elite", minTier: 2 },
+  { name: "ETH/USD", display: "Ethereum", flag: "Crypto", band: "elite", minTier: 2 },
+  { name: "SOL/USD", display: "Solana", flag: "Crypto", band: "elite", minTier: 2 },
+  { name: "SP500", display: "S&P 500", flag: "Index", band: "elite", minTier: 2 },
+  { name: "US100", display: "NASDAQ", flag: "Index", band: "elite", minTier: 2 },
 ];
 
 const EXPIRATIONS: Record<PairBand, { value: string; label: string }[]> = {

@@ -62,12 +62,32 @@ export default async function SignalsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page title */}
-      <div>
-        <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--brand-gold)] mb-1">
-          Торговые сигналы
-        </p>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Сигналы</h1>
+      {/* Page header with space-themed gradient */}
+      <div
+        className="relative -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 px-6 pt-8 pb-6 rounded-b-3xl overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, rgba(212,160,23,0.06) 0%, rgba(8,6,10,0.95) 40%, rgba(100,60,180,0.08) 100%)",
+        }}
+      >
+        {/* Decorative elements */}
+        <div
+          className="absolute top-4 right-12 w-2 h-2 rounded-full animate-pulse-gold"
+          style={{ background: "var(--brand-gold)", boxShadow: "0 0 8px rgba(212,160,23,0.6)" }}
+        />
+        <div
+          className="absolute top-16 right-32 w-1 h-1 rounded-full opacity-40"
+          style={{ background: "var(--brand-gold)" }}
+        />
+        <div
+          className="absolute bottom-8 right-20 w-1.5 h-1.5 rounded-full opacity-30 animate-float"
+          style={{ background: "#8888ff" }}
+        />
+        <div className="relative">
+          <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--brand-gold)] mb-1">
+            Торговые сигналы
+          </p>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Сигналы</h1>
+        </div>
       </div>
 
       {/* Tier strip */}
@@ -80,8 +100,15 @@ export default async function SignalsPage() {
       />
 
       {/* Signal request CTA */}
-      <Card padding="lg">
-        <div className="flex flex-col items-center text-center py-4">
+      <Card padding="lg" className="relative overflow-hidden">
+        {/* Subtle radial glow behind content */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(212,160,23,0.04) 0%, transparent 70%)",
+          }}
+        />
+        <div className="relative flex flex-col items-center text-center py-4">
           {/* Daily limit indicator */}
           <div className="mb-4">
             {dailyLimit != null ? (

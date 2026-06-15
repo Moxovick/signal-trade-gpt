@@ -20,13 +20,25 @@ const PAIRS: Record<SignalBand, string[]> = {
   otc: [
     "EUR/USD (OTC)", "GBP/USD (OTC)", "USD/JPY (OTC)", "AUD/USD (OTC)",
     "EUR/GBP (OTC)", "USD/CHF (OTC)", "NZD/USD (OTC)", "EUR/JPY (OTC)",
+    "AUD/CHF (OTC)", "AUD/NZD (OTC)", "EUR/CHF (OTC)", "GBP/JPY (OTC)",
+    "USD/CAD (OTC)", "CAD/JPY (OTC)", "GBP/AUD (OTC)", "EUR/NZD (OTC)",
+    "Bitcoin (OTC)", "Ethereum (OTC)", "Solana (OTC)", "Dogecoin (OTC)",
+    "Cardano (OTC)", "Toncoin (OTC)", "BNB (OTC)", "Litecoin (OTC)",
+    "Gold (OTC)", "Silver (OTC)", "Brent Oil (OTC)", "WTI Oil (OTC)",
+    "Apple (OTC)", "Tesla (OTC)", "Amazon (OTC)", "Microsoft (OTC)",
+    "Meta (OTC)", "Netflix (OTC)",
+    "S&P 500 (OTC)", "NASDAQ 100 (OTC)", "Dow Jones (OTC)",
   ],
   exchange: [
     "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD",
-    "EUR/GBP", "USD/CHF",
+    "EUR/GBP", "USD/CHF", "USD/CAD", "EUR/JPY",
+    "GBP/JPY", "EUR/CHF", "AUD/CAD", "EUR/AUD",
+    "GBP/AUD", "AUD/JPY", "CAD/JPY", "CHF/JPY",
   ],
   elite: [
-    "EUR/USD", "GBP/USD", "USD/JPY", "AAPL", "TSLA", "GOLD",
+    "AAPL", "TSLA", "AMZN", "MSFT", "META", "NFLX", "NVDA",
+    "GOLD", "SILVER", "BTC/USD", "ETH/USD", "SOL/USD",
+    "SP500", "US100",
   ],
 };
 
