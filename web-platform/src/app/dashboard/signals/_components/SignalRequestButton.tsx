@@ -399,65 +399,86 @@ export function SignalRequestButton({
         </div>
 
         {/* Pair grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {activePairs.map((p) => {
             const locked = p.minTier > tier;
             const meta = BAND_META[p.band];
+            const shortCode = p.display.split("/")[0] ?? p.display.slice(0, 3);
             return (
               <button
                 key={p.name}
                 onClick={() => handlePairSelect(p)}
                 disabled={locked}
-                className="relative flex flex-col items-center gap-2 rounded-2xl px-3 py-4 transition-all group overflow-hidden"
+                className="relative group rounded-xl transition-all duration-200 overflow-hidden"
                 style={{
-                  background: "var(--bg-1)",
-                  border: "1px solid var(--b-soft)",
                   cursor: locked ? "not-allowed" : "pointer",
-                  opacity: locked ? 0.35 : 1,
+                  opacity: locked ? 0.3 : 1,
                 }}
               >
-                {/* Subtle radial glow on hover */}
+                {/* Card body */}
                 <div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                  className="flex items-center gap-3 px-3.5 py-3 rounded-xl border transition-all duration-200"
                   style={{
-                    background: `radial-gradient(circle at 50% 30%, ${meta.color}12 0%, transparent 70%)`,
+                    background: "rgba(16,12,16,0.7)",
+                    backdropFilter: "blur(8px)",
+                    borderColor: "rgba(255,255,255,0.06)",
                   }}
-                />
-
-                {/* Currency code badge */}
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold relative"
-                  style={{
-                    background: meta.bg,
-                    color: meta.color,
-                    fontFamily: "var(--font-jetbrains)",
-                    border: `1px solid ${meta.color}20`,
+                  onMouseEnter={(e) => {
+                    if (locked) return;
+                    e.currentTarget.style.borderColor = `${meta.color}40`;
+                    e.currentTarget.style.background = "rgba(20,16,24,0.85)";
+                    e.currentTarget.style.boxShadow = `0 0 20px ${meta.color}10, inset 0 1px 0 ${meta.color}15`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
+                    e.currentTarget.style.background = "rgba(16,12,16,0.7)";
+                    e.currentTarget.style.boxShadow = "none";
                   }}
                 >
-                  {p.display.split("/")[0]}
+                  {/* Compact code badge */}
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
+                    style={{
+                      background: `linear-gradient(135deg, ${meta.color}18, ${meta.color}08)`,
+                      color: meta.color,
+                      fontFamily: "var(--font-jetbrains)",
+                      border: `1px solid ${meta.color}20`,
+                    }}
+                  >
+                    {shortCode}
+                  </div>
+
+                  {/* Text info */}
+                  <div className="flex flex-col items-start min-w-0">
+                    <span
+                      className="font-semibold text-[13px] text-[var(--t-1)] truncate w-full group-hover:text-[var(--brand-gold-bright)] transition-colors"
+                      style={{ fontFamily: "var(--font-jetbrains)" }}
+                    >
+                      {p.display}
+                    </span>
+                    {p.flag && (
+                      <span
+                        className="text-[9px] font-medium uppercase tracking-wider mt-0.5"
+                        style={{ color: `${meta.color}aa` }}
+                      >
+                        {p.flag}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Chevron */}
+                  {!locked && (
+                    <ChevronRight
+                      size={14}
+                      className="ml-auto shrink-0 text-[var(--t-3)] opacity-0 group-hover:opacity-60 transition-opacity"
+                    />
+                  )}
                 </div>
 
-                {/* Pair name */}
-                <span
-                  className="font-semibold text-sm text-[var(--t-1)] group-hover:text-[var(--brand-gold)] transition-colors relative"
-                  style={{ fontFamily: "var(--font-jetbrains)" }}
-                >
-                  {p.display}
-                </span>
-
-                {/* Tag */}
-                {p.flag && (
-                  <span
-                    className="text-[9px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider relative"
-                    style={{ color: meta.color, background: meta.bg }}
-                  >
-                    {p.flag}
-                  </span>
-                )}
-
+                {/* Lock overlay */}
                 {locked && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-0)]/60 backdrop-blur-sm rounded-2xl">
-                    <Lock size={18} className="text-[var(--t-3)]" />
+                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-[var(--bg-0)]/50 backdrop-blur-[2px]">
+                    <Lock size={15} className="text-[var(--t-3)]" />
                   </div>
                 )}
               </button>
