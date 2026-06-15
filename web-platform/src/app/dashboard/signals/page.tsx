@@ -84,13 +84,31 @@ export default async function SignalsPage() {
       />
 
       {/* Signal request CTA */}
-      <Card padding="lg" className="relative overflow-hidden">
-        {/* Subtle radial glow behind content */}
+      <Card padding="lg" className="relative overflow-hidden"
+        style={{
+          background: "linear-gradient(180deg, rgba(16,12,20,1) 0%, rgba(12,10,18,1) 40%, rgba(16,12,20,1) 100%)",
+          backgroundImage: `
+            linear-gradient(180deg, rgba(16,12,20,1) 0%, rgba(12,10,18,1) 40%, rgba(16,12,20,1) 100%),
+            radial-gradient(ellipse 70% 50% at 50% 0%, rgba(100,60,180,0.07) 0%, transparent 60%),
+            radial-gradient(ellipse 50% 40% at 80% 100%, rgba(212,160,23,0.05) 0%, transparent 60%)
+          `,
+        }}
+      >
+        {/* Grid pattern overlay */}
         <div
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-0 pointer-events-none opacity-[0.03]"
           style={{
-            background: "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(212,160,23,0.04) 0%, transparent 70%)",
+            backgroundImage: `
+              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+            `,
+            backgroundSize: "40px 40px",
           }}
+        />
+        {/* Top edge glow */}
+        <div
+          className="absolute top-0 left-[10%] right-[10%] h-[1px] pointer-events-none"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(212,160,23,0.25), transparent)" }}
         />
         <div className="relative flex flex-col items-center text-center py-4">
           {/* Daily limit indicator */}

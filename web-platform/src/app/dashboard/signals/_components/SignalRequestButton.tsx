@@ -419,17 +419,17 @@ export function SignalRequestButton({
                   className="flex items-center gap-3 px-3.5 py-3.5 rounded-xl border transition-all duration-200"
                   style={{
                     background: `linear-gradient(135deg, ${meta.color}0a 0%, rgba(16,12,16,0.85) 60%, ${meta.color}06 100%)`,
-                    borderColor: `${meta.color}15`,
+                    borderColor: `${meta.color}22`,
                   }}
                   onMouseEnter={(e) => {
                     if (locked) return;
-                    e.currentTarget.style.borderColor = `${meta.color}45`;
-                    e.currentTarget.style.background = `linear-gradient(135deg, ${meta.color}14 0%, rgba(20,16,24,0.9) 50%, ${meta.color}0c 100%)`;
-                    e.currentTarget.style.boxShadow = `0 4px 24px ${meta.color}12`;
+                    e.currentTarget.style.borderColor = `${meta.color}50`;
+                    e.currentTarget.style.background = `linear-gradient(135deg, ${meta.color}18 0%, rgba(20,16,24,0.92) 50%, ${meta.color}10 100%)`;
+                    e.currentTarget.style.boxShadow = `0 4px 20px ${meta.color}15, inset 0 1px 0 ${meta.color}12`;
                     e.currentTarget.style.transform = "translateY(-1px)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = `${meta.color}15`;
+                    e.currentTarget.style.borderColor = `${meta.color}22`;
                     e.currentTarget.style.background = `linear-gradient(135deg, ${meta.color}0a 0%, rgba(16,12,16,0.85) 60%, ${meta.color}06 100%)`;
                     e.currentTarget.style.boxShadow = "none";
                     e.currentTarget.style.transform = "translateY(0)";
