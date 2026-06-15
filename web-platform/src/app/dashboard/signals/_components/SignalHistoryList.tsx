@@ -41,8 +41,14 @@ const TIER_BAND_LABELS: Record<string, { label: string; color: string; bg: strin
 };
 
 
+const PAGE_SIZE = 10;
+
 export function SignalHistoryList({ signals }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const visibleSignals = signals.slice(0, visibleCount);
+  const hasMore = visibleCount < signals.length;
 
   function toggle(id: string, tier: string, chartData: ChartData | null) {
     // OTC signals have no real chart — don't expand them
@@ -52,7 +58,7 @@ export function SignalHistoryList({ signals }: Props) {
 
   return (
     <div className="space-y-2">
-      {signals.map((s, idx) => {
+      {visibleSignals.map((s, idx) => {
         const isCall = s.direction === "CALL";
         const conf = Number(s.confidence ?? 0);
         const band = TIER_BAND_LABELS[s.tier];
@@ -311,6 +317,22 @@ export function SignalHistoryList({ signals }: Props) {
           </div>
         );
       })}
+
+      {signals.length > PAGE_SIZE && (
+        <div className="flex flex-col items-center gap-2 pt-3">
+          <span className="text-[12px] text-[var(--t-3)]">
+            Показано {Math.min(visibleCount, signals.length)} из {signals.length}
+          </span>
+          {hasMore && (
+            <button
+              onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+              className="text-[13px] text-[var(--t-2)] hover:text-[var(--t-1)] border border-[var(--b-soft)] hover:border-[var(--b-hard)] rounded-lg px-5 py-2 transition-colors bg-transparent"
+            >
+              Показать ещё
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

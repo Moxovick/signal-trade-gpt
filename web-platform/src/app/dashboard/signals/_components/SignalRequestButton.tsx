@@ -11,7 +11,6 @@ import {
   ArrowLeft,
   RefreshCw,
   Lock,
-  ChevronRight,
   Search,
   BarChart3,
   Shield,
@@ -397,6 +396,7 @@ export function SignalRequestButton({
     if (p.minTier > tier) return;
     setSelectedPair(p);
     setStep("expiration");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function handleExpirationSelect(exp: string) {
@@ -482,9 +482,9 @@ export function SignalRequestButton({
   // ─── Render: limit reached ───
   if (limitReached) {
     return (
-      <div className="w-full max-w-2xl space-y-4">
+      <div className="w-full space-y-4">
         <div
-          className="w-full h-14 rounded-2xl font-bold text-base flex items-center justify-center"
+          className="w-full h-14 font-bold text-base flex items-center justify-center"
           style={{ background: "var(--bg-2)", color: "var(--t-3)" }}
         >
           Лимит исчерпан на сегодня
@@ -511,14 +511,24 @@ export function SignalRequestButton({
     const groups = groupByFlag(activePairs);
 
     return (
-      <div className="w-full max-w-2xl space-y-4">
+      <div className="w-full" style={{ minWidth: 0 }}>
         {error && (
-          <div className="px-4 py-3 rounded-xl text-sm border border-red-500/20 bg-red-500/5 text-red-400 text-center">
+          <div
+            style={{
+              padding: "10px 16px",
+              fontSize: 13,
+              border: "1px solid rgba(239,68,68,0.2)",
+              background: "rgba(239,68,68,0.05)",
+              color: "#f87171",
+              textAlign: "center",
+              marginBottom: 12,
+            }}
+          >
             {error}
           </div>
         )}
 
-        {/* Tabs — underline style, not pills */}
+        {/* Tabs — underline style */}
         <div style={{ display: "flex", borderBottom: "1px solid var(--b-soft)", gap: 0 }}>
           {tabs.map((band) => {
             const bm = BAND_META[band];
@@ -555,19 +565,56 @@ export function SignalRequestButton({
             );
           })}
         </div>
-        {remaining != null && (
-          <div style={{ textAlign: "right", fontSize: 11, color: "var(--t-3)", marginTop: 4 }}>
-            {remaining} осталось
-          </div>
-        )}
 
-        {/* Pair table — flat rows, no cards */}
+        {/* Column header row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            padding: "8px 8px 6px",
+            fontSize: 10,
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            color: "var(--t-3)",
+            borderBottom: "1px solid var(--b-soft)",
+          }}
+        >
+          <span style={{ flex: 1 }}>Актив</span>
+          <span style={{ width: 56, textAlign: "right" }}>Выплата</span>
+          {remaining != null && (
+            <span style={{ marginLeft: 12, fontSize: 10, color: "var(--t-3)" }}>
+              {remaining} осталось
+            </span>
+          )}
+        </div>
+
+        {/* Pair grid — multi-column, compact, data-dense */}
         {groups.map((group) => (
           <div key={group.flag}>
-            <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--t-3)", padding: "8px 0 4px" }}>
+            {/* Subtle group divider */}
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.1em",
+                color: "var(--t-3)",
+                padding: "10px 8px 4px",
+                borderBottom: "1px solid var(--b-soft)",
+              }}
+            >
               {group.label}
             </div>
-            <div style={{ borderTop: "1px solid var(--b-soft)" }}>
+
+            {/* Grid: 2 cols on small, 3 cols on wider */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                gap: 0,
+              }}
+            >
               {group.items.map((p) => {
                 const locked = p.minTier > tier;
                 const payout = PAIR_PAYOUTS[p.name];
@@ -578,30 +625,34 @@ export function SignalRequestButton({
                     key={p.name}
                     onClick={() => handlePairSelect(p)}
                     disabled={locked}
-                    className="group"
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 12,
+                      gap: 8,
                       width: "100%",
                       textAlign: "left",
-                      padding: "10px 4px",
+                      padding: "8px 8px",
                       borderBottom: "1px solid var(--b-soft)",
+                      borderRight: "1px solid var(--b-soft)",
                       background: "transparent",
                       cursor: locked ? "not-allowed" : "pointer",
                       opacity: locked ? 0.35 : 1,
-                      transition: "background 0.1s",
+                      transition: "background 0.08s",
                       position: "relative",
                     }}
-                    onMouseEnter={(e) => { if (!locked) e.currentTarget.style.background = "var(--bg-2)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    onMouseEnter={(e) => {
+                      if (!locked) e.currentTarget.style.background = "var(--bg-2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                    }}
                   >
-                    <PairIcon pair={p} size={28} />
+                    <PairIcon pair={p} size={24} />
                     <span
                       style={{
                         flex: 1,
                         fontWeight: 600,
-                        fontSize: 14,
+                        fontSize: 13,
                         color: "var(--t-1)",
                         fontFamily: "var(--font-jetbrains)",
                         overflow: "hidden",
@@ -612,22 +663,31 @@ export function SignalRequestButton({
                       {p.display}
                     </span>
                     {payout != null && (
-                      <span style={{ fontSize: 12, fontWeight: 700, color: payoutColor, fontFamily: "var(--font-jetbrains)" }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: payoutColor,
+                          fontFamily: "var(--font-jetbrains)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         +{payout}%
                       </span>
                     )}
-                    <ChevronRight
-                      size={14}
-                      className="shrink-0"
-                      style={{ color: "var(--t-3)", opacity: 0.3 }}
-                    />
                     {locked && (
-                      <div style={{
-                        position: "absolute", inset: 0,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)",
-                      }}>
-                        <Lock size={14} style={{ color: "var(--t-3)" }} />
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: "rgba(0,0,0,0.55)",
+                          backdropFilter: "blur(2px)",
+                        }}
+                      >
+                        <Lock size={13} style={{ color: "var(--t-3)" }} />
                       </div>
                     )}
                   </button>
@@ -646,7 +706,7 @@ export function SignalRequestButton({
     const bandMeta = BAND_META[selectedPair.band];
 
     return (
-      <div className="w-full max-w-2xl space-y-5">
+      <div className="w-full max-w-xl space-y-5">
         {/* Header with back + selected pair */}
         <div className="flex items-center gap-3">
           <button
@@ -716,7 +776,7 @@ export function SignalRequestButton({
   // ─── Render: Step 3 — Analysis animation ───
   if (step === "analysis") {
     return (
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-xl">
         {/* Header */}
         <div className="text-center mb-6">
           <div
@@ -817,7 +877,7 @@ export function SignalRequestButton({
     const hasChart = !isOtc && lastSignal.chartData && lastSignal.chartData.candles.length > 0;
 
     return (
-      <div className="w-full max-w-2xl space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="w-full max-w-xl space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
         {/* OTC → decorative visual, non-OTC → chart card */}
         {isOtc ? (
           <OtcSignalVisual

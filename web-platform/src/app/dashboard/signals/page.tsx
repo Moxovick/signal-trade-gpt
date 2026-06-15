@@ -72,48 +72,42 @@ export default async function SignalsPage() {
         signalsRemaining={remaining}
       />
 
-      {/* Signal request CTA */}
-      <Card padding="lg" className="relative overflow-hidden">
-        <div className="relative flex flex-col items-center text-center py-4">
-          {/* Daily limit indicator */}
-          <div className="mb-4">
-            {dailyLimit != null ? (
-              <div className="flex items-center gap-2 text-sm text-[var(--t-2)]">
-                <Activity size={16} className="text-[var(--brand-gold)]" />
-                <span>
-                  Использовано{" "}
-                  <span className="font-bold text-[var(--t-1)]">{used}</span>
-                  {" "}из{" "}
-                  <span className="font-bold text-[var(--t-1)]">{dailyLimit}</span>
-                  {" "}сигналов сегодня
-                </span>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-1">
-                <div className="flex items-center gap-2 text-sm text-[var(--t-2)]">
-                  <Activity size={16} className="text-[var(--brand-gold)]" />
-                  <span>
-                    Получено сегодня:{" "}
-                    <span className="font-bold text-[var(--t-1)]">{used}</span>
-                  </span>
-                </div>
-                <span
-                  className="text-[10px] font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full"
-                  style={{
-                    background: "rgba(212,160,23,0.12)",
-                    color: "var(--brand-gold)",
-                  }}
-                >
-                  Безлимитный доступ
-                </span>
-              </div>
-            )}
-          </div>
+      {/* Signal request — daily usage bar + pair picker (no Card wrapper) */}
+      <div>
+        <div style={{ marginBottom: 12 }}>
+          {dailyLimit != null ? (
+            <div className="flex items-center gap-2 text-sm text-[var(--t-2)]">
+              <Activity size={16} className="text-[var(--brand-gold)]" />
+              <span>
+                Использовано{" "}
+                <span className="font-bold text-[var(--t-1)]">{used}</span>
+                {" "}из{" "}
+                <span className="font-bold text-[var(--t-1)]">{dailyLimit}</span>
+                {" "}сигналов сегодня
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-[var(--t-2)]">
+              <Activity size={16} className="text-[var(--brand-gold)]" />
+              <span>
+                Получено сегодня:{" "}
+                <span className="font-bold text-[var(--t-1)]">{used}</span>
+              </span>
+              <span
+                className="text-[10px] font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full"
+                style={{
+                  background: "rgba(212,160,23,0.12)",
+                  color: "var(--brand-gold)",
+                }}
+              >
+                Безлимит
+              </span>
+            </div>
+          )}
 
-          {/* Progress bar for daily limit */}
           {dailyLimit != null && (
-            <div className="w-full max-w-xs mb-4">
-              <div className="h-2 rounded-full bg-[var(--bg-2)] overflow-hidden">
+            <div style={{ maxWidth: 320, marginTop: 8 }}>
+              <div className="h-1.5 rounded-full bg-[var(--bg-2)] overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -126,30 +120,30 @@ export default async function SignalsPage() {
               </div>
             </div>
           )}
-
-          <SignalRequestButton
-            limitReached={limitReached}
-            remaining={remaining}
-            tierLabel={tierLabel}
-            referralUrl={referralUrl}
-            tier={tier}
-          />
-
-          {limitReached && (
-            <div className="mt-3 space-y-1">
-              <p className="text-sm text-[var(--red)]">
-                Лимит исчерпан
-              </p>
-              <p className="text-xs text-[var(--t-3)]">
-                Лимит обновится в 00:00 UTC.
-                {tier < 2 && (
-                  <>{" "}Или повысьте уровень для увеличения лимита.</>
-                )}
-              </p>
-            </div>
-          )}
         </div>
-      </Card>
+
+        <SignalRequestButton
+          limitReached={limitReached}
+          remaining={remaining}
+          tierLabel={tierLabel}
+          referralUrl={referralUrl}
+          tier={tier}
+        />
+
+        {limitReached && (
+          <div className="mt-3 space-y-1">
+            <p className="text-sm text-[var(--red)]">
+              Лимит исчерпан
+            </p>
+            <p className="text-xs text-[var(--t-3)]">
+              Лимит обновится в 00:00 UTC.
+              {tier < 2 && (
+                <>{" "}Или повысьте уровень для увеличения лимита.</>
+              )}
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Signal history */}
       <div>

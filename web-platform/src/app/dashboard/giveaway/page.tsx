@@ -1,370 +1,292 @@
 /**
- * Dashboard — Бонусы и награды.
+ * Dashboard — Бонусы и награды (v3).
  *
- * Shows deposit milestones: what the user has unlocked and what's next.
- * Prizes are admin-managed in /admin/giveaway.
+ * Clean table-based layout showing deposit milestones and tier rewards.
  */
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/Card";
 import {
   Gift,
   Lock,
   CheckCircle2,
-  ChevronRight,
-  TrendingUp,
   Zap,
+  TrendingUp,
   Star,
-  Trophy,
-  Crown,
+  ArrowRight,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
-const TIER_META: Record<number, { name: string; color: string; bg: string }> = {
-  0: { name: "Free", color: "#b6a586", bg: "rgba(110,96,76,0.12)" },
-  1: { name: "Basic", color: "#8888ff", bg: "rgba(136,136,255,0.10)" },
-  2: { name: "Pro", color: "#d4a017", bg: "rgba(212,160,23,0.10)" },
+const TIER_META: Record<number, { name: string; color: string; req: string }> = {
+  0: { name: "Free", color: "#b6a586", req: "Регистрация на PO" },
+  1: { name: "Basic", color: "#8888ff", req: "Депозит от $20" },
+  2: { name: "Pro", color: "#d4a017", req: "Депозит от $100" },
 };
+
+const TIER_ICONS = [Zap, TrendingUp, Star];
+const thresholds: Record<number, number> = { 0: 0, 1: 20, 2: 100 };
 
 export default async function DashboardBonusesPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
-  const [account, prizes, topProUsers] = await Promise.all([
+  const [account, prizes] = await Promise.all([
     prisma.pocketOptionAccount.findUnique({ where: { userId } }),
     prisma.prize.findMany({
       where: { isActive: true },
       orderBy: [{ tier: "asc" }, { position: "asc" }],
     }),
-    prisma.user.findMany({
-      where: { tier: { gte: 2 }, role: { not: "admin" } },
-      orderBy: [{ signalsReceived: "desc" }],
-      take: 3,
-      select: { id: true, firstName: true, username: true, signalsReceived: true },
-    }),
   ]);
 
   const totalDeposit = account?.totalDeposit ? Number(account.totalDeposit) : 0;
-
-  // Group by tier (0, 1, 2)
-  const grouped = new Map<number, typeof prizes>();
-  for (const p of prizes) {
-    const t = Math.min(p.tier, 2); // clamp to 3-tier model
-    if (!grouped.has(t)) grouped.set(t, []);
-    grouped.get(t)!.push(p);
-  }
-  const tiers = [0, 1, 2];
-
-  // Current and next tier
   const userTier = totalDeposit >= 100 ? 2 : totalDeposit >= 20 ? 1 : 0;
   const nextTier = userTier < 2 ? userTier + 1 : null;
-  const thresholds: Record<number, number> = { 0: 0, 1: 20, 2: 100 };
   const nextThreshold = nextTier !== null ? thresholds[nextTier] : null;
   const gap = nextThreshold !== null ? Math.max(0, nextThreshold - totalDeposit) : 0;
   const progressPct = nextThreshold !== null
     ? Math.min(100, Math.round((totalDeposit / nextThreshold) * 100))
     : 100;
 
-  const TIER_ICONS = [Zap, TrendingUp, Star];
+  // Group prizes by tier
+  const grouped = new Map<number, typeof prizes>();
+  for (const p of prizes) {
+    const t = Math.min(p.tier, 2);
+    if (!grouped.has(t)) grouped.set(t, []);
+    grouped.get(t)!.push(p);
+  }
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
       {/* Header */}
       <div>
-        <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--brand-gold)] mb-1">
-          Бонусная программа
-        </p>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-          Бонусы и награды
-        </h1>
-        <p className="text-sm text-[var(--t-2)] mt-2 max-w-lg">
-          Депозит на PocketOption открывает доступ к бонусам.
-          Чем выше уровень — тем больше привилегий.
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+          <Gift size={20} style={{ color: "var(--brand-gold)" }} />
+          <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>Бонусы и награды</h1>
+        </div>
+        <p style={{ fontSize: "13px", color: "var(--t-2)", margin: "4px 0 0 0" }}>
+          Депозит на PocketOption открывает доступ к бонусам. Чем выше уровень — тем больше привилегий.
         </p>
       </div>
 
-      {/* Progress card */}
-      <Card padding="lg">
-        <div className="flex flex-col md:flex-row md:items-center gap-6">
-          {/* Current status */}
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-3">
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{
-                  background: TIER_META[userTier].bg,
-                  border: `1px solid ${TIER_META[userTier].color}30`,
-                }}
-              >
-                <Gift size={22} style={{ color: TIER_META[userTier].color }} />
-              </div>
-              <div>
-                <div className="text-xs text-[var(--t-3)] uppercase tracking-wider">
-                  Твой уровень
-                </div>
-                <div className="text-lg font-bold" style={{ color: TIER_META[userTier].color }}>
-                  {TIER_META[userTier].name}
-                </div>
-              </div>
+      {/* Progress bar */}
+      <div
+        style={{
+          background: "var(--bg-1)",
+          border: "1px solid var(--b-soft)",
+          borderRadius: "8px",
+          padding: "20px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+          <div>
+            <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--t-3)", marginBottom: "4px" }}>
+              Текущий уровень
             </div>
-            <div
-              className="text-2xl font-bold"
-              style={{ fontFamily: "var(--font-jetbrains)" }}
-            >
-              ${totalDeposit.toLocaleString()}
-              <span className="text-sm font-normal text-[var(--t-3)] ml-2">
-                общий депозит
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "18px", fontWeight: 700, color: TIER_META[userTier].color }}>
+                {TIER_META[userTier].name}
+              </span>
+              <span style={{ fontSize: "14px", fontWeight: 600, fontFamily: "var(--font-jetbrains)", color: "var(--t-2)" }}>
+                ${totalDeposit.toLocaleString()}
               </span>
             </div>
           </div>
 
-          {/* Progress to next tier */}
           {nextTier !== null && nextThreshold !== null ? (
-            <div className="md:w-72 w-full">
-              <div className="flex items-center justify-between text-xs text-[var(--t-3)] mb-2">
-                <span>
-                  До уровня{" "}
-                  <span style={{ color: TIER_META[nextTier].color, fontWeight: 600 }}>
-                    {TIER_META[nextTier].name}
-                  </span>
-                </span>
-                <span
-                  className="font-semibold"
-                  style={{ fontFamily: "var(--font-jetbrains)", color: "var(--brand-gold)" }}
-                >
-                  ${gap}
-                </span>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: "11px", color: "var(--t-3)", marginBottom: "2px" }}>
+                До <span style={{ color: TIER_META[nextTier].color, fontWeight: 600 }}>{TIER_META[nextTier].name}</span>
               </div>
-              <div className="h-2 rounded-full bg-[var(--bg-2)] overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{
-                    width: `${progressPct}%`,
-                    background: "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
-                  }}
-                />
-              </div>
-              <div
-                className="mt-1.5 text-[10px] text-[var(--t-3)] flex justify-between"
-                style={{ fontFamily: "var(--font-jetbrains)" }}
-              >
-                <span>${totalDeposit}</span>
-                <span>${nextThreshold}</span>
+              <div style={{ fontSize: "16px", fontWeight: 700, fontFamily: "var(--font-jetbrains)", color: "var(--brand-gold)" }}>
+                ${gap}
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-sm" style={{ color: "var(--green)" }}>
-              <CheckCircle2 size={16} />
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--green)" }}>
+              <CheckCircle2 size={14} />
               Максимальный уровень
             </div>
           )}
         </div>
-      </Card>
 
-      {/* Tier rewards */}
-      <div className="space-y-4">
-        {tiers.map((t) => {
-          const tierPrizes = grouped.get(t) ?? [];
-          const meta = TIER_META[t];
-          const isUnlocked = userTier >= t;
-          const isCurrent = userTier === t;
-          const TierIcon = TIER_ICONS[t];
+        {/* Bar */}
+        <div style={{ height: "6px", borderRadius: "3px", background: "var(--bg-2)", overflow: "hidden" }}>
+          <div
+            style={{
+              height: "100%",
+              borderRadius: "3px",
+              width: `${progressPct}%`,
+              background: "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+              transition: "width 0.7s ease",
+            }}
+          />
+        </div>
+        {nextThreshold !== null && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "10px",
+              fontFamily: "var(--font-jetbrains)",
+              color: "var(--t-3)",
+              marginTop: "4px",
+            }}
+          >
+            <span>${totalDeposit}</span>
+            <span>${nextThreshold}</span>
+          </div>
+        )}
+      </div>
 
-          return (
+      {/* Tier sections */}
+      {[0, 1, 2].map((t) => {
+        const tierPrizes = grouped.get(t) ?? [];
+        const meta = TIER_META[t];
+        const isUnlocked = userTier >= t;
+        const TierIcon = TIER_ICONS[t];
+
+        return (
+          <div
+            key={t}
+            style={{
+              background: "var(--bg-1)",
+              border: `1px solid ${isUnlocked && userTier === t ? meta.color + "40" : "var(--b-soft)"}`,
+              borderRadius: "8px",
+              overflow: "hidden",
+              opacity: isUnlocked ? 1 : 0.5,
+            }}
+          >
+            {/* Tier header row */}
             <div
-              key={t}
-              className="rounded-2xl border overflow-hidden transition-opacity"
               style={{
-                borderColor: isCurrent ? `${meta.color}40` : "var(--b-soft)",
-                background: isCurrent ? meta.bg : "var(--bg-1)",
-                opacity: isUnlocked ? 1 : 0.55,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "12px 16px",
+                borderBottom: tierPrizes.length > 0 ? "1px solid var(--b-soft)" : "none",
+                background: isUnlocked && userTier === t ? meta.color + "08" : "transparent",
               }}
             >
-              {/* Tier header */}
-              <div className="flex items-center gap-3 px-5 py-4">
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center"
-                  style={{ background: meta.bg, color: meta.color }}
-                >
-                  <TierIcon size={18} />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold" style={{ color: meta.color }}>
-                      {meta.name}
-                    </span>
-                    <span className="text-xs text-[var(--t-3)]">
-                      {t === 0 ? "Регистрация на PO" : `от $${thresholds[t]} депозита`}
-                    </span>
-                  </div>
-                </div>
-                {isUnlocked ? (
-                  <div className="flex items-center gap-1.5 text-xs" style={{ color: "var(--green)" }}>
-                    <CheckCircle2 size={14} />
-                    <span className="hidden sm:inline">Открыто</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-xs text-[var(--t-3)]">
-                    <Lock size={14} />
-                    <span className="hidden sm:inline">Заблокировано</span>
-                  </div>
-                )}
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <TierIcon size={16} style={{ color: meta.color }} />
+                <span style={{ fontSize: "14px", fontWeight: 600, color: meta.color }}>{meta.name}</span>
+                <span style={{ fontSize: "11px", color: "var(--t-3)" }}>{meta.req}</span>
               </div>
-
-              {/* Prizes list */}
-              {tierPrizes.length > 0 ? (
-                <div className="border-t border-[var(--b-soft)]">
-                  {tierPrizes.map((p, idx) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center gap-4 px-5 py-3.5"
-                      style={{
-                        borderTop: idx > 0 ? "1px solid var(--b-soft)" : "none",
-                      }}
-                    >
-                      <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                        style={{
-                          background: isUnlocked ? "rgba(212,160,23,0.08)" : "var(--bg-2)",
-                        }}
-                      >
-                        <Gift
-                          size={16}
-                          style={{
-                            color: isUnlocked ? "var(--brand-gold)" : "var(--t-3)",
-                          }}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold truncate">{p.title}</span>
-                          <span
-                            className="text-xs font-bold shrink-0"
-                            style={{
-                              fontFamily: "var(--font-jetbrains)",
-                              color: isUnlocked ? "var(--brand-gold)" : "var(--t-3)",
-                            }}
-                          >
-                            {p.valueLabel}
-                          </span>
-                        </div>
-                        <p className="text-xs text-[var(--t-3)] truncate mt-0.5">
-                          {p.description}
-                        </p>
-                      </div>
-                      {isUnlocked ? (
-                        <CheckCircle2 size={16} className="text-[var(--green)] shrink-0" />
-                      ) : (
-                        <Lock size={14} className="text-[var(--t-3)] shrink-0" />
-                      )}
-                    </div>
-                  ))}
+              {isUnlocked ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "var(--green)" }}>
+                  <CheckCircle2 size={12} />
+                  Открыто
                 </div>
               ) : (
-                <div className="border-t border-[var(--b-soft)] px-5 py-4">
-                  <p className="text-xs text-[var(--t-3)]">
-                    Бонусы для этого уровня ещё не добавлены.
-                  </p>
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "var(--t-3)" }}>
+                  <Lock size={12} />
+                  Заблокировано
                 </div>
               )}
             </div>
-          );
-        })}
-      </div>
 
-      {/* Pro Leaderboard connection */}
-      {(grouped.get(2) ?? []).length > 0 && (
-        <Card variant="highlight" padding="lg">
-          <div className="flex flex-col md:flex-row md:items-center gap-5">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <Trophy size={18} className="text-[var(--brand-gold)]" />
-                <h3 className="text-base font-bold">Pro-призы за лидерство</h3>
-              </div>
-              <p className="text-sm text-[var(--t-2)] leading-relaxed">
-                Pro-трейдеры соревнуются в рейтинге за эксклюзивные призы.
-                Топ лидерборда каждый месяц получает награды — от AirPods до iPhone.
-              </p>
-              <Link
-                href="/dashboard/leaderboard"
-                className="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
-              >
-                Открыть рейтинг <ChevronRight size={14} />
-              </Link>
-            </div>
-            {topProUsers.length > 0 && (
-              <div className="md:w-56 w-full space-y-2">
-                <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">
-                  Топ Pro-трейдеров
-                </div>
-                {topProUsers.map((u, i) => (
-                  <div
-                    key={u.id}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2"
+            {/* Prize rows */}
+            {tierPrizes.length > 0 ? (
+              tierPrizes.map((p, idx) => (
+                <div
+                  key={p.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "10px 16px",
+                    borderTop: idx > 0 ? "1px solid var(--b-soft)" : "none",
+                  }}
+                >
+                  <Gift
+                    size={14}
+                    style={{ color: isUnlocked ? "var(--brand-gold)" : "var(--t-3)", flexShrink: 0 }}
+                  />
+                  <span style={{ flex: 1, fontSize: "13px", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {p.title}
+                  </span>
+                  <span
                     style={{
-                      background: i === 0 ? "rgba(212,160,23,0.08)" : "var(--bg-0)",
-                      border: "1px solid var(--b-soft)",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      fontFamily: "var(--font-jetbrains)",
+                      color: isUnlocked ? "var(--brand-gold)" : "var(--t-3)",
+                      flexShrink: 0,
                     }}
                   >
-                    <div
-                      className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 text-[10px] font-bold"
-                      style={{
-                        background: i === 0 ? "rgba(212,160,23,0.15)" : "var(--bg-2)",
-                        color: i === 0 ? "var(--brand-gold)" : "var(--t-3)",
-                      }}
-                    >
-                      {i === 0 ? <Crown size={12} /> : `#${i + 1}`}
-                    </div>
-                    <span className="text-sm font-medium truncate flex-1">
-                      {u.firstName ?? u.username ?? "Аноним"}
-                    </span>
-                    <span
-                      className="text-[10px] text-[var(--t-3)] shrink-0"
-                      style={{ fontFamily: "var(--font-jetbrains)" }}
-                    >
-                      {u.signalsReceived} сигн.
-                    </span>
-                  </div>
-                ))}
+                    {p.valueLabel}
+                  </span>
+                  {isUnlocked ? (
+                    <CheckCircle2 size={13} style={{ color: "var(--green)", flexShrink: 0 }} />
+                  ) : (
+                    <Lock size={12} style={{ color: "var(--t-3)", flexShrink: 0 }} />
+                  )}
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: "12px 16px", fontSize: "12px", color: "var(--t-3)" }}>
+                Бонусы для этого уровня ещё не добавлены.
               </div>
             )}
           </div>
-        </Card>
-      )}
+        );
+      })}
 
       {/* How it works */}
-      <Card padding="lg">
-        <h3 className="text-sm font-semibold mb-3">Как получить бонусы?</h3>
-        <div className="space-y-2.5">
+      <div
+        style={{
+          background: "var(--bg-1)",
+          border: "1px solid var(--b-soft)",
+          borderRadius: "8px",
+          padding: "16px",
+        }}
+      >
+        <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "10px" }}>Как получить бонусы</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {[
             "Зарегистрируйся на PocketOption по нашей реферальной ссылке",
             "Внеси депозит — уровень повышается автоматически",
             "Бонусы начисляются сразу после подтверждения депозита",
           ].map((text, i) => (
-            <div key={i} className="flex items-start gap-3">
-              <div
-                className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold"
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+              <span
                 style={{
+                  width: "20px",
+                  height: "20px",
+                  borderRadius: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "11px",
+                  fontWeight: 700,
                   background: "rgba(212,160,23,0.12)",
                   color: "var(--brand-gold)",
+                  flexShrink: 0,
                 }}
               >
                 {i + 1}
-              </div>
-              <span className="text-sm text-[var(--t-2)] pt-0.5">{text}</span>
+              </span>
+              <span style={{ fontSize: "13px", color: "var(--t-2)", paddingTop: "1px" }}>{text}</span>
             </div>
           ))}
         </div>
-      </Card>
+      </div>
 
-      <div className="text-center">
+      {/* Link to leaderboard */}
+      <div style={{ textAlign: "center" }}>
         <Link
-          href="/giveaway"
-          className="inline-flex items-center gap-1 text-sm text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
+          href="/dashboard/leaderboard"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            fontSize: "13px",
+            color: "var(--brand-gold)",
+            textDecoration: "none",
+          }}
         >
-          Подробнее о бонусной программе <ChevronRight size={14} />
+          Рейтинг трейдеров <ArrowRight size={14} />
         </Link>
       </div>
     </div>

@@ -1,25 +1,15 @@
 /**
- * Dashboard — Leaderboard page (rework v2).
+ * Dashboard — Leaderboard page (v3).
  *
- * Pulls top users by signalsReceived + tier as a proxy for activity.
- * Highlights the current user's position with a gold card. If the user is
- * outside top-10, we render a dedicated "Your rank" row underneath.
+ * Clean table-first layout. No podium gimmick.
  */
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { TIER_LABELS } from "@/lib/tier";
-import { Trophy, Medal, Award, Crown, Gift, ChevronRight } from "lucide-react";
+import { Trophy, Crown, Medal, Award } from "lucide-react";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { LeaderboardFilters } from "./_components/LeaderboardFilters";
-
-const MEDAL_COLORS = {
-  gold: "var(--brand-gold)",
-  silver: "#c0c0c0",
-  bronze: "#cd7f32",
-} as const;
 import type { Prisma } from "@/generated/prisma/client";
 
 type Row = {
@@ -67,7 +57,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
     ...(periodFrom ? { lastLogin: { gte: periodFrom } } : {}),
   };
 
-  const [topUsers, me, myStats, proPrizes] = await Promise.all([
+  const [topUsers, me, myStats] = await Promise.all([
     prisma.user.findMany({
       where,
       orderBy: [{ tier: "desc" }, { signalsReceived: "desc" }],
@@ -95,11 +85,6 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
       },
     }),
     prisma.user.count({ where }),
-    prisma.prize.findMany({
-      where: { isActive: true, tier: 2 },
-      orderBy: { position: "asc" },
-      take: 4,
-    }),
   ]);
 
   const rows: Row[] = topUsers.slice(0, 10).map((u, i) => ({
@@ -111,7 +96,6 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
     rank: i + 1,
   }));
 
-  // Find user's rank (if outside top-10)
   const myIdx = topUsers.findIndex((u) => u.id === userId);
   const inTop10 = myIdx >= 0 && myIdx < 10;
   const myRow: Row | null =
@@ -126,213 +110,201 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
         }
       : null;
 
-  const medalFor = (rank: number) => {
-    if (rank === 1) return { icon: Crown, color: MEDAL_COLORS.gold, bg: "rgba(245,197,24,0.12)" };
-    if (rank === 2) return { icon: Medal, color: MEDAL_COLORS.silver, bg: "rgba(192,192,192,0.1)" };
-    if (rank === 3) return { icon: Award, color: MEDAL_COLORS.bronze, bg: "rgba(205,127,50,0.1)" };
+  const medalIcon = (rank: number) => {
+    if (rank === 1) return <Crown size={14} style={{ color: "var(--brand-gold)" }} />;
+    if (rank === 2) return <Medal size={14} style={{ color: "#c0c0c0" }} />;
+    if (rank === 3) return <Award size={14} style={{ color: "#cd7f32" }} />;
     return null;
   };
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      {/* Header */}
       <div>
-        <p className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-1">
-          Лидерборд
-        </p>
-        <h1 className="text-3xl md:text-4xl font-bold">Топ-10 трейдеров</h1>
-        <p className="text-[var(--t-2)] mt-2">
-          Рейтинг формируется по тиру + количеству полученных сигналов.
-          Обновляется в реальном времени.
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+          <Trophy size={20} style={{ color: "var(--brand-gold)" }} />
+          <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>Рейтинг трейдеров</h1>
+        </div>
+        <p style={{ fontSize: "13px", color: "var(--t-2)", margin: "4px 0 0 0" }}>
+          Ранжирование по тиру и количеству полученных сигналов. Обновляется в реальном времени.
         </p>
       </div>
 
       <LeaderboardFilters />
 
-      {/* Podium: top-3 */}
-      {rows.length >= 3 && (
-        <div className="grid grid-cols-3 gap-3">
-          {[rows[1], rows[0], rows[2]]
-            .filter((r): r is Row => !!r)
-            .map((r) => {
-              const medal = medalFor(r.rank);
-              const isMe = r.id === userId;
-              const heightClass =
-                r.rank === 1 ? "pt-6" : r.rank === 2 ? "pt-10" : "pt-12";
-              return (
-                <Card
-                  key={r.id}
-                  variant={r.rank === 1 ? "highlight" : "default"}
-                  padding="md"
-                  className={`${heightClass} flex flex-col items-center text-center ${
-                    isMe ? "ring-2 ring-[var(--brand-gold)]" : ""
-                  }`}
-                >
-                  {medal && (
-                    <medal.icon
-                      size={r.rank === 1 ? 36 : 28}
-                      style={{ color: medal.color }}
-                      className="mb-2"
-                    />
-                  )}
-                  <div className="text-xs text-[var(--t-3)]">#{r.rank}</div>
-                  <div className="font-semibold truncate max-w-full">{r.displayName}</div>
-                  <div className="mt-2">
-                    <TierBadge tier={r.tier} size="sm" />
-                  </div>
-                  <div
-                    className="mt-2 text-sm text-[var(--brand-gold)]"
-                    style={{ fontFamily: "var(--font-jetbrains)" }}
-                  >
-                    {r.signalsReceived} сигн.
-                  </div>
-                </Card>
-              );
-            })}
+      {/* Table */}
+      <div
+        style={{
+          background: "var(--bg-1)",
+          border: "1px solid var(--b-soft)",
+          borderRadius: "8px",
+          overflow: "hidden",
+        }}
+      >
+        {/* Table header */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "48px 1fr 120px 100px",
+            alignItems: "center",
+            padding: "10px 16px",
+            borderBottom: "1px solid var(--b-soft)",
+            background: "var(--bg-0)",
+            fontSize: "11px",
+            fontWeight: 600,
+            textTransform: "uppercase" as const,
+            letterSpacing: "0.05em",
+            color: "var(--t-3)",
+          }}
+        >
+          <span>#</span>
+          <span>Трейдер</span>
+          <span>Тир</span>
+          <span style={{ textAlign: "right" }}>Сигналы</span>
         </div>
-      )}
 
-      {/* Full table */}
-      <Card padding="lg">
-        <div className="flex items-center gap-2 mb-4">
-          <Trophy size={18} className="text-[var(--brand-gold)]" />
-          <h2 className="text-lg font-semibold">Топ-10</h2>
-        </div>
         {rows.length === 0 ? (
-          <p className="text-[var(--t-2)] text-center py-8">
+          <div style={{ padding: "40px 16px", textAlign: "center", color: "var(--t-2)", fontSize: "14px" }}>
             Пока нет трейдеров в рейтинге.
-          </p>
-        ) : (
-          <div className="divide-y divide-[var(--b-soft)]">
-            {rows.map((r) => {
-              const isMe = r.id === userId;
-              const medal = medalFor(r.rank);
-              return (
-                <div
-                  key={r.id}
-                  className={`grid grid-cols-12 items-center gap-3 py-3 -mx-2 px-2 rounded-lg transition-colors ${
-                    isMe ? "bg-[rgba(212,160,23,0.08)]" : ""
-                  }`}
-                >
-                  <div className="col-span-1 text-center">
-                    {medal ? (
-                      <medal.icon size={16} style={{ color: medal.color }} className="mx-auto" />
-                    ) : (
-                      <span className="text-xs text-[var(--t-3)] font-mono">#{r.rank}</span>
-                    )}
-                  </div>
-                  <div className="col-span-5 min-w-0">
-                    <div
-                      className={`font-medium text-sm truncate ${
-                        isMe ? "text-[var(--brand-gold)]" : ""
-                      }`}
-                    >
-                      {r.displayName}
-                      {isMe && <span className="ml-2 text-xs">(ты)</span>}
-                    </div>
-                  </div>
-                  <div className="col-span-3 text-xs">
-                    <TierBadge tier={r.tier} size="sm" />
-                    <span className="ml-2 text-[var(--t-3)]">
-                      {TIER_LABELS[r.tier]}
-                    </span>
-                  </div>
-                  <div
-                    className="col-span-3 text-right text-sm text-[var(--brand-gold)]"
-                    style={{ fontFamily: "var(--font-jetbrains)" }}
-                  >
-                    {r.signalsReceived}
-                    <span className="ml-1 text-xs text-[var(--t-3)]">сигн.</span>
-                  </div>
-                </div>
-              );
-            })}
           </div>
+        ) : (
+          rows.map((r) => {
+            const isMe = r.id === userId;
+            return (
+              <div
+                key={r.id}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "48px 1fr 120px 100px",
+                  alignItems: "center",
+                  padding: "10px 16px",
+                  borderBottom: "1px solid var(--b-soft)",
+                  background: isMe ? "rgba(212,160,23,0.06)" : "transparent",
+                  transition: "background 0.15s",
+                }}
+              >
+                {/* Rank */}
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "24px" }}>
+                  {medalIcon(r.rank) ?? (
+                    <span style={{ fontSize: "12px", color: "var(--t-3)", fontFamily: "var(--font-jetbrains)" }}>
+                      {r.rank}
+                    </span>
+                  )}
+                </span>
+
+                {/* Name */}
+                <span
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: isMe ? 600 : 500,
+                    color: isMe ? "var(--brand-gold)" : "var(--t-1)",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {r.displayName}
+                  {isMe && (
+                    <span style={{ fontSize: "11px", color: "var(--t-3)", marginLeft: "6px" }}>(ты)</span>
+                  )}
+                </span>
+
+                {/* Tier */}
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <TierBadge tier={r.tier} size="sm" />
+                  <span style={{ fontSize: "11px", color: "var(--t-3)" }}>{TIER_LABELS[r.tier]}</span>
+                </span>
+
+                {/* Signals */}
+                <span
+                  style={{
+                    textAlign: "right",
+                    fontSize: "13px",
+                    fontFamily: "var(--font-jetbrains)",
+                    color: "var(--brand-gold)",
+                  }}
+                >
+                  {r.signalsReceived}
+                </span>
+              </div>
+            );
+          })
         )}
 
         {/* Your row if outside top-10 */}
         {myRow && (
           <>
-            <div className="my-4 border-t border-dashed border-[var(--b-soft)]" />
-            <div className="grid grid-cols-12 items-center gap-3 py-3 -mx-2 px-2 rounded-lg bg-[rgba(212,160,23,0.08)]">
-              <div className="col-span-1 text-center text-xs text-[var(--brand-gold)] font-mono">
-                #{myRow.rank}+
-              </div>
-              <div className="col-span-5 min-w-0">
-                <div className="font-medium text-sm text-[var(--brand-gold)] truncate">
-                  {myRow.displayName} <span className="ml-1 text-xs">(ты)</span>
-                </div>
-              </div>
-              <div className="col-span-3 text-xs">
+            <div
+              style={{
+                borderBottom: "1px dashed var(--b-soft)",
+                margin: "0 16px",
+              }}
+            />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "48px 1fr 120px 100px",
+                alignItems: "center",
+                padding: "10px 16px",
+                background: "rgba(212,160,23,0.06)",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "12px",
+                  color: "var(--brand-gold)",
+                  fontFamily: "var(--font-jetbrains)",
+                  textAlign: "center",
+                  width: "24px",
+                }}
+              >
+                {myRow.rank}
+              </span>
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "var(--brand-gold)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {myRow.displayName}
+                <span style={{ fontSize: "11px", color: "var(--t-3)", marginLeft: "6px" }}>(ты)</span>
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <TierBadge tier={myRow.tier} size="sm" />
-              </div>
-              <div
-                className="col-span-3 text-right text-sm text-[var(--brand-gold)]"
-                style={{ fontFamily: "var(--font-jetbrains)" }}
+              </span>
+              <span
+                style={{
+                  textAlign: "right",
+                  fontSize: "13px",
+                  fontFamily: "var(--font-jetbrains)",
+                  color: "var(--brand-gold)",
+                }}
               >
                 {myRow.signalsReceived}
-                <span className="ml-1 text-xs text-[var(--t-3)]">сигн.</span>
-              </div>
+              </span>
             </div>
           </>
         )}
-      </Card>
+      </div>
 
-      {/* Pro Rewards — linked to giveaway */}
-      {proPrizes.length > 0 && (
-        <Card padding="lg">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Gift size={18} className="text-[var(--brand-gold)]" />
-              <h2 className="text-lg font-semibold">Награды для Pro</h2>
-            </div>
-            <Link
-              href="/dashboard/giveaway"
-              className="flex items-center gap-1 text-xs text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
-            >
-              Все бонусы <ChevronRight size={12} />
-            </Link>
-          </div>
-          <p className="text-xs text-[var(--t-3)] mb-4">
-            Pro-трейдеры из топа рейтинга получают эксклюзивные призы каждый месяц.
-            Депозит от $100 открывает участие.
-          </p>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {proPrizes.map((p, i) => {
-              const placeLabel = i < 3 ? [`1-е место`, `2-е место`, `3-е место`][i] : null;
-              return (
-                <div
-                  key={p.id}
-                  className="flex items-center gap-3 rounded-xl border border-[var(--b-soft)] bg-[var(--bg-0)] px-4 py-3"
-                >
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: "rgba(212,160,23,0.08)",
-                      border: "1px solid rgba(212,160,23,0.15)",
-                    }}
-                  >
-                    <Gift size={16} className="text-[var(--brand-gold)]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold truncate">{p.title}</span>
-                      <span
-                        className="text-xs font-bold shrink-0 text-[var(--brand-gold)]"
-                        style={{ fontFamily: "var(--font-jetbrains)" }}
-                      >
-                        {p.valueLabel}
-                      </span>
-                    </div>
-                    {placeLabel && (
-                      <span className="text-[10px] text-[var(--t-3)]">{placeLabel} в рейтинге</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
+      {/* Stats footer */}
+      <div
+        style={{
+          display: "flex",
+          gap: "16px",
+          fontSize: "12px",
+          color: "var(--t-3)",
+        }}
+      >
+        <span>Всего участников: <strong style={{ color: "var(--t-2)" }}>{myStats}</strong></span>
+        {me && (
+          <span>Твоя позиция: <strong style={{ color: "var(--brand-gold)" }}>#{inTop10 ? myIdx + 1 : myRow?.rank ?? "—"}</strong></span>
+        )}
+      </div>
     </div>
   );
 }

@@ -4,15 +4,74 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 const PERIODS = [
-  { v: "all", l: "Всё время" },
+  { v: "all", l: "Все время" },
   { v: "month", l: "Месяц" },
   { v: "week", l: "Неделя" },
 ];
 
 const TIERS = [
   { v: "all", l: "Все" },
-  { v: "1", l: "Basic+ (T1+)" },
+  { v: "1", l: "Basic+" },
 ];
+
+function FilterGroup({
+  label,
+  items,
+  current,
+  kind,
+  build,
+}: {
+  label: string;
+  items: { v: string; l: string }[];
+  current: string;
+  kind: string;
+  build: (kind: string, value: string) => string;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <span
+        style={{
+          fontSize: "11px",
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          color: "var(--t-3)",
+          fontWeight: 600,
+        }}
+      >
+        {label}
+      </span>
+      <div
+        style={{
+          display: "inline-flex",
+          border: "1px solid var(--b-soft)",
+          borderRadius: "4px",
+          overflow: "hidden",
+        }}
+      >
+        {items.map((item) => {
+          const active = current === item.v;
+          return (
+            <Link
+              key={item.v}
+              href={build(kind, item.v)}
+              style={{
+                padding: "5px 12px",
+                fontSize: "12px",
+                fontWeight: active ? 600 : 400,
+                color: active ? "#1a1208" : "var(--t-2)",
+                background: active ? "var(--brand-gold)" : "transparent",
+                textDecoration: "none",
+                transition: "background 0.15s, color 0.15s",
+              }}
+            >
+              {item.l}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function LeaderboardFilters() {
   const pathname = usePathname();
@@ -20,7 +79,7 @@ export function LeaderboardFilters() {
   const period = sp.get("period") ?? "all";
   const tier = sp.get("tier") ?? "all";
 
-  function build(kind: "period" | "tier", value: string): string {
+  function build(kind: string, value: string): string {
     const next = new URLSearchParams(sp);
     if (value === "all") next.delete(kind);
     else next.set(kind, value);
@@ -29,47 +88,9 @@ export function LeaderboardFilters() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-4">
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] uppercase tracking-wider text-[var(--t-3)]">
-          Период:
-        </span>
-        <div className="inline-flex rounded-full border border-[var(--b-soft)] overflow-hidden">
-          {PERIODS.map((p) => (
-            <Link
-              key={p.v}
-              href={build("period", p.v)}
-              className={`px-3 py-1.5 text-[12px] ${
-                period === p.v
-                  ? "bg-[var(--brand-gold)] text-[#1a1208] font-semibold"
-                  : "text-[var(--t-2)] hover:bg-[var(--bg-2)]"
-              }`}
-            >
-              {p.l}
-            </Link>
-          ))}
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] uppercase tracking-wider text-[var(--t-3)]">
-          Тир:
-        </span>
-        <div className="inline-flex rounded-full border border-[var(--b-soft)] overflow-hidden">
-          {TIERS.map((t) => (
-            <Link
-              key={t.v}
-              href={build("tier", t.v)}
-              className={`px-3 py-1.5 text-[12px] ${
-                tier === t.v
-                  ? "bg-[var(--brand-gold)] text-[#1a1208] font-semibold"
-                  : "text-[var(--t-2)] hover:bg-[var(--bg-2)]"
-              }`}
-            >
-              {t.l}
-            </Link>
-          ))}
-        </div>
-      </div>
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "16px" }}>
+      <FilterGroup label="Период:" items={PERIODS} current={period} kind="period" build={build} />
+      <FilterGroup label="Тир:" items={TIERS} current={tier} kind="tier" build={build} />
     </div>
   );
 }
