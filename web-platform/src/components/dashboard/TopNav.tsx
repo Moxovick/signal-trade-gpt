@@ -70,27 +70,31 @@ export function DashboardTopNav({
             <Logo size="md" />
           </div>
 
-          {/* CENTER: All nav tabs — desktop */}
-          <nav className="hidden lg:flex items-center gap-1">
+          {/* CENTER: Nav tabs — desktop */}
+          <nav className="hidden lg:flex items-center gap-0.5">
             {MAIN_NAV.map(({ href, label, icon: Icon }) => {
               const active = isItemActive(href);
-              const isSignals = href === "/dashboard/signals";
               return (
                 <Link
                   key={href}
                   href={href}
-                  className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all border ${
-                    isSignals
-                      ? active
-                        ? "bg-[rgba(212,160,23,0.18)] text-[var(--brand-gold-bright)] border-[var(--brand-gold)] shadow-[0_0_12px_rgba(212,160,23,0.25)]"
-                        : "bg-[rgba(212,160,23,0.08)] text-[var(--brand-gold)] border-[rgba(212,160,23,0.30)] hover:bg-[rgba(212,160,23,0.14)] hover:border-[var(--brand-gold)]"
-                      : active
-                        ? "bg-[var(--bg-2)] text-[var(--t-1)] border-[var(--b-hard)]"
-                        : "border-transparent text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)]"
+                  className={`relative inline-flex items-center gap-2 px-4 py-2 text-sm font-medium whitespace-nowrap transition-all rounded-lg ${
+                    active
+                      ? "text-[var(--brand-gold-bright)]"
+                      : "text-[var(--t-3)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)]"
                   }`}
                 >
-                  <Icon size={16} />
+                  <Icon size={15} className={active ? "text-[var(--brand-gold)]" : ""} />
                   {label}
+                  {/* Active indicator — gold bar */}
+                  {active && (
+                    <span
+                      className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full"
+                      style={{
+                        background: "linear-gradient(90deg, transparent, var(--brand-gold), transparent)",
+                      }}
+                    />
+                  )}
                 </Link>
               );
             })}
@@ -203,6 +207,9 @@ export function DashboardTopNav({
                     className={active ? "text-[var(--brand-gold)]" : "text-[var(--t-3)]"}
                   />
                   {label}
+                  {active && (
+                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-[var(--brand-gold)]" />
+                  )}
                 </Link>
               );
             })}

@@ -288,21 +288,17 @@ export function SignalRequestButton({
   if (step === "pair") {
     const tabs: PairBand[] = ["otc", "exchange", "elite"];
     const activePairs = ALL_PAIRS.filter((p) => p.band === activeTab);
-    const tabLocked = (band: PairBand) => ALL_PAIRS.find((p) => p.band === band)?.minTier ?? 0 > tier;
 
     return (
-      <div className="w-full max-w-2xl space-y-4">
+      <div className="w-full max-w-2xl space-y-5">
         {error && (
           <div className="px-4 py-3 rounded-xl text-sm border border-red-500/20 bg-red-500/5 text-red-400 text-center">
             {error}
           </div>
         )}
 
-        {/* Tab navigation */}
-        <div
-          className="flex rounded-xl p-1 gap-1"
-          style={{ background: "var(--bg-2)" }}
-        >
+        {/* Tab navigation — underline style */}
+        <div className="flex border-b border-[var(--b-soft)]">
           {tabs.map((band) => {
             const meta = BAND_META[band];
             const locked = (ALL_PAIRS.find((p) => p.band === band)?.minTier ?? 0) > tier;
@@ -313,23 +309,30 @@ export function SignalRequestButton({
                 key={band}
                 onClick={() => !locked && setActiveTab(band)}
                 disabled={locked}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all relative"
+                className="relative flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-all"
                 style={{
-                  background: active ? "var(--bg-1)" : "transparent",
                   color: active ? meta.color : locked ? "var(--t-3)" : "var(--t-2)",
-                  boxShadow: active ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
                   cursor: locked ? "not-allowed" : "pointer",
-                  opacity: locked ? 0.4 : 1,
+                  opacity: locked ? 0.35 : 1,
                 }}
               >
                 {locked && <Lock size={12} />}
                 <span>{meta.label}</span>
+                <span className="text-[10px] opacity-60">
+                  ({ALL_PAIRS.filter((p) => p.band === band).length})
+                </span>
+                {active && (
+                  <span
+                    className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full"
+                    style={{ background: meta.color }}
+                  />
+                )}
               </button>
             );
           })}
         </div>
 
-        {/* Category description */}
+        {/* Header row */}
         <div className="flex items-center justify-between px-1">
           <span className="text-xs text-[var(--t-3)]">
             {BAND_META[activeTab].desc}
@@ -341,61 +344,67 @@ export function SignalRequestButton({
           )}
         </div>
 
-        {/* Pair list */}
-        <div className="space-y-1.5">
+        {/* Pair grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {activePairs.map((p) => {
             const locked = p.minTier > tier;
+            const meta = BAND_META[p.band];
             return (
               <button
                 key={p.name}
                 onClick={() => handlePairSelect(p)}
                 disabled={locked}
-                className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-all group"
+                className="relative flex flex-col items-center gap-2 rounded-2xl px-3 py-4 transition-all group overflow-hidden"
                 style={{
                   background: "var(--bg-1)",
                   border: "1px solid var(--b-soft)",
                   cursor: locked ? "not-allowed" : "pointer",
-                  opacity: locked ? 0.4 : 1,
+                  opacity: locked ? 0.35 : 1,
                 }}
               >
-                {/* Currency pair icon placeholder */}
+                {/* Subtle radial glow on hover */}
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-sm font-bold"
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
                   style={{
-                    background: BAND_META[p.band].bg,
-                    color: BAND_META[p.band].color,
+                    background: `radial-gradient(circle at 50% 30%, ${meta.color}12 0%, transparent 70%)`,
+                  }}
+                />
+
+                {/* Currency code badge */}
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold relative"
+                  style={{
+                    background: meta.bg,
+                    color: meta.color,
                     fontFamily: "var(--font-jetbrains)",
+                    border: `1px solid ${meta.color}20`,
                   }}
                 >
-                  {p.display.slice(0, 2)}
+                  {p.display.split("/")[0]}
                 </div>
 
-                <div className="flex-1 text-left min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="font-semibold text-sm group-hover:text-[var(--brand-gold)] transition-colors"
-                      style={{ fontFamily: "var(--font-jetbrains)" }}
-                    >
-                      {p.display}
-                    </span>
-                    {p.flag && (
-                      <span
-                        className="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider"
-                        style={{ color: BAND_META[p.band].color, background: BAND_META[p.band].bg }}
-                      >
-                        {p.flag}
-                      </span>
-                    )}
+                {/* Pair name */}
+                <span
+                  className="font-semibold text-sm text-[var(--t-1)] group-hover:text-[var(--brand-gold)] transition-colors relative"
+                  style={{ fontFamily: "var(--font-jetbrains)" }}
+                >
+                  {p.display}
+                </span>
+
+                {/* Tag */}
+                {p.flag && (
+                  <span
+                    className="text-[9px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider relative"
+                    style={{ color: meta.color, background: meta.bg }}
+                  >
+                    {p.flag}
+                  </span>
+                )}
+
+                {locked && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[var(--bg-0)]/60 backdrop-blur-sm rounded-2xl">
+                    <Lock size={18} className="text-[var(--t-3)]" />
                   </div>
-                </div>
-
-                {locked ? (
-                  <Lock size={14} className="text-[var(--t-3)] shrink-0" />
-                ) : (
-                  <ChevronRight
-                    size={16}
-                    className="text-[var(--t-3)] shrink-0 group-hover:text-[var(--brand-gold)] transition-colors"
-                  />
                 )}
               </button>
             );
