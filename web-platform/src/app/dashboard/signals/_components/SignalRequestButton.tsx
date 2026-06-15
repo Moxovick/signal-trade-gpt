@@ -409,47 +409,52 @@ export function SignalRequestButton({
                 key={p.name}
                 onClick={() => handlePairSelect(p)}
                 disabled={locked}
-                className="relative group rounded-xl transition-all duration-200 overflow-hidden"
+                className="relative group rounded-xl overflow-hidden"
                 style={{
                   cursor: locked ? "not-allowed" : "pointer",
                   opacity: locked ? 0.3 : 1,
                 }}
               >
-                {/* Card body */}
                 <div
-                  className="flex items-center gap-3 px-3.5 py-3 rounded-xl border transition-all duration-200"
+                  className="flex items-center gap-3 px-3.5 py-3.5 rounded-xl border transition-all duration-200"
                   style={{
-                    background: "rgba(16,12,16,0.7)",
-                    backdropFilter: "blur(8px)",
-                    borderColor: "rgba(255,255,255,0.06)",
+                    background: `linear-gradient(135deg, ${meta.color}0a 0%, rgba(16,12,16,0.85) 60%, ${meta.color}06 100%)`,
+                    borderColor: `${meta.color}15`,
                   }}
                   onMouseEnter={(e) => {
                     if (locked) return;
-                    e.currentTarget.style.borderColor = `${meta.color}40`;
-                    e.currentTarget.style.background = "rgba(20,16,24,0.85)";
-                    e.currentTarget.style.boxShadow = `0 0 20px ${meta.color}10, inset 0 1px 0 ${meta.color}15`;
+                    e.currentTarget.style.borderColor = `${meta.color}45`;
+                    e.currentTarget.style.background = `linear-gradient(135deg, ${meta.color}14 0%, rgba(20,16,24,0.9) 50%, ${meta.color}0c 100%)`;
+                    e.currentTarget.style.boxShadow = `0 4px 24px ${meta.color}12`;
+                    e.currentTarget.style.transform = "translateY(-1px)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)";
-                    e.currentTarget.style.background = "rgba(16,12,16,0.7)";
+                    e.currentTarget.style.borderColor = `${meta.color}15`;
+                    e.currentTarget.style.background = `linear-gradient(135deg, ${meta.color}0a 0%, rgba(16,12,16,0.85) 60%, ${meta.color}06 100%)`;
                     e.currentTarget.style.boxShadow = "none";
+                    e.currentTarget.style.transform = "translateY(0)";
                   }}
                 >
-                  {/* Compact code badge */}
+                  {/* Pair icon — placeholder for future pair images */}
                   <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0 relative overflow-hidden"
                     style={{
-                      background: `linear-gradient(135deg, ${meta.color}18, ${meta.color}08)`,
+                      background: `linear-gradient(145deg, ${meta.color}25, ${meta.color}10)`,
                       color: meta.color,
                       fontFamily: "var(--font-jetbrains)",
-                      border: `1px solid ${meta.color}20`,
+                      boxShadow: `inset 0 1px 0 ${meta.color}20, 0 0 12px ${meta.color}08`,
                     }}
                   >
+                    {/* Decorative corner shine */}
+                    <div
+                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full opacity-40"
+                      style={{ background: `radial-gradient(circle, ${meta.color}40, transparent 70%)` }}
+                    />
                     {shortCode}
                   </div>
 
-                  {/* Text info */}
-                  <div className="flex flex-col items-start min-w-0">
+                  {/* Text */}
+                  <div className="flex flex-col items-start min-w-0 flex-1">
                     <span
                       className="font-semibold text-[13px] text-[var(--t-1)] truncate w-full group-hover:text-[var(--brand-gold-bright)] transition-colors"
                       style={{ fontFamily: "var(--font-jetbrains)" }}
@@ -457,25 +462,19 @@ export function SignalRequestButton({
                       {p.display}
                     </span>
                     {p.flag && (
-                      <span
-                        className="text-[9px] font-medium uppercase tracking-wider mt-0.5"
-                        style={{ color: `${meta.color}aa` }}
-                      >
+                      <span className="text-[9px] font-medium uppercase tracking-wider mt-0.5" style={{ color: `${meta.color}99` }}>
                         {p.flag}
                       </span>
                     )}
                   </div>
 
-                  {/* Chevron */}
-                  {!locked && (
-                    <ChevronRight
-                      size={14}
-                      className="ml-auto shrink-0 text-[var(--t-3)] opacity-0 group-hover:opacity-60 transition-opacity"
-                    />
-                  )}
+                  <ChevronRight
+                    size={14}
+                    className="ml-auto shrink-0 opacity-0 group-hover:opacity-50 transition-opacity"
+                    style={{ color: meta.color }}
+                  />
                 </div>
 
-                {/* Lock overlay */}
                 {locked && (
                   <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-[var(--bg-0)]/50 backdrop-blur-[2px]">
                     <Lock size={15} className="text-[var(--t-3)]" />
