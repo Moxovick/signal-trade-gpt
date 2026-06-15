@@ -205,6 +205,60 @@ const STOCK_ICON: Record<string, string> = {
   NVIDIA: "https://cdn.simpleicons.org/nvidia/white",
 };
 
+// Inline SVG icons for commodities & indices (24x24)
+const ASSET_SVG: Record<string, React.ReactElement> = {
+  Gold: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <path d="M6 18L3 10H21L18 18H6Z" fill="#d4a017" />
+      <path d="M6 18L3 10H21L18 18H6Z" stroke="#b8860b" strokeWidth="0.5" />
+      <path d="M8 14L5.5 10H18.5L16 14H8Z" fill="#e6b840" opacity="0.5" />
+      <path d="M9 7L7 10H17L15 7H9Z" fill="#d4a017" />
+      <path d="M9 7L7 10H17L15 7H9Z" stroke="#b8860b" strokeWidth="0.5" />
+      <path d="M10.5 8L9.5 10H14.5L13.5 8H10.5Z" fill="#e6b840" opacity="0.4" />
+    </svg>
+  ),
+  Silver: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" fill="#a0a0a0" stroke="#808080" strokeWidth="0.5" />
+      <circle cx="12" cy="12" r="7" fill="none" stroke="#c0c0c0" strokeWidth="0.5" />
+      <text x="12" y="15" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#4a4a4a" fontFamily="sans-serif">Ag</text>
+    </svg>
+  ),
+  "Brent Oil": (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <path d="M12 3C12 3 6 10 6 15C6 18.3 8.7 21 12 21C15.3 21 18 18.3 18 15C18 10 12 3 12 3Z" fill="#3a6b35" />
+      <path d="M12 5C12 5 8 10.5 8 14.5C8 17.1 9.8 19 12 19C14.2 19 16 17.1 16 14.5C16 10.5 12 5 12 5Z" fill="#4a8b45" opacity="0.4" />
+    </svg>
+  ),
+  "WTI Oil": (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <path d="M12 3C12 3 6 10 6 15C6 18.3 8.7 21 12 21C15.3 21 18 18.3 18 15C18 10 12 3 12 3Z" fill="#4a7b45" />
+      <path d="M12 5C12 5 8 10.5 8 14.5C8 17.1 9.8 19 12 19C14.2 19 16 17.1 16 14.5C16 10.5 12 5 12 5Z" fill="#5a9b55" opacity="0.4" />
+    </svg>
+  ),
+  "S&P 500": (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="2" width="20" height="20" rx="4" fill="#1a3c6e" />
+      <polyline points="4,16 8,14 12,10 16,12 20,6" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <circle cx="20" cy="6" r="1.5" fill="#00e5a0" />
+    </svg>
+  ),
+  NASDAQ: (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="2" width="20" height="20" rx="4" fill="#0096d6" />
+      <polyline points="4,17 8,12 12,15 16,8 20,5" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <circle cx="20" cy="5" r="1.5" fill="#00e5a0" />
+    </svg>
+  ),
+  "Dow Jones": (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="2" width="20" height="20" rx="4" fill="#1a3c6e" />
+      <polyline points="4,15 8,13 11,16 15,9 20,7" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <circle cx="20" cy="7" r="1.5" fill="#00e5a0" />
+    </svg>
+  ),
+};
+
 // Commodities + indices get colored text badges
 const BADGE_ICON: Record<string, { bg: string; color: string; label: string }> = {
   Gold:   { bg: "#d4a017", color: "#1a1a1a", label: "GOLD" },
@@ -259,7 +313,17 @@ function PairIcon({ pair, size = 28 }: { pair: PairInfo; size?: number }) {
     );
   }
 
-  // Badge icon (commodities, indices)
+  // SVG icon (commodities, indices)
+  const svgIcon = ASSET_SVG[pair.display];
+  if (svgIcon) {
+    return (
+      <div style={{ width: size, height: size, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {svgIcon}
+      </div>
+    );
+  }
+
+  // Badge icon fallback (commodities, indices)
   const badge = BADGE_ICON[pair.display];
   if (badge) {
     const fontSize = badge.label.length > 4 ? 8 : 9;
@@ -499,22 +563,24 @@ export function SignalRequestButton({
   // ─── Render: limit reached ───
   if (limitReached) {
     return (
-      <div className="w-full space-y-4">
-        <div
-          className="w-full h-14 font-bold text-base flex items-center justify-center"
-          style={{ background: "var(--bg-2)", color: "var(--t-3)" }}
-        >
-          Лимит исчерпан на сегодня
+      <div style={{ width: "100%", maxWidth: 560, margin: "0 auto" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div
+            className="w-full h-14 font-bold text-base flex items-center justify-center"
+            style={{ background: "var(--bg-2)", color: "var(--t-3)" }}
+          >
+            Лимит исчерпан на сегодня
+          </div>
+          <Link
+            href={referralUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1.5 text-sm text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
+          >
+            Повысить уровень ({tierLabel})
+            <ArrowUpRight size={14} />
+          </Link>
         </div>
-        <Link
-          href={referralUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-1.5 text-sm text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
-        >
-          Повысить уровень ({tierLabel})
-          <ArrowUpRight size={14} />
-        </Link>
       </div>
     );
   }
@@ -723,31 +789,61 @@ export function SignalRequestButton({
     const bandMeta = BAND_META[selectedPair.band];
 
     return (
-      <div className="w-full max-w-xl space-y-5">
+      <div style={{ width: "100%", maxWidth: 480, margin: "0 auto" }}>
         {/* Header with back + selected pair */}
-        <div className="flex items-center gap-3">
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
           <button
             onClick={handleBack}
-            className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--bg-2)]"
-            style={{ color: "var(--t-2)" }}
+            style={{
+              width: 36,
+              height: 36,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "1px solid var(--b-soft)",
+              borderRadius: 4,
+              color: "var(--t-2)",
+              cursor: "pointer",
+            }}
           >
             <ArrowLeft size={18} />
           </button>
-          <div className="flex items-center gap-2">
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-              style={{ background: bandMeta.bg, color: bandMeta.color, fontFamily: "var(--font-jetbrains)" }}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 4,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 12,
+                fontWeight: 700,
+                background: bandMeta.bg,
+                color: bandMeta.color,
+                fontFamily: "var(--font-jetbrains)",
+              }}
             >
               {selectedPair.display.slice(0, 2)}
             </div>
             <div>
-              <span className="font-semibold text-sm" style={{ fontFamily: "var(--font-jetbrains)" }}>
+              <span style={{ fontWeight: 600, fontSize: 14, fontFamily: "var(--font-jetbrains)" }}>
                 {selectedPair.display}
               </span>
               {selectedPair.flag && (
                 <span
-                  className="ml-2 text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider"
-                  style={{ color: bandMeta.color, background: bandMeta.bg }}
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 9,
+                    fontWeight: 600,
+                    padding: "2px 6px",
+                    borderRadius: 2,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    color: bandMeta.color,
+                    background: bandMeta.bg,
+                  }}
                 >
                   {selectedPair.flag}
                 </span>
@@ -757,32 +853,60 @@ export function SignalRequestButton({
         </div>
 
         {/* Expiration heading */}
-        <p className="text-sm text-[var(--t-2)]">Выберите время экспирации</p>
+        <p style={{ fontSize: 14, color: "var(--t-2)", marginBottom: 12 }}>Выберите время экспирации</p>
 
-        {/* Expiration cards */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Expiration buttons — flat, terminal-style with left border accent */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
           {exps.map((exp) => (
             <button
               key={exp.value}
               onClick={() => handleExpirationSelect(exp.value)}
-              className="group relative rounded-xl border px-5 py-5 text-center transition-all hover:border-[var(--brand-gold)]/50 hover:shadow-[0_0_24px_rgba(212,160,23,0.08)]"
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                width: "100%",
+                padding: "14px 16px",
                 background: "var(--bg-1)",
-                borderColor: "var(--b-soft)",
+                border: "1px solid var(--b-soft)",
+                borderRadius: 4,
+                marginBottom: -1,
+                cursor: "pointer",
+                textAlign: "left",
+                borderLeft: "3px solid transparent",
+                transition: "border-color 0.1s, background 0.1s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderLeftColor = "var(--brand-gold)";
+                e.currentTarget.style.background = "var(--bg-2)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderLeftColor = "transparent";
+                e.currentTarget.style.background = "var(--bg-1)";
               }}
             >
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Clock size={16} className="text-[var(--brand-gold)] opacity-60 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <div
-                className="text-xl font-bold group-hover:text-[var(--brand-gold)] transition-colors"
-                style={{ fontFamily: "var(--font-jetbrains)" }}
+              <Clock size={15} style={{ color: "var(--t-3)", flexShrink: 0 }} />
+              <span
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: "var(--t-1)",
+                  fontFamily: "var(--font-jetbrains)",
+                }}
               >
                 {exp.label}
-              </div>
-              <div className="text-[10px] text-[var(--t-3)] mt-0.5 uppercase tracking-wider">
+              </span>
+              <span
+                style={{
+                  fontSize: 10,
+                  color: "var(--t-3)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  marginLeft: "auto",
+                }}
+              >
                 экспирация
-              </div>
+              </span>
             </button>
           ))}
         </div>
@@ -894,7 +1018,7 @@ export function SignalRequestButton({
     const hasChart = !isOtc && lastSignal.chartData && lastSignal.chartData.candles.length > 0;
 
     return (
-      <div className="w-full max-w-xl space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
         {/* OTC → decorative visual, non-OTC → chart card */}
         {isOtc ? (
           <OtcSignalVisual
