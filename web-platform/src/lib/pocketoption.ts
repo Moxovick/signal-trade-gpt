@@ -163,7 +163,7 @@ function parseWithdrawalStatus(raw: string | null | undefined): WithdrawalStatus
 
 function hashDedupe(parts: Array<string | number | null | undefined>): string {
   const input = parts.map((p) => (p == null ? "" : String(p))).join("|");
-  return createHmac("sha256", "stg-dedupe").update(input).digest("hex");
+  return createHmac("sha256", "ss-dedupe").update(input).digest("hex");
 }
 
 /** Read either a URLSearchParams or a plain Record<string,string>. */

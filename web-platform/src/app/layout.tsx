@@ -26,7 +26,7 @@ const bebas = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "Signal Trade GPT — AI Trading Signals",
+  title: "SpaceSignal — AI Trading Signals",
   description:
     "Сигналы для PocketOption. Открывай аккаунт по нашей ссылке — получи доступ к боту в Telegram. Чем выше депозит, тем сильнее перки.",
 };
@@ -49,7 +49,7 @@ export default function RootLayout({
           id="theme-init"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('stg_theme')||'dark';var eff=t==='auto'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.dataset.theme=eff;}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('ss_theme')||'dark';var eff=t==='auto'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.dataset.theme=eff;}catch(e){}})();`,
           }}
         />
       </head>

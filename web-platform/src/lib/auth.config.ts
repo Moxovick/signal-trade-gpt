@@ -6,7 +6,7 @@ export const authConfig: NextAuthConfig = {
     Credentials({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        login: { label: "Login", type: "text" },
         password: { label: "Password", type: "password" },
       },
       authorize: () => null,

@@ -34,7 +34,7 @@ export default async function ExistingPoAccountInfoPage() {
                 Нужен новый аккаунт PocketOption
               </h1>
               <p className="text-[var(--t-2)] leading-relaxed">
-                Платформа Signal Trade GPT работает только с трейдерами,
+                Платформа SpaceSignal работает только с трейдерами,
                 которые зарегистрировались на PocketOption через нашу
                 партнёрскую ссылку. Существующий аккаунт привязать не
                 получится — мы не сможем сопоставить твою активность.

@@ -35,7 +35,7 @@ export function Preloader() {
           textShadow: "0 0 32px rgba(212, 160, 23, 0.5)",
         }}
       >
-        SIGNAL · TRADE · GPT
+        SPACE · SIGNAL
       </div>
       <div
         className="mt-8 h-[2px] w-64 overflow-hidden rounded-full"

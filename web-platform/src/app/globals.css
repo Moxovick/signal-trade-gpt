@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ════════════════════════════════════════════════════════════════════
-   Signal Trade GPT v2 — design tokens
+   SpaceSignal v2 — design tokens
 
    Palette: matte gold + warm dark.
    Reference docs: docs/PRD-v2.md §6.2
@@ -126,6 +126,20 @@ body {
     radial-gradient(ellipse 60% 40% at 20% 80%, rgba(255, 107, 61, 0.015) 0%, transparent 50%);
   background-attachment: fixed;
   overflow-x: hidden;
+}
+
+/* ── Fix autofill white flash ─────────────────────────────────── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--t-1);
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-2) inset !important;
+  box-shadow: 0 0 0 1000px var(--bg-2) inset !important;
+  background-color: var(--bg-2) !important;
+  caret-color: var(--t-1);
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Static grid overlay (kept on top of canvas background) */

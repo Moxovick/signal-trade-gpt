@@ -28,14 +28,14 @@ export async function POST() {
 
   try {
     const id = randomBytes(4).toString("hex");
-    const email = `demo-${id}@guest.local`;
+    const username = `demo_${id}`;
     const password = `demo-${id}`;
     const passwordHash = await bcrypt.hash(password, 12);
-    const referralCode = `STG${randomBytes(4).toString("hex").toUpperCase()}`;
+    const referralCode = `SS${randomBytes(4).toString("hex").toUpperCase()}`;
 
     await prisma.user.create({
       data: {
-        email,
+        username,
         passwordHash,
         firstName: `Demo ${id.slice(0, 4).toUpperCase()}`,
         tier: 4,
@@ -45,7 +45,7 @@ export async function POST() {
       },
     });
 
-    return NextResponse.json({ email, password });
+    return NextResponse.json({ login: username, password });
   } catch (err) {
     console.error("[demo-login] create failed", err);
     return NextResponse.json(

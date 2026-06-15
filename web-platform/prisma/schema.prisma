@@ -117,7 +117,7 @@ model User {
   /// DEPRECATED v2: registration is now Telegram OAuth only.
   passwordHash          String?
   telegramId            BigInt?          @unique
-  username              String?
+  username              String?          @unique
   firstName             String?
   lastName              String?
   phone                 String?

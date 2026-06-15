@@ -46,7 +46,7 @@ export default function LoginPage() {
 
           <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-widest text-[var(--t-3)]">
             <span className="flex-1 h-px bg-[var(--b-soft)]" />
-            или email
+            или логин / пароль
             <span className="flex-1 h-px bg-[var(--b-soft)]" />
           </div>
 

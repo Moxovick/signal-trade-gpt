@@ -56,7 +56,7 @@ export default async function FaqPage() {
             Частые вопросы
           </h1>
           <p className="mt-5 text-[var(--t-2)] max-w-xl mx-auto">
-            Всё что нужно знать о Signal Trade GPT, тирах, привязке аккаунта PocketOption и
+            Всё что нужно знать о SpaceSignal, тирах, привязке аккаунта PocketOption и
             реферальной программе.
           </p>
         </section>

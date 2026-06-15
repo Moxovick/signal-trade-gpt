@@ -42,7 +42,7 @@ export function applyTheme(theme: Theme) {
       : theme;
   document.documentElement.dataset["theme"] = effective;
   try {
-    localStorage.setItem("stg_theme", theme);
+    localStorage.setItem("ss_theme", theme);
   } catch {
     // ignore
   }

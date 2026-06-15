@@ -36,7 +36,7 @@ def _format_welcome(first_name: str, ref_code: str, bot_username: str) -> str:
     return (
         f"Привет, <b>{first_name}</b>! 👋\n"
         f"\n"
-        f"<b>Signal Trade GPT</b> — AI-сигналы для PocketOption.\n"
+        f"<b>SpaceSignal</b> — AI-сигналы для PocketOption.\n"
         f"Доступ открывается регистрацией, а не подпиской.\n"
         f"\n"
         f"<b>Как начать:</b>\n"
@@ -209,7 +209,7 @@ async def cmd_start(message: Message) -> None:
 @router.message(Command("help"))
 async def cmd_help(message: Message) -> None:
     text = (
-        "<b>Команды Signal Trade GPT</b>\n"
+        "<b>Команды SpaceSignal</b>\n"
         "\n"
         "/start — приветствие и меню\n"
         "/link — привязать аккаунт PocketOption\n"

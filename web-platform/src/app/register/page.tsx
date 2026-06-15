@@ -1,9 +1,8 @@
 /**
- * /register — v3 (email-first, post-supervisor-feedback).
+ * /register — v4 (username-first).
  *
- * Email + password is the primary path. Telegram Login Widget is shown as an
- * optional fast path below. Form collects nickname, telegram username, and
- * referral code in addition to email + password.
+ * Username + password + telegram is the primary path. Telegram deep-link
+ * is shown as an alternative below.
  */
 import Link from "next/link";
 import { Suspense } from "react";
@@ -26,8 +25,8 @@ export default function RegisterPage() {
         <Card padding="lg">
           <h1 className="text-2xl font-bold mb-2">Регистрация</h1>
           <p className="text-sm text-[var(--t-2)] mb-6">
-            Создай аккаунт за 30 секунд. Демо-сигналы доступны сразу, без
-            депозита.
+            Создай аккаунт за 30 секунд. Нужны только логин, пароль и
+            Telegram.
           </p>
 
           <Suspense>

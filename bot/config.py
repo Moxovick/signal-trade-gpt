@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # Public URL of the Telegram Mini App (root /tma route on the web platform).
     # Empty disables Mini App buttons in the bot.
     webapp_url: str = Field(
-        "https://signal-trade-gpt.vercel.app/tma",
+        "https://spacesignal.net/tma",
         env="WEBAPP_URL",
     )
 

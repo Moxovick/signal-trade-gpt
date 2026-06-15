@@ -177,7 +177,7 @@ def format_signal(signal: Signal, pocket_option_url: str) -> str:
 
 def format_stats(total_signals: int, total_users: int, win_rate: float = 0.0) -> str:
     return (
-        f"<b>Статистика Signal Trade GPT</b>\n"
+        f"<b>Статистика SpaceSignal</b>\n"
         f"\n"
         f"<b>Точность сигналов:</b> {win_rate:.1f}%\n"
         f"<b>Всего сигналов:</b> {total_signals:,}\n"
@@ -198,7 +198,7 @@ def format_welcome(first_name: str, referral_code: str, bot_username: str) -> st
     return (
         f"Привет, <b>{first_name}</b>!\n"
         f"\n"
-        f"<b>Signal Trade GPT</b> — AI-сигналы для PocketOption.\n"
+        f"<b>SpaceSignal</b> — AI-сигналы для PocketOption.\n"
         f"Доступ открывается регистрацией по нашей ссылке, не подпиской.\n"
         f"\n"
         f"<b>Как начать:</b>\n"
@@ -218,7 +218,7 @@ def format_welcome(first_name: str, referral_code: str, bot_username: str) -> st
         f"<b>Твоя реферальная ссылка:</b>\n"
         f"<code>{referral_link}</code>\n"
         f"\n"
-        f"<i>Signal Trade GPT не является финансовым советником. "
+        f"<i>SpaceSignal не является финансовым советником. "
         f"Все сигналы предоставляются в информационных целях. "
         f"Торговля бинарными опционами сопряжена с высоким риском потери средств.</i>"
     )

@@ -5,15 +5,15 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const FIELD =
-  "w-full h-11 px-4 rounded-xl text-sm outline-none transition-colors bg-[var(--bg-2)] border border-[var(--b-soft)] focus:border-[var(--b-hard)]";
+  "w-full h-11 px-4 rounded-xl text-sm outline-none transition-colors text-[var(--t-1)] placeholder:text-[var(--t-3)] bg-[var(--bg-2)] border border-[var(--b-soft)] focus:border-[var(--brand-gold)] focus:ring-1 focus:ring-[var(--brand-gold)]/30";
 
 export function LegacyEmailLoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [email, setEmail] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(
-    params.get("error") ? "Неверный email или пароль" : null,
+    params.get("error") ? "Неверный логин или пароль" : null,
   );
   const [loading, setLoading] = useState(false);
 
@@ -22,13 +22,13 @@ export function LegacyEmailLoginForm() {
     setError(null);
     setLoading(true);
     const res = await signIn("credentials", {
-      email,
+      login,
       password,
       redirect: false,
     });
     setLoading(false);
     if (res?.error) {
-      setError("Неверный email или пароль");
+      setError("Неверный логин или пароль");
     } else {
       router.push("/dashboard");
     }
@@ -42,19 +42,19 @@ export function LegacyEmailLoginForm() {
         </div>
       )}
       <label className="block">
-        <span className="sr-only">Email</span>
+        <span className="text-xs font-medium text-[var(--t-2)] mb-1 block">Логин</span>
         <input
-          type="email"
+          type="text"
           required
-          autoComplete="email"
-          placeholder="email@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="username"
+          placeholder="Твой логин"
+          value={login}
+          onChange={(e) => setLogin(e.target.value)}
           className={FIELD}
         />
       </label>
       <label className="block">
-        <span className="sr-only">Пароль</span>
+        <span className="text-xs font-medium text-[var(--t-2)] mb-1 block">Пароль</span>
         <input
           type="password"
           required
@@ -68,9 +68,9 @@ export function LegacyEmailLoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full h-11 rounded-full bg-[var(--brand-gold)] text-[#1a1208] font-semibold text-sm hover:bg-[var(--brand-gold-bright)] transition-colors disabled:opacity-50"
+        className="w-full h-12 rounded-full bg-[var(--brand-gold)] text-[#1a1208] font-semibold text-sm hover:bg-[var(--brand-gold-bright)] transition-colors disabled:opacity-50"
       >
-        {loading ? "Входим…" : "Войти"}
+        {loading ? "Входим..." : "Войти"}
       </button>
     </form>
   );

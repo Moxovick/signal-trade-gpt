@@ -16,7 +16,7 @@ const envOrigins = (process.env["DEV_ALLOWED_ORIGINS"] ?? "")
   .filter(Boolean);
 
 const allowedDevOrigins = [
-  "stgsignaltest.loca.lt",
+  "spacesignal.loca.lt",
   "*.loca.lt",
   "*.ngrok-free.app",
   "*.ngrok.io",

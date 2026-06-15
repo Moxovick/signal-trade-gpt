@@ -27,21 +27,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { email, password, referralCode, promoCode } = await req.json();
+    const { username, email, password, referralCode, promoCode } = await req.json();
 
     const GENERIC_ERROR = "Регистрация не удалась. Попробуйте снова или войдите.";
 
-    if (!email || !password) {
+    // Accept username or email for backwards compat
+    const login = (username ?? email ?? "").trim().toLowerCase();
+    if (!login || !password) {
       return NextResponse.json({ error: GENERIC_ERROR }, { status: 400 });
     }
-    if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255) {
+    if (typeof login !== "string" || login.length < 3 || login.length > 255) {
       return NextResponse.json({ error: GENERIC_ERROR }, { status: 400 });
     }
     if (typeof password !== "string" || password.length < 6 || password.length > 128) {
       return NextResponse.json({ error: GENERIC_ERROR }, { status: 400 });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: { equals: login, mode: "insensitive" } },
+          { email: { equals: login, mode: "insensitive" } },
+        ],
+      },
+    });
     if (existing) {
       return NextResponse.json({ error: GENERIC_ERROR }, { status: 409 });
     }
@@ -79,14 +88,14 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.create({
       data: {
-        email,
+        username: login,
         passwordHash,
         referralCode: code,
         referredById,
         promoCodeUsedId: promoCodeId,
         subscriptionPlan: "free",
       },
-      select: { id: true, email: true, referralCode: true, tier: true },
+      select: { id: true, username: true, referralCode: true, tier: true },
     });
 
     if (referredById) {

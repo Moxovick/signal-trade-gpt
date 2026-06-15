@@ -1,4 +1,4 @@
-"""Shared constants for the Signal Trade GPT bot."""
+"""Shared constants for the SpaceSignal bot."""
 
 # 3-tier model: Free (0), Basic (1), Pro (2).
 TIER_NAMES: dict[int, str] = {0: "Free", 1: "Basic", 2: "Pro"}

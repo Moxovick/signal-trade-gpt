@@ -9,7 +9,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: "Signal Trade GPT",
+  title: "SpaceSignal",
 };
 
 export const viewport: Viewport = {
