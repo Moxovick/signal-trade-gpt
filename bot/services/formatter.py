@@ -7,6 +7,38 @@ DIRECTION_ARROW = {"CALL": "⬆", "PUT": "⬇"}
 DIRECTION_TAG = {"CALL": "call", "PUT": "put"}
 DIRECTION_WORD = {"CALL": "ВВЕРХ", "PUT": "ВНИЗ"}
 
+# Payout percentages per pair (from PocketOption)
+PAIR_PAYOUTS: dict[str, int] = {
+    "EUR/USD (OTC)": 76, "GBP/USD (OTC)": 92, "USD/JPY (OTC)": 33,
+    "AUD/USD (OTC)": 56, "EUR/GBP (OTC)": 32, "USD/CHF (OTC)": 85,
+    "NZD/USD (OTC)": 92, "EUR/JPY (OTC)": 49, "AUD/CHF (OTC)": 72,
+    "AUD/NZD (OTC)": 69, "EUR/CHF (OTC)": 57, "GBP/JPY (OTC)": 49,
+    "USD/CAD (OTC)": 82, "CAD/JPY (OTC)": 65, "GBP/AUD (OTC)": 92,
+    "EUR/NZD (OTC)": 47,
+    "Bitcoin (OTC)": 92, "Ethereum (OTC)": 92, "Solana (OTC)": 80,
+    "Dogecoin (OTC)": 92, "Cardano (OTC)": 92, "Toncoin (OTC)": 66,
+    "BNB (OTC)": 71, "Litecoin (OTC)": 92,
+    "Gold (OTC)": 80, "Silver (OTC)": 80, "Brent Oil (OTC)": 80, "WTI Oil (OTC)": 80,
+    "Apple (OTC)": 92, "Tesla (OTC)": 88, "Amazon (OTC)": 84,
+    "Microsoft (OTC)": 55, "Meta (OTC)": 66, "Netflix (OTC)": 62,
+    "S&P 500 (OTC)": 45, "NASDAQ 100 (OTC)": 45, "Dow Jones (OTC)": 45,
+    "EUR/USD": 82, "GBP/USD": 85, "USD/JPY": 43, "AUD/USD": 38,
+    "EUR/GBP": 58, "USD/CHF": 75, "USD/CAD": 87, "EUR/JPY": 77,
+    "GBP/JPY": 83, "EUR/CHF": 85, "AUD/CAD": 62, "EUR/AUD": 32,
+    "GBP/AUD": 77, "AUD/JPY": 45, "CAD/JPY": 72, "CHF/JPY": 76,
+    "AAPL": 92, "TSLA": 88, "AMZN": 84, "MSFT": 55, "META": 66,
+    "NFLX": 62, "NVDA": 80, "GOLD": 80, "SILVER": 80,
+    "BTC/USD": 15, "ETH/USD": 80, "SOL/USD": 80, "SP500": 45, "US100": 45,
+}
+
+
+def _payout_line(pair: str) -> str:
+    """Return payout line if we have data for this pair."""
+    pct = PAIR_PAYOUTS.get(pair)
+    if pct is None:
+        return ""
+    return f"Выплата: <b>+{pct}%</b>\n"
+
 
 def _render_admin_template(template: str, signal: Signal, entry_price: float | None) -> str:
     """Substitute {placeholders} in admin-defined signal template."""
@@ -18,6 +50,9 @@ def _render_admin_template(template: str, signal: Signal, entry_price: float | N
     analysis_line = (
         f"<b>Анализ:</b> <i>{signal.analysis}</i>\n" if signal.analysis else ""
     )
+    pct = PAIR_PAYOUTS.get(signal.pair)
+    payout_str = f"+{pct}%" if pct else "—"
+    payout_line = f"Выплата: <b>+{pct}%</b>\n" if pct else ""
     return (
         template
         .replace("{pair}", signal.pair)
@@ -29,6 +64,8 @@ def _render_admin_template(template: str, signal: Signal, entry_price: float | N
         .replace("{entry_price}", f"{entry_price:.5f}" if entry_price is not None else "—")
         .replace("{entry_line}", entry_line)
         .replace("{analysis_line}", analysis_line)
+        .replace("{payout}", payout_str)
+        .replace("{payout_line}", payout_line)
         .replace("{tier}", (signal.tier or "otc").upper())
     )
 
@@ -66,6 +103,7 @@ def format_otc_minimal(signal: Signal) -> str:
     arrow = DIRECTION_ARROW[signal.direction]
     conf_bar_full = round(signal.confidence / 10)
     conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
+    payout = _payout_line(signal.pair)
     return (
         f"<b>OTC СИГНАЛ</b>\n"
         f"\n"
@@ -73,6 +111,7 @@ def format_otc_minimal(signal: Signal) -> str:
         f"{arrow} <b>{signal.direction}</b>  ·  {signal.expiration}\n"
         f"\n"
         f"Confidence: <b>{signal.confidence}%</b>  {conf_bar}\n"
+        f"{payout}"
         f"\n"
         f"Объём: 1–3% депозита\n"
         f"#otc #signal"
@@ -102,6 +141,7 @@ def format_pro_signal_caption(
     conf_bar_full = round(signal.confidence / 10)
     conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
 
+    payout = _payout_line(signal.pair)
     lines = [
         f"{header}",
         "",
@@ -111,6 +151,8 @@ def format_pro_signal_caption(
     ]
     if entry_price is not None:
         lines.append(f"Вход: <code>{entry_price:.5f}</code>")
+    if payout:
+        lines.append(payout.rstrip("\n"))
     if signal.analysis:
         lines.extend(["", f"<i>{signal.analysis}</i>"])
     lines.extend([
@@ -148,6 +190,7 @@ def format_signal(signal: Signal, pocket_option_url: str) -> str:
     conf_bar_full = round(signal.confidence / 10)
     conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
 
+    payout = _payout_line(signal.pair)
     lines = [
         f"{header}",
         "━━━━━━━━━━━━━━━",
@@ -156,8 +199,10 @@ def format_signal(signal: Signal, pocket_option_url: str) -> str:
         f"<b>Направление:</b> {signal.direction} {arrow}",
         f"<b>Экспирация:</b> {signal.expiration}",
         f"<b>Confidence:</b> {signal.confidence}%  {conf_bar}",
-        f"<b>Тип:</b> {badge}",
     ]
+    if payout:
+        lines.append(payout.rstrip("\n"))
+    lines.append(f"<b>Тип:</b> {badge}")
 
     if signal.analysis:
         lines.append("")
