@@ -167,6 +167,30 @@ const BAND_META: Record<PairBand, { label: string; color: string; bg: string; de
   elite: { label: "Elite", color: "#d4a017", bg: "rgba(212,160,23,0.08)", desc: "Акции, крипто, сырьё" },
 };
 
+// Sub-group labels for visual grouping
+const FLAG_LABELS: Record<string, string> = {
+  OTC: "Валюты",
+  Crypto: "Криптовалюты",
+  Commodity: "Сырьё",
+  Stock: "Акции",
+  Index: "Индексы",
+  "": "Валютные пары",
+};
+
+function groupByFlag(pairs: PairInfo[]): { flag: string; label: string; items: PairInfo[] }[] {
+  const map = new Map<string, PairInfo[]>();
+  for (const p of pairs) {
+    const key = p.flag;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(p);
+  }
+  return Array.from(map.entries()).map(([flag, items]) => ({
+    flag,
+    label: FLAG_LABELS[flag] ?? flag,
+    items,
+  }));
+}
+
 // ─── Analysis animation ───
 
 const ANALYSIS_STEPS = [
@@ -342,6 +366,8 @@ export function SignalRequestButton({
   if (step === "pair") {
     const tabs: PairBand[] = ["otc", "exchange", "elite"];
     const activePairs = ALL_PAIRS.filter((p) => p.band === activeTab);
+    const groups = groupByFlag(activePairs);
+    const meta = BAND_META[activeTab];
 
     return (
       <div className="w-full max-w-2xl space-y-5">
@@ -351,10 +377,10 @@ export function SignalRequestButton({
           </div>
         )}
 
-        {/* Tab navigation — underline style */}
+        {/* Tab navigation */}
         <div className="flex border-b border-[var(--b-soft)]">
           {tabs.map((band) => {
-            const meta = BAND_META[band];
+            const bm = BAND_META[band];
             const locked = (ALL_PAIRS.find((p) => p.band === band)?.minTier ?? 0) > tier;
             const active = activeTab === band;
 
@@ -365,20 +391,20 @@ export function SignalRequestButton({
                 disabled={locked}
                 className="relative flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-all"
                 style={{
-                  color: active ? meta.color : locked ? "var(--t-3)" : "var(--t-2)",
+                  color: active ? bm.color : locked ? "var(--t-3)" : "var(--t-2)",
                   cursor: locked ? "not-allowed" : "pointer",
                   opacity: locked ? 0.35 : 1,
                 }}
               >
                 {locked && <Lock size={12} />}
-                <span>{meta.label}</span>
+                <span>{bm.label}</span>
                 <span className="text-[10px] opacity-60">
                   ({ALL_PAIRS.filter((p) => p.band === band).length})
                 </span>
                 {active && (
                   <span
                     className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full"
-                    style={{ background: meta.color }}
+                    style={{ background: bm.color }}
                   />
                 )}
               </button>
@@ -386,101 +412,102 @@ export function SignalRequestButton({
           })}
         </div>
 
-        {/* Header row */}
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs text-[var(--t-3)]">
-            {BAND_META[activeTab].desc}
-          </span>
-          {remaining != null && (
+        {/* Remaining signals counter */}
+        {remaining != null && (
+          <div className="flex justify-end px-1">
             <span className="text-xs text-[var(--t-3)]">
               {remaining} {remaining === 1 ? "сигнал" : remaining < 5 ? "сигнала" : "сигналов"} осталось
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Pair grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {activePairs.map((p) => {
-            const locked = p.minTier > tier;
-            const meta = BAND_META[p.band];
-            const shortCode = p.display.split("/")[0] ?? p.display.slice(0, 3);
-            return (
-              <button
-                key={p.name}
-                onClick={() => handlePairSelect(p)}
-                disabled={locked}
-                className="relative group rounded-xl overflow-hidden"
-                style={{
-                  cursor: locked ? "not-allowed" : "pointer",
-                  opacity: locked ? 0.3 : 1,
-                }}
-              >
-                <div
-                  className="flex items-center gap-3 px-3.5 py-3.5 rounded-xl transition-all duration-200"
-                  style={{
-                    background: `linear-gradient(135deg, ${meta.color}08 0%, rgba(10,10,26,0.8) 60%, ${meta.color}05 100%)`,
-                    boxShadow: `inset 0 0 0 1px ${meta.color}20, 0 0 8px ${meta.color}06`,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (locked) return;
-                    e.currentTarget.style.background = `linear-gradient(135deg, ${meta.color}14 0%, rgba(14,12,28,0.9) 50%, ${meta.color}0c 100%)`;
-                    e.currentTarget.style.boxShadow = `inset 0 0 0 1px ${meta.color}45, 0 0 20px ${meta.color}18, 0 4px 16px rgba(0,0,0,0.3)`;
-                    e.currentTarget.style.transform = "translateY(-1px)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = `linear-gradient(135deg, ${meta.color}08 0%, rgba(10,10,26,0.8) 60%, ${meta.color}05 100%)`;
-                    e.currentTarget.style.boxShadow = `inset 0 0 0 1px ${meta.color}20, 0 0 8px ${meta.color}06`;
-                    e.currentTarget.style.transform = "translateY(0)";
-                  }}
-                >
-                  {/* Pair icon — placeholder for future pair images */}
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0 relative overflow-hidden"
-                    style={{
-                      background: `linear-gradient(145deg, ${meta.color}25, ${meta.color}10)`,
-                      color: meta.color,
-                      fontFamily: "var(--font-jetbrains)",
-                      boxShadow: `inset 0 1px 0 ${meta.color}20, 0 0 12px ${meta.color}08`,
-                    }}
-                  >
-                    {/* Decorative corner shine */}
-                    <div
-                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full opacity-40"
-                      style={{ background: `radial-gradient(circle, ${meta.color}40, transparent 70%)` }}
-                    />
-                    {shortCode}
-                  </div>
+        {/* Grouped pair list */}
+        <div className="space-y-5">
+          {groups.map((group) => (
+            <div key={group.flag}>
+              {/* Group header */}
+              <div className="flex items-center gap-3 mb-2.5 px-1">
+                <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: meta.color }}>
+                  {group.label}
+                </span>
+                <div className="flex-1 h-[1px]" style={{ background: `linear-gradient(90deg, ${meta.color}20, transparent)` }} />
+                <span className="text-[10px] text-[var(--t-3)]">{group.items.length}</span>
+              </div>
 
-                  {/* Text */}
-                  <div className="flex flex-col items-start min-w-0 flex-1">
-                    <span
-                      className="font-semibold text-[13px] text-[var(--t-1)] truncate w-full group-hover:text-[var(--brand-gold-bright)] transition-colors"
-                      style={{ fontFamily: "var(--font-jetbrains)" }}
+              {/* Cards grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {group.items.map((p) => {
+                  const locked = p.minTier > tier;
+                  const shortCode = p.display.split("/")[0] ?? p.display.slice(0, 3);
+                  return (
+                    <button
+                      key={p.name}
+                      onClick={() => handlePairSelect(p)}
+                      disabled={locked}
+                      className="relative group overflow-hidden rounded-lg"
+                      style={{
+                        cursor: locked ? "not-allowed" : "pointer",
+                        opacity: locked ? 0.3 : 1,
+                      }}
                     >
-                      {p.display}
-                    </span>
-                    {p.flag && (
-                      <span className="text-[9px] font-medium uppercase tracking-wider mt-0.5" style={{ color: `${meta.color}99` }}>
-                        {p.flag}
-                      </span>
-                    )}
-                  </div>
+                      {/* Card with left accent bar */}
+                      <div
+                        className="flex items-center gap-2.5 pl-0 pr-3 py-0 rounded-lg transition-all duration-200"
+                        style={{ background: "transparent" }}
+                        onMouseEnter={(e) => {
+                          if (locked) return;
+                          e.currentTarget.style.background = `${meta.color}0a`;
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "transparent";
+                        }}
+                      >
+                        {/* Left accent bar */}
+                        <div
+                          className="w-[3px] self-stretch rounded-full shrink-0 transition-all duration-200 group-hover:shadow-[0_0_6px_var(--accent)]"
+                          style={{
+                            background: `${meta.color}30`,
+                            ["--accent" as string]: `${meta.color}40`,
+                          }}
+                        />
 
-                  <ChevronRight
-                    size={14}
-                    className="ml-auto shrink-0 opacity-0 group-hover:opacity-50 transition-opacity"
-                    style={{ color: meta.color }}
-                  />
-                </div>
+                        {/* Icon placeholder (for future pair images) */}
+                        <div
+                          className="w-9 h-9 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0 my-2"
+                          style={{
+                            background: `${meta.color}0c`,
+                            color: meta.color,
+                            fontFamily: "var(--font-jetbrains)",
+                          }}
+                        >
+                          {shortCode}
+                        </div>
 
-                {locked && (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-[var(--bg-0)]/50 backdrop-blur-[2px]">
-                    <Lock size={15} className="text-[var(--t-3)]" />
-                  </div>
-                )}
-              </button>
-            );
-          })}
+                        {/* Name */}
+                        <span
+                          className="font-medium text-[13px] text-[var(--t-2)] group-hover:text-[var(--t-1)] transition-colors truncate"
+                          style={{ fontFamily: "var(--font-jetbrains)" }}
+                        >
+                          {p.display}
+                        </span>
+
+                        <ChevronRight
+                          size={13}
+                          className="ml-auto shrink-0 text-[var(--t-3)] opacity-0 group-hover:opacity-40 transition-opacity"
+                        />
+                      </div>
+
+                      {locked && (
+                        <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-[var(--bg-0)]/50 backdrop-blur-[2px]">
+                          <Lock size={14} className="text-[var(--t-3)]" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );

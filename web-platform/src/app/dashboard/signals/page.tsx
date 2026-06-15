@@ -86,18 +86,10 @@ export default async function SignalsPage() {
       {/* Signal request CTA */}
       <Card padding="lg" className="relative overflow-hidden"
         style={{
-          background: "linear-gradient(160deg, #0a0a1a 0%, #0d0820 35%, #110a24 60%, #0a0a1a 100%)",
-          border: "1px solid rgba(100,60,180,0.15)",
+          background: "var(--bg-1)",
+          borderColor: "var(--b-soft)",
         }}
       >
-        {/* Space nebula glows */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div style={{ position: "absolute", width: 300, height: 250, top: "-15%", right: "-5%", borderRadius: "50%", filter: "blur(60px)", opacity: 0.4, background: "radial-gradient(circle, rgba(60,30,120,0.5) 0%, transparent 70%)" }} />
-          <div style={{ position: "absolute", width: 200, height: 200, bottom: "-10%", left: "5%", borderRadius: "50%", filter: "blur(50px)", opacity: 0.3, background: "radial-gradient(circle, rgba(30,50,120,0.4) 0%, transparent 70%)" }} />
-          <div style={{ position: "absolute", width: 150, height: 150, top: "30%", left: "50%", borderRadius: "50%", filter: "blur(50px)", opacity: 0.15, background: "radial-gradient(circle, rgba(212,160,23,0.3) 0%, transparent 70%)" }} />
-        </div>
-        {/* Stars */}
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "radial-gradient(1px 1px at 15% 20%, rgba(255,255,255,0.4) 50%, transparent), radial-gradient(1px 1px at 40% 10%, rgba(255,255,255,0.3) 50%, transparent), radial-gradient(1.5px 1.5px at 70% 25%, rgba(255,255,255,0.5) 50%, transparent), radial-gradient(1px 1px at 85% 15%, rgba(255,255,255,0.3) 50%, transparent), radial-gradient(1px 1px at 25% 45%, rgba(255,255,255,0.25) 50%, transparent), radial-gradient(1.5px 1.5px at 55% 55%, rgba(212,160,23,0.5) 50%, transparent), radial-gradient(1px 1px at 90% 50%, rgba(255,255,255,0.3) 50%, transparent), radial-gradient(1px 1px at 10% 70%, rgba(255,255,255,0.3) 50%, transparent), radial-gradient(1px 1px at 35% 80%, rgba(255,255,255,0.25) 50%, transparent), radial-gradient(1.5px 1.5px at 65% 75%, rgba(255,255,255,0.4) 50%, transparent), radial-gradient(1px 1px at 80% 85%, rgba(212,160,23,0.4) 50%, transparent), radial-gradient(1px 1px at 50% 92%, rgba(255,255,255,0.3) 50%, transparent), radial-gradient(1px 1px at 20% 95%, rgba(255,255,255,0.2) 50%, transparent)" }} />
         <div className="relative flex flex-col items-center text-center py-4">
           {/* Daily limit indicator */}
           <div className="mb-4">
