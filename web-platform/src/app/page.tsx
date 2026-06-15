@@ -25,6 +25,7 @@ import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { LiveChart } from "@/components/market/LiveChart";
 import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
+import { HeroCTA } from "@/components/shared/HeroCTA";
 import { prisma } from "@/lib/prisma";
 
 const TIERS = [
@@ -176,13 +177,7 @@ export default async function LandingPage() {
                 AI-сигналы безлимитом. Чем выше депозит — тем глубже анализ.
               </p>
               <div className="mt-10 flex flex-col sm:flex-row gap-3 md:justify-start justify-center items-center">
-                <ButtonLink
-                  href="/register"
-                  size="lg"
-                  iconRight={<ArrowRight size={18} />}
-                >
-                  Зарегистрироваться
-                </ButtonLink>
+                <HeroCTA />
                 <ButtonLink href="/how-it-works" variant="secondary" size="lg">
                   Как это работает
                 </ButtonLink>
@@ -484,16 +479,7 @@ export default async function LandingPage() {
               Регистрация занимает 30 секунд. Демо-сигналы доступны сразу.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-              <ButtonLink
-                href="/register"
-                size="lg"
-                iconRight={<ArrowRight size={18} />}
-              >
-                Зарегистрироваться
-              </ButtonLink>
-              <ButtonLink href="/login" variant="secondary" size="lg">
-                Уже есть аккаунт — войти
-              </ButtonLink>
+              <HeroCTA />
             </div>
           </Card>
         </section>
