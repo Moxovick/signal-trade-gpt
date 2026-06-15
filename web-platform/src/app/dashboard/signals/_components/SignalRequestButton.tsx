@@ -167,14 +167,13 @@ const PAIR_PAYOUTS: Record<string, number> = {
   "BTC/USD": 15, "ETH/USD": 80, "SOL/USD": 80, "SP500": 45, "US100": 45,
 };
 
-// ─── Pair icons — circular flag SVGs via CDN + branded asset badges ───
+// ─── Pair icons ───
 
 const CURRENCY_FLAG: Record<string, string> = {
   EUR: "eu", USD: "us", GBP: "gb", JPY: "jp", AUD: "au",
   CAD: "ca", CHF: "ch", NZD: "nz",
 };
 
-// CDN image URLs for crypto coins (CoinGecko)
 const CRYPTO_IMG: Record<string, string> = {
   BTC: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
   ETH: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
@@ -189,30 +188,29 @@ const CRYPTO_IMG: Record<string, string> = {
   Solana: "https://assets.coingecko.com/coins/images/4128/small/solana.png",
 };
 
-// Clearbit logos for stocks
-const STOCK_IMG: Record<string, string> = {
-  AAPL: "https://logo.clearbit.com/apple.com",
-  TSLA: "https://logo.clearbit.com/tesla.com",
-  AMZN: "https://logo.clearbit.com/amazon.com",
-  MSFT: "https://logo.clearbit.com/microsoft.com",
-  META: "https://logo.clearbit.com/meta.com",
-  NFLX: "https://logo.clearbit.com/netflix.com",
-  NVDA: "https://logo.clearbit.com/nvidia.com",
-  Apple: "https://logo.clearbit.com/apple.com",
-  Tesla: "https://logo.clearbit.com/tesla.com",
-  Amazon: "https://logo.clearbit.com/amazon.com",
-  Microsoft: "https://logo.clearbit.com/microsoft.com",
-  Meta: "https://logo.clearbit.com/meta.com",
-  Netflix: "https://logo.clearbit.com/netflix.com",
-  NVIDIA: "https://logo.clearbit.com/nvidia.com",
-};
-
-// Fallback colored badges for commodities/indices
-const ASSET_BADGE: Record<string, { bg: string; color: string; label: string }> = {
-  Gold: { bg: "#d4a017", color: "#1a1a1a", label: "AU" },
-  Silver: { bg: "#c0c0c0", color: "#1a1a1a", label: "AG" },
-  "Brent Oil": { bg: "#2d5016", color: "#fff", label: "OIL" },
-  "WTI Oil":   { bg: "#2d5016", color: "#fff", label: "WTI" },
+// All non-currency, non-crypto assets get a colored text badge
+const TICKER_BADGE: Record<string, { bg: string; color: string; label: string }> = {
+  // Stocks
+  AAPL:  { bg: "#333", color: "#fff", label: "AAPL" },
+  Apple: { bg: "#333", color: "#fff", label: "AAPL" },
+  TSLA:  { bg: "#c00", color: "#fff", label: "TSLA" },
+  Tesla: { bg: "#c00", color: "#fff", label: "TSLA" },
+  AMZN:  { bg: "#f90", color: "#1a1a1a", label: "AMZN" },
+  Amazon:{ bg: "#f90", color: "#1a1a1a", label: "AMZN" },
+  MSFT:  { bg: "#05a", color: "#fff", label: "MSFT" },
+  Microsoft: { bg: "#05a", color: "#fff", label: "MSFT" },
+  META:  { bg: "#0668e1", color: "#fff", label: "META" },
+  Meta:  { bg: "#0668e1", color: "#fff", label: "META" },
+  NFLX:  { bg: "#e50914", color: "#fff", label: "NFLX" },
+  Netflix: { bg: "#e50914", color: "#fff", label: "NFLX" },
+  NVDA:  { bg: "#76b900", color: "#1a1a1a", label: "NVDA" },
+  NVIDIA: { bg: "#76b900", color: "#1a1a1a", label: "NVDA" },
+  // Commodities
+  Gold:   { bg: "#d4a017", color: "#1a1a1a", label: "GOLD" },
+  Silver: { bg: "#a0a0a0", color: "#1a1a1a", label: "SLVR" },
+  "Brent Oil": { bg: "#3a6b35", color: "#fff", label: "BRENT" },
+  "WTI Oil":   { bg: "#3a6b35", color: "#fff", label: "WTI" },
+  // Indices
   "S&P 500":   { bg: "#1a3c6e", color: "#fff", label: "S&P" },
   NASDAQ:      { bg: "#0096d6", color: "#fff", label: "NDQ" },
   "Dow Jones": { bg: "#1a3c6e", color: "#fff", label: "DJI" },
@@ -220,52 +218,44 @@ const ASSET_BADGE: Record<string, { bg: string; color: string; label: string }> 
 
 function PairIcon({ pair, size = 28 }: { pair: PairInfo; size?: number }) {
   const parts = pair.display.split("/");
-  const cls = `rounded-full shrink-0 object-cover`;
   const px = `${size}px`;
 
   // Currency pair → two overlapping flags
   if (parts.length === 2 && CURRENCY_FLAG[parts[0]!] && CURRENCY_FLAG[parts[1]!]) {
     return (
-      <div className="relative shrink-0" style={{ width: size + 10, height: size }}>
+      <div style={{ position: "relative", width: size + 10, height: size, flexShrink: 0 }}>
         <img
           src={`https://hatscripts.github.io/circle-flags/flags/${CURRENCY_FLAG[parts[0]!]}.svg`}
           alt={parts[0]} width={size} height={size}
-          className={`absolute left-0 top-0 ${cls}`}
-          style={{ border: "2px solid var(--bg-2)", zIndex: 2 }}
+          style={{ position: "absolute", left: 0, top: 0, borderRadius: "50%", border: "2px solid var(--bg-2)", zIndex: 2 }}
         />
         <img
           src={`https://hatscripts.github.io/circle-flags/flags/${CURRENCY_FLAG[parts[1]!]}.svg`}
           alt={parts[1]} width={size} height={size}
-          className={`absolute top-0 ${cls}`}
-          style={{ left: size * 0.4, border: "2px solid var(--bg-2)", zIndex: 1 }}
+          style={{ position: "absolute", left: size * 0.4, top: 0, borderRadius: "50%", border: "2px solid var(--bg-2)", zIndex: 1 }}
         />
       </div>
     );
   }
 
-  // Single currency flag
-  const flagCode = CURRENCY_FLAG[parts[0]!];
-  if (flagCode) {
-    return <img src={`https://hatscripts.github.io/circle-flags/flags/${flagCode}.svg`} alt={parts[0]} width={size} height={size} className={cls} />;
-  }
-
-  // Crypto icon from CoinGecko
+  // Crypto icon
   const cryptoUrl = CRYPTO_IMG[pair.display];
   if (cryptoUrl) {
-    return <img src={cryptoUrl} alt={pair.display} width={size} height={size} className={cls} style={{ background: "#222" }} />;
+    return <img src={cryptoUrl} alt={pair.display} width={size} height={size} style={{ borderRadius: "50%", flexShrink: 0, background: "#222" }} />;
   }
 
-  // Stock logo from Clearbit
-  const stockUrl = STOCK_IMG[pair.display];
-  if (stockUrl) {
-    return <img src={stockUrl} alt={pair.display} width={size} height={size} className={`${cls} bg-white p-0.5`} />;
-  }
-
-  // Badge fallback (commodities, indices)
-  const badge = ASSET_BADGE[pair.display];
+  // Ticker badge (stocks, commodities, indices)
+  const badge = TICKER_BADGE[pair.display];
   if (badge) {
+    const fontSize = badge.label.length > 4 ? 7 : 8;
     return (
-      <div className={`${cls} flex items-center justify-center text-[9px] font-black tracking-tight`} style={{ width: px, height: px, background: badge.bg, color: badge.color }}>
+      <div style={{
+        width: px, height: px, flexShrink: 0,
+        borderRadius: 4,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize, fontWeight: 900, letterSpacing: "0.02em",
+        background: badge.bg, color: badge.color,
+      }}>
         {badge.label}
       </div>
     );
@@ -273,7 +263,13 @@ function PairIcon({ pair, size = 28 }: { pair: PairInfo; size?: number }) {
 
   // Generic fallback
   return (
-    <div className={`${cls} flex items-center justify-center text-[9px] font-bold`} style={{ width: px, height: px, background: "var(--bg-3)", color: "var(--t-2)" }}>
+    <div style={{
+      width: px, height: px, flexShrink: 0,
+      borderRadius: 4,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: 8, fontWeight: 700,
+      background: "var(--bg-3)", color: "var(--t-2)",
+    }}>
       {pair.display.slice(0, 3)}
     </div>
   );
@@ -522,18 +518,8 @@ export function SignalRequestButton({
           </div>
         )}
 
-        {/* Tab navigation — prominent segmented control */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${tabs.length}, 1fr)`,
-            gap: 4,
-            padding: 4,
-            borderRadius: 14,
-            background: "var(--bg-2)",
-            border: "1px solid var(--b-soft)",
-          }}
-        >
+        {/* Tabs — underline style, not pills */}
+        <div style={{ display: "flex", borderBottom: "1px solid var(--b-soft)", gap: 0 }}>
           {tabs.map((band) => {
             const bm = BAND_META[band];
             const locked = (ALL_PAIRS.find((p) => p.band === band)?.minTier ?? 0) > tier;
@@ -545,123 +531,111 @@ export function SignalRequestButton({
                 onClick={() => !locked && setActiveTab(band)}
                 disabled={locked}
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 2,
-                  padding: "10px 8px",
-                  borderRadius: 10,
-                  fontWeight: 700,
-                  fontSize: 13,
-                  transition: "all 0.15s",
-                  background: active ? `${bm.color}18` : "transparent",
+                  flex: 1,
+                  padding: "12px 0 10px",
+                  fontSize: 14,
+                  fontWeight: active ? 700 : 500,
                   color: active ? bm.color : locked ? "var(--t-3)" : "var(--t-2)",
-                  border: active ? `1px solid ${bm.color}40` : "1px solid transparent",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: active ? `2px solid ${bm.color}` : "2px solid transparent",
                   cursor: locked ? "not-allowed" : "pointer",
                   opacity: locked ? 0.35 : 1,
+                  transition: "all 0.15s",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
                 }}
               >
-                <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  {locked && <Lock size={12} />}
-                  {bm.label}
-                </span>
-                <span style={{ fontSize: 10, opacity: 0.5, fontWeight: 500 }}>
-                  {count} пар
-                </span>
+                {locked && <Lock size={12} />}
+                {bm.label}
+                <span style={{ fontSize: 11, opacity: 0.4 }}>{count}</span>
               </button>
             );
           })}
         </div>
         {remaining != null && (
-          <div style={{ textAlign: "right", fontSize: 11, color: "var(--t-3)" }}>
+          <div style={{ textAlign: "right", fontSize: 11, color: "var(--t-3)", marginTop: 4 }}>
             {remaining} осталось
           </div>
         )}
 
-        {/* Grouped pairs */}
-        <div className="space-y-3">
-          {groups.map((group) => (
-            <div key={group.flag}>
-              {/* Group header — minimal */}
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--t-3)]">
-                  {group.label}
-                </span>
-                <div className="flex-1 h-[1px] bg-[var(--b-soft)]" />
-              </div>
+        {/* Pair table — flat rows, no cards */}
+        {groups.map((group) => (
+          <div key={group.flag}>
+            <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--t-3)", padding: "8px 0 4px" }}>
+              {group.label}
+            </div>
+            <div style={{ borderTop: "1px solid var(--b-soft)" }}>
+              {group.items.map((p) => {
+                const locked = p.minTier > tier;
+                const payout = PAIR_PAYOUTS[p.name];
+                const payoutColor = payout ? getPayoutColor(payout) : "var(--t-3)";
 
-              {/* Pair grid */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                  gap: "8px",
-                }}
-              >
-                {group.items.map((p) => {
-                  const locked = p.minTier > tier;
-                  const payout = PAIR_PAYOUTS[p.name];
-                  const payoutColor = payout ? getPayoutColor(payout) : "var(--t-3)";
-
-                  return (
-                    <button
-                      key={p.name}
-                      onClick={() => handlePairSelect(p)}
-                      disabled={locked}
-                      className="relative group text-left rounded-xl transition-all duration-150"
+                return (
+                  <button
+                    key={p.name}
+                    onClick={() => handlePairSelect(p)}
+                    disabled={locked}
+                    className="group"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "10px 4px",
+                      borderBottom: "1px solid var(--b-soft)",
+                      background: "transparent",
+                      cursor: locked ? "not-allowed" : "pointer",
+                      opacity: locked ? 0.35 : 1,
+                      transition: "background 0.1s",
+                      position: "relative",
+                    }}
+                    onMouseEnter={(e) => { if (!locked) e.currentTarget.style.background = "var(--bg-2)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <PairIcon pair={p} size={28} />
+                    <span
                       style={{
-                        cursor: locked ? "not-allowed" : "pointer",
-                        opacity: locked ? 0.35 : 1,
-                        background: "var(--bg-1)",
-                        border: "1px solid var(--b-soft)",
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!locked) {
-                          e.currentTarget.style.borderColor = "var(--brand-gold)";
-                          e.currentTarget.style.background = "var(--bg-2)";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "var(--b-soft)";
-                        e.currentTarget.style.background = "var(--bg-1)";
+                        flex: 1,
+                        fontWeight: 600,
+                        fontSize: 14,
+                        color: "var(--t-1)",
+                        fontFamily: "var(--font-jetbrains)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      <div className="flex items-center gap-3 px-4 py-3">
-                        <PairIcon pair={p} size={30} />
-                        <div className="flex-1 min-w-0">
-                          <span
-                            className="font-semibold text-sm text-[var(--t-1)] block truncate"
-                            style={{ fontFamily: "var(--font-jetbrains)" }}
-                          >
-                            {p.display}
-                          </span>
-                          {payout != null && (
-                            <span
-                              className="text-[11px] font-bold tabular-nums"
-                              style={{ color: payoutColor }}
-                            >
-                              +{payout}%
-                            </span>
-                          )}
-                        </div>
-                        <ChevronRight
-                          size={14}
-                          className="shrink-0 text-[var(--t-3)] opacity-0 group-hover:opacity-60 transition-opacity"
-                        />
+                      {p.display}
+                    </span>
+                    {payout != null && (
+                      <span style={{ fontSize: 12, fontWeight: 700, color: payoutColor, fontFamily: "var(--font-jetbrains)" }}>
+                        +{payout}%
+                      </span>
+                    )}
+                    <ChevronRight
+                      size={14}
+                      className="shrink-0"
+                      style={{ color: "var(--t-3)", opacity: 0.3 }}
+                    />
+                    {locked && (
+                      <div style={{
+                        position: "absolute", inset: 0,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)",
+                      }}>
+                        <Lock size={14} style={{ color: "var(--t-3)" }} />
                       </div>
-
-                      {locked && (
-                        <div className="absolute inset-0 rounded-xl flex items-center justify-center bg-[var(--bg-0)]/60 backdrop-blur-[2px]">
-                          <Lock size={14} className="text-[var(--t-3)]" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     );
   }
