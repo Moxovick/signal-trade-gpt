@@ -416,22 +416,20 @@ export function SignalRequestButton({
                 }}
               >
                 <div
-                  className="flex items-center gap-3 px-3.5 py-3.5 rounded-xl border transition-all duration-200"
+                  className="flex items-center gap-3 px-3.5 py-3.5 rounded-xl transition-all duration-200"
                   style={{
-                    background: `linear-gradient(135deg, ${meta.color}0a 0%, rgba(16,12,16,0.85) 60%, ${meta.color}06 100%)`,
-                    borderColor: `${meta.color}22`,
+                    background: `linear-gradient(135deg, ${meta.color}08 0%, rgba(10,10,26,0.8) 60%, ${meta.color}05 100%)`,
+                    boxShadow: `inset 0 0 0 1px ${meta.color}20, 0 0 8px ${meta.color}06`,
                   }}
                   onMouseEnter={(e) => {
                     if (locked) return;
-                    e.currentTarget.style.borderColor = `${meta.color}50`;
-                    e.currentTarget.style.background = `linear-gradient(135deg, ${meta.color}18 0%, rgba(20,16,24,0.92) 50%, ${meta.color}10 100%)`;
-                    e.currentTarget.style.boxShadow = `0 4px 20px ${meta.color}15, inset 0 1px 0 ${meta.color}12`;
+                    e.currentTarget.style.background = `linear-gradient(135deg, ${meta.color}14 0%, rgba(14,12,28,0.9) 50%, ${meta.color}0c 100%)`;
+                    e.currentTarget.style.boxShadow = `inset 0 0 0 1px ${meta.color}45, 0 0 20px ${meta.color}18, 0 4px 16px rgba(0,0,0,0.3)`;
                     e.currentTarget.style.transform = "translateY(-1px)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = `${meta.color}22`;
-                    e.currentTarget.style.background = `linear-gradient(135deg, ${meta.color}0a 0%, rgba(16,12,16,0.85) 60%, ${meta.color}06 100%)`;
-                    e.currentTarget.style.boxShadow = "none";
+                    e.currentTarget.style.background = `linear-gradient(135deg, ${meta.color}08 0%, rgba(10,10,26,0.8) 60%, ${meta.color}05 100%)`;
+                    e.currentTarget.style.boxShadow = `inset 0 0 0 1px ${meta.color}20, 0 0 8px ${meta.color}06`;
                     e.currentTarget.style.transform = "translateY(0)";
                   }}
                 >
