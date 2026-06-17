@@ -1,42 +1,38 @@
 /**
- * Dashboard — Розыгрыш призов (v4).
+ * Dashboard — Розыгрыш призов (v5).
  *
- * Static prize showcase with 3 prize cards.
+ * Reads prize titles from SiteSettings (admin-editable).
  */
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { Gift, Trophy, Medal, Award } from "lucide-react";
 import { redirect } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 
-const PRIZES = [
-  {
-    place: 1,
-    title: "MacBook Pro",
-    icon: Trophy,
-    accentColor: "var(--brand-gold)",
-    borderColor: "rgba(212,160,23,0.4)",
-    bgGradient: "linear-gradient(135deg, rgba(212,160,23,0.08) 0%, transparent 100%)",
-  },
-  {
-    place: 2,
-    title: "iPhone 17 Pro Max",
-    icon: Medal,
-    accentColor: "#c0c0c0",
-    borderColor: "rgba(192,192,192,0.4)",
-    bgGradient: "linear-gradient(135deg, rgba(192,192,192,0.06) 0%, transparent 100%)",
-  },
-  {
-    place: 3,
-    title: "AirPods 3 Pro",
-    icon: Award,
-    accentColor: "#cd7f32",
-    borderColor: "rgba(205,127,50,0.4)",
-    bgGradient: "linear-gradient(135deg, rgba(205,127,50,0.06) 0%, transparent 100%)",
-  },
-] as const;
+type GiveawayPrize = { place: number; title: string };
+
+const DEFAULTS: GiveawayPrize[] = [
+  { place: 1, title: "MacBook Pro" },
+  { place: 2, title: "iPhone 17 Pro Max" },
+  { place: 3, title: "AirPods 3 Pro" },
+];
+
+const PLACE_STYLE: Record<number, { icon: LucideIcon; accentColor: string; borderColor: string; bgGradient: string }> = {
+  1: { icon: Trophy, accentColor: "var(--brand-gold)", borderColor: "rgba(212,160,23,0.4)", bgGradient: "linear-gradient(135deg, rgba(212,160,23,0.08) 0%, transparent 100%)" },
+  2: { icon: Medal, accentColor: "#c0c0c0", borderColor: "rgba(192,192,192,0.4)", bgGradient: "linear-gradient(135deg, rgba(192,192,192,0.06) 0%, transparent 100%)" },
+  3: { icon: Award, accentColor: "#cd7f32", borderColor: "rgba(205,127,50,0.4)", bgGradient: "linear-gradient(135deg, rgba(205,127,50,0.06) 0%, transparent 100%)" },
+};
 
 export default async function DashboardGiveawayPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+
+  const setting = await prisma.siteSettings.findUnique({
+    where: { key: "giveaway_prizes" },
+  });
+  const prizes: GiveawayPrize[] = setting
+    ? (setting.value as GiveawayPrize[])
+    : DEFAULTS;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -59,14 +55,16 @@ export default async function DashboardGiveawayPage() {
           gap: "16px",
         }}
       >
-        {PRIZES.map((prize) => {
-          const IconComponent = prize.icon;
+        {prizes.map((prize) => {
+          const style = PLACE_STYLE[prize.place];
+          if (!style) return null;
+          const IconComponent = style.icon;
           return (
             <div
               key={prize.place}
               style={{
-                background: prize.bgGradient,
-                border: `1px solid ${prize.borderColor}`,
+                background: style.bgGradient,
+                border: `1px solid ${style.borderColor}`,
                 borderRadius: "12px",
                 padding: "24px",
                 display: "flex",
@@ -76,7 +74,6 @@ export default async function DashboardGiveawayPage() {
                 textAlign: "center",
               }}
             >
-              {/* Icon */}
               <div
                 style={{
                   width: "56px",
@@ -85,27 +82,23 @@ export default async function DashboardGiveawayPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: `${prize.accentColor}15`,
-                  border: `1px solid ${prize.borderColor}`,
+                  background: `${style.accentColor}15`,
+                  border: `1px solid ${style.borderColor}`,
                 }}
               >
-                <IconComponent size={28} style={{ color: prize.accentColor }} />
+                <IconComponent size={28} style={{ color: style.accentColor }} />
               </div>
-
-              {/* Place */}
               <div
                 style={{
                   fontSize: "12px",
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.08em",
-                  color: prize.accentColor,
+                  color: style.accentColor,
                 }}
               >
                 {prize.place}-е место
               </div>
-
-              {/* Prize name */}
               <div
                 style={{
                   fontSize: "18px",

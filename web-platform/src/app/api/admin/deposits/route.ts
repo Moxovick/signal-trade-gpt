@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     prisma.deposit.findMany({
       where,
       include: {
-        user: { select: { id: true, email: true, username: true, subscriptionPlan: true } },
+        user: { select: { id: true, email: true, username: true, tier: true } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
@@ -72,8 +72,6 @@ export async function PUT(req: NextRequest) {
       where: { id: deposit.userId },
       data: {
         depositTotal: totalDeposit,
-        eliteUnlocked: totalDeposit >= 500,
-        ...(totalDeposit >= 500 && { subscriptionPlan: "elite" }),
       },
     });
   }

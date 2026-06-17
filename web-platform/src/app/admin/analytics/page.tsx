@@ -21,8 +21,6 @@ export default async function AdminAnalyticsPage() {
     confirmedDeposits,
     pendingDeposits,
     totalReferrals,
-    promoTotal,
-    promoActive,
     poAccounts,
   ] = await Promise.all([
     prisma.user.count(),
@@ -37,8 +35,6 @@ export default async function AdminAnalyticsPage() {
     prisma.deposit.aggregate({ where: { status: "confirmed" }, _sum: { amount: true }, _count: true }),
     prisma.deposit.count({ where: { status: "pending" } }),
     prisma.referral.count(),
-    prisma.promoCode.count(),
-    prisma.promoCode.count({ where: { isActive: true } }),
     prisma.pocketOptionAccount.count(),
   ]);
 
@@ -103,7 +99,7 @@ export default async function AdminAnalyticsPage() {
       items: [
         { label: "Подтверждено", value: `$${Number(confirmedDeposits._sum.amount ?? 0).toLocaleString()}`, sub: `${confirmedDeposits._count} шт` },
         { label: "Ожидают", value: pendingDeposits.toLocaleString(), sub: "на верификации" },
-        { label: "Промо (активных)", value: `${promoActive}`, sub: `из ${promoTotal}` },
+        { label: "T1+ (Basic+)", value: paidUsers.toLocaleString(), sub: "депозит ≥ $20" },
         { label: "PO аккаунтов", value: poAccounts.toLocaleString(), sub: "" },
       ],
     },
@@ -112,7 +108,6 @@ export default async function AdminAnalyticsPage() {
       color: "#00e5a0",
       items: [
         { label: "Всего рефералов", value: totalReferrals.toLocaleString(), sub: "" },
-        { label: "Промо-коды", value: promoTotal.toLocaleString(), sub: `${promoActive} активных` },
         { label: "T1+ (Basic+)", value: paidUsers.toLocaleString(), sub: "депозит ≥ $20" },
         { label: "T2 (Pro)", value: (userTiers[2] ?? 0).toLocaleString(), sub: "депозит ≥ $100" },
       ],

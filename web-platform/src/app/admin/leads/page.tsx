@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { TierBadge } from "@/components/ui/TierBadge";
 
 export default async function AdminLeadsPage() {
   const [users, totalUsers] = await Promise.all([
@@ -10,14 +11,13 @@ export default async function AdminLeadsPage() {
         email: true,
         username: true,
         firstName: true,
-        subscriptionPlan: true,
+        tier: true,
         status: true,
         createdAt: true,
         lastLogin: true,
         depositTotal: true,
         eliteUnlocked: true,
         signalsReceived: true,
-        trialExpiresAt: true,
         utmSource: true,
         referralCode: true,
         _count: {
@@ -61,7 +61,7 @@ export default async function AdminLeadsPage() {
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(245,197,24,0.1)" }}>
               <th className="text-left py-2 px-2 text-[#888] font-medium text-xs">Пользователь</th>
-              <th className="py-2 px-2 text-[#888] font-medium text-xs">План</th>
+              <th className="py-2 px-2 text-[#888] font-medium text-xs">Тир</th>
               <th className="py-2 px-2 text-[#888] font-medium text-xs">Депозит</th>
               <th className="py-2 px-2 text-[#888] font-medium text-xs">Сигналов</th>
               <th className="py-2 px-2 text-[#888] font-medium text-xs">Рефералы</th>
@@ -72,7 +72,6 @@ export default async function AdminLeadsPage() {
           </thead>
           <tbody>
             {users.map((user) => {
-              const isTrial = user.trialExpiresAt && new Date(user.trialExpiresAt) > new Date();
               return (
                 <tr key={user.id} className="hover:bg-white/[0.02]" style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
                   <td className="py-2 px-2">
@@ -80,10 +79,7 @@ export default async function AdminLeadsPage() {
                     <div className="text-xs text-[#555]">{user.firstName ?? user.username ?? "—"}</div>
                   </td>
                   <td className="py-2 px-2 text-center">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold tier-${user.subscriptionPlan}`}>
-                      {user.subscriptionPlan.toUpperCase()}
-                    </span>
-                    {isTrial && <span className="block text-[10px] text-[#f5c518] mt-0.5">TRIAL</span>}
+                    <TierBadge tier={user.tier} />
                   </td>
                   <td className="py-2 px-2 text-center">
                     <span className={Number(user.depositTotal) >= 500 ? "text-gold-gradient font-bold" : "text-[#888]"}>

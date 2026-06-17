@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { Check } from "lucide-react";
 
 export default async function AdminDepositsPage() {
   const [deposits, stats] = await Promise.all([
@@ -7,7 +6,7 @@ export default async function AdminDepositsPage() {
       orderBy: { createdAt: "desc" },
       take: 100,
       include: {
-        user: { select: { id: true, email: true, username: true, subscriptionPlan: true, eliteUnlocked: true } },
+        user: { select: { id: true, email: true, username: true, tier: true } },
       },
     }),
     prisma.deposit.aggregate({
@@ -26,7 +25,7 @@ export default async function AdminDepositsPage() {
           <h1 className="text-2xl font-black tracking-wider" style={{ fontFamily: "var(--font-bebas)" }}>
             ДЕПОЗИТЫ
           </h1>
-          <p className="text-sm text-[#888]">Верификация депозитов для Elite доступа</p>
+          <p className="text-sm text-[#888]">Депозиты пользователей</p>
         </div>
         <div className="flex gap-3">
           <div className="card-premium rounded-xl px-4 py-2 text-center">
@@ -58,8 +57,7 @@ export default async function AdminDepositsPage() {
               <div className="flex items-center gap-2 text-xs text-[#666]">
                 <span>{dep.user.email}</span>
                 <span>·</span>
-                <span className={`tier-${dep.user.subscriptionPlan}`}>{dep.user.subscriptionPlan.toUpperCase()}</span>
-                {dep.user.eliteUnlocked && <span className="tier-elite flex items-center gap-1">ELITE <Check className="w-3 h-3" /></span>}
+                <span className={`tier-${dep.user.tier === 0 ? "free" : dep.user.tier === 1 ? "basic" : "pro"}`}>{dep.user.tier === 0 ? "Free" : dep.user.tier === 1 ? "Basic" : "Pro"}</span>
               </div>
             </div>
             <div className="flex items-center gap-4 text-sm">
