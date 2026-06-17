@@ -1,6 +1,15 @@
 import random
 from database.models import Signal
+from constants import (
+    EXPIRATION_LABELS,
+    EXPIRATIONS,
+    OTC_PAIRS,
+    EXCHANGE_PAIRS,
+    ELITE_PAIRS,
+    PairInfo,
+)
 
+# Flat lists for legacy random generation
 CURRENCY_PAIRS = [
     "EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "EUR/GBP", "GBP/JPY",
     "USD/CHF", "NZD/USD", "EUR/JPY", "AUD/JPY", "USD/CAD", "EUR/AUD",
@@ -28,9 +37,9 @@ OTC_INDICES = [
     "S&P 500 (OTC)", "NASDAQ 100 (OTC)", "Dow Jones (OTC)",
 ]
 
-OTC_PAIRS = OTC_CURRENCY_PAIRS + OTC_CRYPTO + OTC_COMMODITIES + OTC_STOCKS + OTC_INDICES
+ALL_OTC_PAIRS = OTC_CURRENCY_PAIRS + OTC_CRYPTO + OTC_COMMODITIES + OTC_STOCKS + OTC_INDICES
 
-EXPIRATIONS = {
+LEGACY_EXPIRATIONS = {
     "otc": ["30 сек", "1 мин", "2 мин"],
     "exchange": ["1 мин", "2 мин", "5 мин"],
     "elite": ["30 сек", "1 мин", "2 мин", "5 мин", "15 мин"],
@@ -70,13 +79,14 @@ ANALYSES = {
 
 
 def generate_signal(tier: str = "otc") -> Signal:
+    """Generate a random signal (legacy, no user choice)."""
     if tier == "otc":
-        pair = random.choice(OTC_PAIRS)
+        pair = random.choice(ALL_OTC_PAIRS)
     else:
         pair = random.choice(CURRENCY_PAIRS)
 
     direction = random.choice(DIRECTIONS)
-    expiration = random.choice(EXPIRATIONS.get(tier, EXPIRATIONS["otc"]))
+    expiration = random.choice(LEGACY_EXPIRATIONS.get(tier, LEGACY_EXPIRATIONS["otc"]))
     conf_min, conf_max = CONFIDENCE_RANGES.get(tier, (73, 88))
     confidence = random.randint(conf_min, conf_max)
     analysis = random.choice(ANALYSES.get(tier, ANALYSES["otc"]))
@@ -85,6 +95,30 @@ def generate_signal(tier: str = "otc") -> Signal:
         pair=pair,
         direction=direction,
         expiration=expiration,
+        confidence=confidence,
+        signal_type="ai",
+        tier=tier,
+        analysis=analysis,
+        result="pending",
+    )
+
+
+def generate_signal_for_pair(
+    tier: str,
+    pair_symbol: str,
+    expiration_code: str,
+) -> Signal:
+    """Generate a signal for a specific user-chosen pair and expiration."""
+    direction = random.choice(DIRECTIONS)
+    conf_min, conf_max = CONFIDENCE_RANGES.get(tier, (73, 88))
+    confidence = random.randint(conf_min, conf_max)
+    analysis = random.choice(ANALYSES.get(tier, ANALYSES["otc"]))
+    expiration_label = EXPIRATION_LABELS.get(expiration_code, expiration_code)
+
+    return Signal(
+        pair=pair_symbol,
+        direction=direction,
+        expiration=expiration_label,
         confidence=confidence,
         signal_type="ai",
         tier=tier,

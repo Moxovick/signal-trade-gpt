@@ -73,10 +73,13 @@ def signal_inline(pocket_option_url: str, signal_id: int | None) -> InlineKeyboa
     if signal_id is not None:
         rows.append(
             [
-                InlineKeyboardButton(text="✅ Win", callback_data=f"sig:{signal_id}:win"),
-                InlineKeyboardButton(text="❌ Loss", callback_data=f"sig:{signal_id}:loss"),
+                InlineKeyboardButton(text="✅ Win", callback_data=f"result:{signal_id}:win"),
+                InlineKeyboardButton(text="❌ Loss", callback_data=f"result:{signal_id}:loss"),
             ]
         )
+    rows.append(
+        [InlineKeyboardButton(text="🎯 Ещё сигнал", callback_data="get_signal")]
+    )
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 

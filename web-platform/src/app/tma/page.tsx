@@ -85,6 +85,15 @@ function Home({ user }: { user: TmaUser }) {
         </div>
       </header>
 
+      <Link
+        href="/tma/signals"
+        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.98]"
+        style={{ background: "linear-gradient(135deg, var(--brand-gold-deep), var(--brand-gold-bright))", color: "#1a1208" }}
+      >
+        <Activity size={16} />
+        Получить сигнал
+      </Link>
+
       <div className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-4">
         <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[var(--brand-gold)] mb-3">
           <Activity size={12} className="animate-pulse" />
