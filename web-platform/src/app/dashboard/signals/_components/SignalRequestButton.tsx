@@ -189,20 +189,20 @@ const CRYPTO_IMG: Record<string, string> = {
 
 // Stock icons via Simple Icons CDN
 const STOCK_ICON: Record<string, string> = {
-  AAPL: "https://cdn.simpleicons.org/apple/white",
-  Apple: "https://cdn.simpleicons.org/apple/white",
-  TSLA: "https://cdn.simpleicons.org/tesla/white",
-  Tesla: "https://cdn.simpleicons.org/tesla/white",
-  AMZN: "https://cdn.simpleicons.org/amazon/white",
-  Amazon: "https://cdn.simpleicons.org/amazon/white",
-  MSFT: "https://cdn.simpleicons.org/microsoft/white",
-  Microsoft: "https://cdn.simpleicons.org/microsoft/white",
-  META: "https://cdn.simpleicons.org/meta/white",
-  Meta: "https://cdn.simpleicons.org/meta/white",
-  NFLX: "https://cdn.simpleicons.org/netflix/white",
-  Netflix: "https://cdn.simpleicons.org/netflix/white",
-  NVDA: "https://cdn.simpleicons.org/nvidia/white",
-  NVIDIA: "https://cdn.simpleicons.org/nvidia/white",
+  AAPL: "https://cdn.simpleicons.org/apple/ffffff",
+  Apple: "https://cdn.simpleicons.org/apple/ffffff",
+  TSLA: "https://cdn.simpleicons.org/tesla/ffffff",
+  Tesla: "https://cdn.simpleicons.org/tesla/ffffff",
+  AMZN: "https://cdn.simpleicons.org/amazon/ffffff",
+  Amazon: "https://cdn.simpleicons.org/amazon/ffffff",
+  MSFT: "https://cdn.simpleicons.org/microsoft/ffffff",
+  Microsoft: "https://cdn.simpleicons.org/microsoft/ffffff",
+  META: "https://cdn.simpleicons.org/meta/ffffff",
+  Meta: "https://cdn.simpleicons.org/meta/ffffff",
+  NFLX: "https://cdn.simpleicons.org/netflix/ffffff",
+  Netflix: "https://cdn.simpleicons.org/netflix/ffffff",
+  NVDA: "https://cdn.simpleicons.org/nvidia/ffffff",
+  NVIDIA: "https://cdn.simpleicons.org/nvidia/ffffff",
 };
 
 // Inline SVG icons for commodities & indices (24x24)
