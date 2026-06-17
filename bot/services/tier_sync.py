@@ -16,7 +16,6 @@ import logging
 from typing import Any
 
 import aiosqlite
-import httpx
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.types import BufferedInputFile
@@ -24,6 +23,7 @@ from aiogram.types import BufferedInputFile
 from config import settings
 from constants import TIER_DEPOSIT_THRESHOLDS, TIER_NAMES
 from database.db import DB_PATH, set_deposit_total, set_tier
+from services import web_sync
 from services.imagegen import make_tier_card
 
 logger = logging.getLogger(__name__)
@@ -31,19 +31,6 @@ logger = logging.getLogger(__name__)
 POLL_INTERVAL_SECONDS = 60
 USER_TIER_DEPOSIT_THRESHOLDS = TIER_DEPOSIT_THRESHOLDS
 USER_TIER_NAMES = TIER_NAMES
-
-
-async def _fetch_snapshot() -> list[dict[str, Any]]:
-    url = f"{settings.platform_api_url.rstrip('/')}/api/bot/sync"
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(
-            url, headers={"X-Bot-Secret": settings.bot_sync_secret}
-        )
-        resp.raise_for_status()
-        body = resp.json()
-        if not body.get("ok"):
-            raise RuntimeError(f"sync failed: {body}")
-        return body["accounts"]
 
 
 async def _local_state(po_trader_id: str) -> tuple[int, float, int | None] | None:
@@ -144,11 +131,9 @@ async def tier_sync_loop(bot: Bot) -> None:
     )
     while True:
         try:
-            snapshot = await _fetch_snapshot()
+            snapshot = web_sync.state().accounts
             for item in snapshot:
                 await _apply_one(bot, item)
-        except httpx.HTTPError as exc:
-            logger.warning("Tier-sync fetch failed: %s", exc)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Tier-sync iteration failed: %s", exc)
         await asyncio.sleep(POLL_INTERVAL_SECONDS)

@@ -75,6 +75,17 @@ def get_daily_limit(tier: int) -> int | None:
     return None
 
 
+def get_allowed_types(tier: int) -> list[str] | None:
+    """Return allowed signal types for given tier from admin config, or None."""
+    types = _state.config.get("allowedTypes")
+    if not isinstance(types, dict):
+        return None
+    val = types.get(str(tier))
+    if isinstance(val, list) and all(isinstance(t, str) for t in val):
+        return val
+    return None
+
+
 def get_tier_features(tier: int) -> dict[str, Any]:
     """
     Return per-tier feature flags from admin config.
@@ -217,6 +228,14 @@ async def _apply(body: dict[str, Any]) -> None:
         cfg = body.get("config")
         if isinstance(cfg, dict):
             _state.config = cfg
+        # Merge onDemandConfig (dailyLimits, allowedTypes) into _state.config so
+        # get_daily_limit() / get_allowed_types() can read them transparently.
+        on_demand = body.get("onDemandConfig")
+        if isinstance(on_demand, dict):
+            if "dailyLimits" in on_demand:
+                _state.config["dailyLimits"] = on_demand["dailyLimits"]
+            if "allowedTypes" in on_demand:
+                _state.config["allowedTypes"] = on_demand["allowedTypes"]
         thr = body.get("tierThresholds")
         if isinstance(thr, dict):
             _state.tier_thresholds = thr

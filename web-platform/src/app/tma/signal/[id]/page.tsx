@@ -6,6 +6,7 @@ import { ArrowDownRight, ArrowLeft, ArrowUpRight, Clock } from "lucide-react";
 import { TmaShell } from "../../_components/TmaShell";
 import { useTma } from "../../_components/TmaProvider";
 import { TmaSignalChart } from "../../_components/TmaSignalChart";
+import { PO_AFFILIATE_URL } from "@/lib/constants";
 
 type Asset = {
   symbol: string;
@@ -176,7 +177,7 @@ function SignalView({ id }: { id: string }) {
       </div>
 
       <a
-        href="https://pocketoption.com/"
+        href={PO_AFFILIATE_URL}
         target="_blank"
         rel="noopener noreferrer"
         className="block w-full text-center px-5 py-3.5 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold"

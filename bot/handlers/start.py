@@ -56,6 +56,35 @@ def _format_welcome(first_name: str, ref_code: str, bot_username: str) -> str:
     )
 
 
+async def _get_photo_url(message: Message) -> str | None:
+    """
+    Return a direct HTTPS URL to the user's Telegram profile photo, or None
+    if they have no photo or the fetch fails.
+
+    Strategy:
+      1. Call getUserProfilePhotos to get the file_id of the first photo.
+      2. Call getFile to resolve the file_path on Telegram's CDN.
+      3. Construct the public URL using the bot token from settings.
+    """
+    try:
+        photos = await message.bot.get_user_profile_photos(
+            message.from_user.id, limit=1
+        )
+        if not photos.photos:
+            return None
+        file_id = photos.photos[0][-1].file_id  # largest size of first photo
+        file_info = await message.bot.get_file(file_id)
+        if not file_info.file_path:
+            return None
+        return (
+            f"https://api.telegram.org/file/bot{settings.bot_token}"
+            f"/{file_info.file_path}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("Could not fetch profile photo URL: %s", exc)
+        return None
+
+
 async def _redeem_link_token(message: Message, token: str) -> bool:
     """
     Redeem a `link_<token>` deep-link by calling the web platform's
@@ -68,12 +97,14 @@ async def _redeem_link_token(message: Message, token: str) -> bool:
             "Сообщи админу.",
         )
         return True
+    photo_url = await _get_photo_url(message)
     payload = {
         "token": token,
         "telegramId": str(message.from_user.id),
         "username": message.from_user.username,
         "firstName": message.from_user.first_name,
         "lastName": message.from_user.last_name,
+        "photoUrl": photo_url,
     }
     url = f"{settings.platform_api_url.rstrip('/')}/api/bot/telegram-link"
     try:

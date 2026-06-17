@@ -23,6 +23,7 @@ from aiogram.types import BufferedInputFile
 
 from config import settings
 from constants import TIER_DAILY_LIMITS, TIER_NAMES, TIER_SIGNAL_TYPES
+import services.web_sync as web_sync
 from database.db import (
     get_daily_signal_count,
     get_user,
@@ -213,7 +214,10 @@ async def _generate_signal_data(
 
     await reset_daily_signals_if_expired(user.telegram_id)
 
-    daily_limit = TIER_DAILY_LIMITS.get(user.tier)
+    # Prefer admin-configured limits from web sync; fall back to local constants.
+    daily_limit = web_sync.get_daily_limit(user.tier)
+    if daily_limit is None:
+        daily_limit = TIER_DAILY_LIMITS.get(user.tier)
     used, limit, can_request = await get_daily_signal_count(user.telegram_id, daily_limit)
 
     if not can_request:
@@ -228,7 +232,8 @@ async def _generate_signal_data(
             "Следующий сигнал будет доступен через несколько часов."
         ), None, None, None
 
-    allowed_types = TIER_SIGNAL_TYPES.get(user.tier, ["otc"])
+    # Prefer admin-configured signal types from web sync; fall back to local constants.
+    allowed_types = web_sync.get_allowed_types(user.tier) or TIER_SIGNAL_TYPES.get(user.tier, ["otc"])
     signal_tier = random.choice(allowed_types)
 
     signal = generate_signal(signal_tier)

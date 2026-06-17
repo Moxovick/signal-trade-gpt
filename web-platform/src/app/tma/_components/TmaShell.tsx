@@ -149,14 +149,61 @@ function Inner({
 
 function Onboarding({
   mode,
+  onRegister,
 }: {
   mode: "external" | "register";
   onRegister?: () => void;
 }) {
+  const { tg } = useTma();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const baseUrl = process.env["NEXT_PUBLIC_APP_URL"] ?? "";
   // /login?from=tma uses the Telegram Login Widget which sets telegramId
   // automatically — this is the only way to link site account ↔ Telegram.
   const loginUrl = `${baseUrl}/login?from=tma`;
+
+  // When the user returns from the web login (tab becomes visible again or the
+  // window regains focus), fire onRegister so the shell re-fetches auth state.
+  useEffect(() => {
+    if (mode !== "register" || !onRegister) return;
+
+    let fired = false;
+
+    function handleReturn() {
+      if (fired) return;
+      // Only act if the user actually opened the link (pending flag is set).
+      if (!pending) return;
+      fired = true;
+      setError(null);
+      Promise.resolve(onRegister?.()).catch((err: unknown) => {
+        fired = false;
+        setError((err as Error).message ?? "Ошибка при входе. Попробуй ещё раз.");
+      });
+    }
+
+    document.addEventListener("visibilitychange", handleReturn);
+    window.addEventListener("focus", handleReturn);
+    return () => {
+      document.removeEventListener("visibilitychange", handleReturn);
+      window.removeEventListener("focus", handleReturn);
+    };
+  }, [mode, onRegister, pending]);
+
+  function handleLoginClick() {
+    setPending(true);
+    setError(null);
+    // Use Telegram WebApp openLink if available so the browser opens externally
+    // and Telegram can detect the return; fall back to window.open.
+    if (tg && typeof (tg as unknown as Record<string, unknown>).openLink === "function") {
+      (tg as unknown as { openLink: (url: string, opts?: { try_instant_view?: boolean }) => void }).openLink(
+        loginUrl,
+        { try_instant_view: false },
+      );
+    } else {
+      window.open(loginUrl, "_blank", "noopener,noreferrer");
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
@@ -184,18 +231,28 @@ function Onboarding({
               3. Вернись сюда — Mini App узнает тебя автоматически.
             </p>
           </div>
-          <a
-            href={loginUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold text-sm"
+          <button
+            type="button"
+            onClick={handleLoginClick}
+            disabled={pending}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold text-sm disabled:opacity-60"
           >
             <Send size={16} />
-            Войти через Telegram
-          </a>
-          <p className="text-[11px] text-[var(--t-3)] mt-4 max-w-xs">
-            После входа вернись в Telegram и снова открой Mini App.
-          </p>
+            {pending ? "Ожидаем возврата…" : "Войти через Telegram"}
+          </button>
+          {error && (
+            <p className="text-[11px] text-[var(--red)] mt-3 max-w-xs">{error}</p>
+          )}
+          {!error && pending && (
+            <p className="text-[11px] text-[var(--t-3)] mt-4 max-w-xs">
+              После входа вернись в Telegram — Mini App обновится автоматически.
+            </p>
+          )}
+          {!pending && (
+            <p className="text-[11px] text-[var(--t-3)] mt-4 max-w-xs">
+              После входа вернись в Telegram и снова открой Mini App.
+            </p>
+          )}
         </>
       )}
     </div>
