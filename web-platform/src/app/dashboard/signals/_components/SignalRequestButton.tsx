@@ -836,23 +836,7 @@ export function SignalRequestButton({
             <ArrowLeft size={18} />
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 4,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 12,
-                fontWeight: 700,
-                background: bandMeta.bg,
-                color: bandMeta.color,
-                fontFamily: "var(--font-jetbrains)",
-              }}
-            >
-              {selectedPair.display.slice(0, 2)}
-            </div>
+            <PairIcon pair={selectedPair} size={32} />
             <div>
               <span style={{ fontWeight: 600, fontSize: 14, fontFamily: "var(--font-jetbrains)" }}>
                 {selectedPair.display}

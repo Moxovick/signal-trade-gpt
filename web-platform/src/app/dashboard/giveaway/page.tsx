@@ -5,7 +5,7 @@
  */
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Gift, Trophy, Medal, Award } from "lucide-react";
+import { Gift, Trophy, Medal, Award, Laptop, Smartphone, Headphones } from "lucide-react";
 import { redirect } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 
@@ -22,6 +22,15 @@ const PLACE_STYLE: Record<number, { icon: LucideIcon; accentColor: string; borde
   2: { icon: Medal, accentColor: "#c0c0c0", borderColor: "rgba(192,192,192,0.4)", bgGradient: "linear-gradient(135deg, rgba(192,192,192,0.06) 0%, transparent 100%)" },
   3: { icon: Award, accentColor: "#cd7f32", borderColor: "rgba(205,127,50,0.4)", bgGradient: "linear-gradient(135deg, rgba(205,127,50,0.06) 0%, transparent 100%)" },
 };
+
+/** Pick a device icon based on prize title keywords. */
+function getDeviceIcon(title: string): LucideIcon | null {
+  const t = title.toLowerCase();
+  if (t.includes("macbook") || t.includes("ноутбук") || t.includes("laptop")) return Laptop;
+  if (t.includes("iphone") || t.includes("телефон") || t.includes("смартфон") || t.includes("phone")) return Smartphone;
+  if (t.includes("airpods") || t.includes("наушники") || t.includes("headphone")) return Headphones;
+  return null;
+}
 
 export default async function DashboardGiveawayPage() {
   const session = await auth();
@@ -74,31 +83,44 @@ export default async function DashboardGiveawayPage() {
                 textAlign: "center",
               }}
             >
-              <div
-                style={{
-                  width: "56px",
-                  height: "56px",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: `${style.accentColor}15`,
-                  border: `1px solid ${style.borderColor}`,
-                }}
-              >
-                <IconComponent size={28} style={{ color: style.accentColor }} />
+              {/* Device illustration */}
+              {(() => {
+                const DeviceIcon = getDeviceIcon(prize.title);
+                return DeviceIcon ? (
+                  <div
+                    style={{
+                      width: "80px",
+                      height: "80px",
+                      borderRadius: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: `${style.accentColor}10`,
+                      border: `1.5px solid ${style.borderColor}`,
+                    }}
+                  >
+                    <DeviceIcon size={38} style={{ color: style.accentColor }} />
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Place badge */}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <IconComponent size={18} style={{ color: style.accentColor }} />
+                <span
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: style.accentColor,
+                  }}
+                >
+                  {prize.place}-е место
+                </span>
               </div>
-              <div
-                style={{
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  color: style.accentColor,
-                }}
-              >
-                {prize.place}-е место
-              </div>
+
+              {/* Prize title */}
               <div
                 style={{
                   fontSize: "18px",

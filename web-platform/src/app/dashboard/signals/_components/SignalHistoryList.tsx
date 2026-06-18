@@ -9,6 +9,99 @@ import {
 } from "lucide-react";
 import { MiniChart, type ChartCandle } from "./MiniChart";
 
+// ── Pair icon helpers ──
+
+const CURRENCY_FLAG: Record<string, string> = {
+  EUR: "eu", USD: "us", GBP: "gb", JPY: "jp", AUD: "au",
+  CAD: "ca", CHF: "ch", NZD: "nz",
+};
+
+const CRYPTO_IMG: Record<string, string> = {
+  Bitcoin: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
+  Ethereum: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+  Solana: "https://assets.coingecko.com/coins/images/4128/small/solana.png",
+  Dogecoin: "https://assets.coingecko.com/coins/images/5/small/dogecoin.png",
+  Cardano: "https://assets.coingecko.com/coins/images/975/small/cardano.png",
+  Toncoin: "https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png",
+  BNB: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
+  Litecoin: "https://assets.coingecko.com/coins/images/2/small/litecoin.png",
+  BTC: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
+  ETH: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+  SOL: "https://assets.coingecko.com/coins/images/4128/small/solana.png",
+};
+
+const STOCK_COLORS: Record<string, string> = {
+  AAPL: "#a2aaad", Apple: "#a2aaad", TSLA: "#cc0000", Tesla: "#cc0000",
+  AMZN: "#ff9900", Amazon: "#ff9900", MSFT: "#00a4ef", Microsoft: "#00a4ef",
+  META: "#0081fb", Meta: "#0081fb", NFLX: "#e50914", Netflix: "#e50914",
+  NVDA: "#76b900", NVIDIA: "#76b900",
+};
+
+/** Extract a display name from a full pair name. */
+function pairDisplay(pair: string): string {
+  return pair.replace(" (OTC)", "");
+}
+
+/** Extract currency codes from pair name like "EUR/USD (OTC)" → ["EUR","USD"]. */
+function pairCurrencies(pair: string): [string, string] | null {
+  const clean = pair.replace(" (OTC)", "");
+  const parts = clean.split("/");
+  if (parts.length === 2 && CURRENCY_FLAG[parts[0]!] && CURRENCY_FLAG[parts[1]!]) {
+    return [parts[0]!, parts[1]!];
+  }
+  return null;
+}
+
+function HistoryPairIcon({ pair, size = 28 }: { pair: string; size?: number }) {
+  // Currency pair → overlapping flags
+  const currencies = pairCurrencies(pair);
+  if (currencies) {
+    return (
+      <div style={{ position: "relative", width: size + 8, height: size, flexShrink: 0 }}>
+        <img src={`https://hatscripts.github.io/circle-flags/flags/${CURRENCY_FLAG[currencies[0]]}.svg`}
+          alt={currencies[0]} width={size} height={size}
+          style={{ position: "absolute", left: 0, top: 0, borderRadius: "50%", border: "2px solid var(--bg-2)", zIndex: 2 }} />
+        <img src={`https://hatscripts.github.io/circle-flags/flags/${CURRENCY_FLAG[currencies[1]]}.svg`}
+          alt={currencies[1]} width={size} height={size}
+          style={{ position: "absolute", left: size * 0.35, top: 0, borderRadius: "50%", border: "2px solid var(--bg-2)", zIndex: 1 }} />
+      </div>
+    );
+  }
+
+  // Crypto
+  const name = pair.replace(" (OTC)", "").split("/")[0]!;
+  const cryptoUrl = CRYPTO_IMG[name];
+  if (cryptoUrl) {
+    return <img src={cryptoUrl} alt={name} width={size} height={size} style={{ borderRadius: "50%", flexShrink: 0, background: "#222" }} />;
+  }
+
+  // Stock — colored letter badge
+  const stockColor = STOCK_COLORS[name];
+  if (stockColor) {
+    return (
+      <div style={{
+        width: size, height: size, borderRadius: 6, flexShrink: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 10, fontWeight: 800, background: `${stockColor}20`, color: stockColor,
+        border: `1px solid ${stockColor}40`,
+      }}>
+        {name.slice(0, 2)}
+      </div>
+    );
+  }
+
+  // Fallback
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: 6, flexShrink: 0,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: 9, fontWeight: 700, background: "var(--bg-3)", color: "var(--t-2)",
+    }}>
+      {pairDisplay(pair).slice(0, 3)}
+    </div>
+  );
+}
+
 type ChartData = {
   candles: ChartCandle[];
   indicators: { rsi: number; ema20: number; ema50: number };
@@ -119,19 +212,26 @@ export function SignalHistoryList({ signals }: Props) {
                 borderLeft: `3px solid ${directionColor}`,
               }}
             >
-              {/* Direction icon */}
-              <div
-                className={[
-                  "rounded-lg flex items-center justify-center shrink-0",
-                  isNewest ? "w-11 h-11" : "w-9 h-9",
-                ].join(" ")}
-                style={{ background: directionBg, color: directionColor }}
-              >
-                {isCall ? (
-                  <TrendingUp size={isNewest ? 20 : 16} />
-                ) : (
-                  <TrendingDown size={isNewest ? 20 : 16} />
-                )}
+              {/* Pair icon + direction badge */}
+              <div className="relative shrink-0" style={{ width: isNewest ? 44 : 36, height: isNewest ? 44 : 36 }}>
+                <HistoryPairIcon pair={s.pair} size={isNewest ? 36 : 28} />
+                <div
+                  className="absolute flex items-center justify-center rounded-full"
+                  style={{
+                    width: isNewest ? 18 : 16,
+                    height: isNewest ? 18 : 16,
+                    bottom: -2,
+                    right: -4,
+                    background: directionColor,
+                    border: "2px solid var(--bg-1)",
+                  }}
+                >
+                  {isCall ? (
+                    <TrendingUp size={isNewest ? 10 : 8} color="#fff" />
+                  ) : (
+                    <TrendingDown size={isNewest ? 10 : 8} color="#fff" />
+                  )}
+                </div>
               </div>
 
               {/* Pair + band + expiration */}
