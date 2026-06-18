@@ -98,20 +98,22 @@ USER_TIER_DEPOSIT_THRESHOLDS = TIER_DEPOSIT_THRESHOLDS
 def format_otc_minimal(signal: Signal) -> str:
     """
     OTC signal caption for Free-tier users.
-    Clean and readable: pair, direction, expiry, confidence bar.
+    Clean and readable: pair, direction, expiry, confidence bar, analysis.
     """
     arrow = DIRECTION_ARROW[signal.direction]
     conf_bar_full = round(signal.confidence / 10)
     conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
     payout = _payout_line(signal.pair)
+    analysis_line = f"\n<i>{signal.analysis}</i>\n" if signal.analysis else ""
     return (
         f"<b>OTC СИГНАЛ</b>\n"
         f"\n"
         f"<b>{signal.pair}</b>\n"
         f"{arrow} <b>{signal.direction}</b>  ·  {signal.expiration}\n"
         f"\n"
-        f"Confidence: <b>{signal.confidence}%</b>  {conf_bar}\n"
+        f"Точность: <b>{signal.confidence}%</b>  {conf_bar}\n"
         f"{payout}"
+        f"{analysis_line}"
         f"\n"
         f"Объём: 1–3% депозита\n"
         f"#otc #signal"
@@ -147,7 +149,7 @@ def format_pro_signal_caption(
         "",
         f"<b>{signal.pair}</b>  ·  {arrow} {signal.direction}  ·  {signal.expiration}",
         "",
-        f"Confidence: <b>{signal.confidence}%</b>  {conf_bar}",
+        f"Точность: <b>{signal.confidence}%</b>  {conf_bar}",
     ]
     if entry_price is not None:
         lines.append(f"Вход: <code>{entry_price:.5f}</code>")
@@ -198,7 +200,7 @@ def format_signal(signal: Signal, pocket_option_url: str) -> str:
         f"<b>Пара:</b> {signal.pair}",
         f"<b>Направление:</b> {signal.direction} {arrow}",
         f"<b>Экспирация:</b> {signal.expiration}",
-        f"<b>Confidence:</b> {signal.confidence}%  {conf_bar}",
+        f"<b>Точность:</b> {signal.confidence}%  {conf_bar}",
     ]
     if payout:
         lines.append(payout.rstrip("\n"))

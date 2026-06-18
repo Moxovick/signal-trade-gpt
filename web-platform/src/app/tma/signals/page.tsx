@@ -35,6 +35,7 @@ type SignalResult = {
   expiration: string;
   payout: number;
   entryPrice: number;
+  analysis: string | null;
 };
 
 // ─── Pair data ───
@@ -152,6 +153,52 @@ const CATEGORIES: { key: PairCategory | "all"; label: string }[] = [
   { key: "indices", label: "Индексы" },
 ];
 
+// ─── Pair icons ───
+
+const CURRENCY_FLAG: Record<string, string> = {
+  EUR: "eu", USD: "us", GBP: "gb", JPY: "jp", AUD: "au",
+  CAD: "ca", CHF: "ch", NZD: "nz",
+};
+
+const CRYPTO_IMG: Record<string, string> = {
+  BTC: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
+  ETH: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+  SOL: "https://assets.coingecko.com/coins/images/4128/small/solana.png",
+  DOGE: "https://assets.coingecko.com/coins/images/5/small/dogecoin.png",
+  ADA: "https://assets.coingecko.com/coins/images/975/small/cardano.png",
+  TON: "https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png",
+  BNB: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
+  LTC: "https://assets.coingecko.com/coins/images/2/small/litecoin.png",
+};
+
+function PairIconSmall({ display, size = 32 }: { display: string; size?: number }) {
+  const parts = display.split("/");
+  // Currency pair flags
+  if (parts.length === 2 && CURRENCY_FLAG[parts[0]!] && CURRENCY_FLAG[parts[1]!]) {
+    return (
+      <div style={{ position: "relative", width: size + 8, height: size, flexShrink: 0 }}>
+        <img src={`https://hatscripts.github.io/circle-flags/flags/${CURRENCY_FLAG[parts[0]!]}.svg`}
+          alt={parts[0]} width={size} height={size}
+          style={{ position: "absolute", left: 0, top: 0, borderRadius: "50%", border: "2px solid var(--bg-2)", zIndex: 2 }} />
+        <img src={`https://hatscripts.github.io/circle-flags/flags/${CURRENCY_FLAG[parts[1]!]}.svg`}
+          alt={parts[1]} width={size} height={size}
+          style={{ position: "absolute", left: size * 0.35, top: 0, borderRadius: "50%", border: "2px solid var(--bg-2)", zIndex: 1 }} />
+      </div>
+    );
+  }
+  // Crypto
+  const cryptoUrl = CRYPTO_IMG[display];
+  if (cryptoUrl) {
+    return <img src={cryptoUrl} alt={display} width={size} height={size} style={{ borderRadius: "50%", flexShrink: 0, background: "#222" }} />;
+  }
+  // Fallback
+  return (
+    <div style={{ width: size, height: size, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, background: "var(--bg-3)", color: "var(--t-2)", flexShrink: 0 }}>
+      {display.slice(0, 3)}
+    </div>
+  );
+}
+
 // ─── Helpers ───
 
 function getPayoutColor(pct: number): string {
@@ -256,6 +303,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
         expiration: data.signal.expiration,
         payout: selectedPair.payout,
         entryPrice: data.signal.entryPrice ?? 0,
+        analysis: (data.signal as Record<string, unknown>).analysis as string | null ?? null,
       };
 
       setRemaining(data.access.remaining);
@@ -285,16 +333,8 @@ function SignalsPicker({ user }: { user: TmaUser }) {
       <main className="max-w-md mx-auto p-4 space-y-4">
         <div className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-5">
           <div className="flex items-center gap-3 mb-4">
-            <span
-              className={`size-12 rounded-full flex items-center justify-center shrink-0 ${
-                isCall
-                  ? "bg-[var(--green)]/15 text-[var(--green)]"
-                  : "bg-[var(--red)]/15 text-[var(--red)]"
-              }`}
-            >
-              {isCall ? <ArrowUpRight size={24} /> : <ArrowDownRight size={24} />}
-            </span>
-            <div>
+            <PairIconSmall display={ALL_PAIRS.find((p) => p.name === result.pair)?.display ?? result.pair} size={36} />
+            <div className="flex-1 min-w-0">
               <div className="text-lg font-bold text-[var(--t-1)]">{result.pair}</div>
               <span
                 className="text-xs font-semibold"
@@ -326,6 +366,17 @@ function SignalsPicker({ user }: { user: TmaUser }) {
             <Target size={12} className="text-[var(--brand-gold)]" />
             Вход: <span className="text-[var(--brand-gold)] font-semibold">{result.entryPrice.toFixed(5)}</span>
           </div>
+
+          {result.analysis && (
+            <div className="rounded-xl px-4 py-3 text-[12px] leading-relaxed text-[var(--t-2)] mt-3"
+              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--b-soft)" }}
+            >
+              <div className="text-[10px] uppercase tracking-wider text-[var(--brand-gold)] font-semibold mb-1.5">
+                Аналитика
+              </div>
+              {result.analysis}
+            </div>
+          )}
         </div>
 
         <button
@@ -427,6 +478,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
                   isSelected ? "bg-[var(--bg-2)]" : ""
                 }`}
               >
+                <PairIconSmall display={p.display} size={24} />
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-semibold text-[var(--t-1)] truncate block">
                     {p.display}

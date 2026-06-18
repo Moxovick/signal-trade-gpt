@@ -4,7 +4,7 @@
  * Explains the deposit-based reward tiers. Logged-in users see their progress.
  */
 import Link from "next/link";
-import { ArrowRight, Gift, Zap, TrendingUp, Star, CheckCircle2, Lock } from "lucide-react";
+import { ArrowRight, Gift, Zap, TrendingUp, Star, CheckCircle2, Lock, Laptop, Smartphone, Headphones, Watch } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
@@ -58,6 +58,44 @@ const TIERS = [
 ];
 
 const THRESHOLDS: Record<number, number> = { 0: 0, 1: 20, 2: 100 };
+
+/** Map common prize keywords to Lucide icons for visual appeal. */
+function PrizeIcon({ title }: { title: string }) {
+  const t = title.toLowerCase();
+  if (t.includes("macbook") || t.includes("ноутбук") || t.includes("laptop")) {
+    return (
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
+        style={{ background: "rgba(212,160,23,0.10)", border: "1px solid rgba(212,160,23,0.15)" }}>
+        <Laptop size={28} className="text-[var(--brand-gold)]" />
+      </div>
+    );
+  }
+  if (t.includes("iphone") || t.includes("телефон") || t.includes("смартфон") || t.includes("phone")) {
+    return (
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
+        style={{ background: "rgba(136,136,255,0.10)", border: "1px solid rgba(136,136,255,0.15)" }}>
+        <Smartphone size={28} style={{ color: "#8888ff" }} />
+      </div>
+    );
+  }
+  if (t.includes("airpods") || t.includes("наушники") || t.includes("headphone")) {
+    return (
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
+        style={{ background: "rgba(142,224,107,0.10)", border: "1px solid rgba(142,224,107,0.15)" }}>
+        <Headphones size={28} style={{ color: "#8ee06b" }} />
+      </div>
+    );
+  }
+  if (t.includes("watch") || t.includes("часы")) {
+    return (
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
+        style={{ background: "rgba(212,160,23,0.10)", border: "1px solid rgba(212,160,23,0.15)" }}>
+        <Watch size={28} className="text-[var(--brand-gold)]" />
+      </div>
+    );
+  }
+  return null;
+}
 
 export default async function BonusProgramPage() {
   const session = await auth();
@@ -218,20 +256,30 @@ export default async function BonusProgramPage() {
                     ))}
 
                     {/* Prizes from DB */}
-                    {tierPrizes.map((p) => (
-                      <div key={p.id} className="flex items-start gap-2.5">
-                        <Gift size={14} className="mt-0.5 shrink-0 text-[var(--brand-gold)]" />
-                        <div>
-                          <span className="text-sm text-[var(--t-1)]">{p.title}</span>
-                          <span
-                            className="text-xs ml-1.5 font-semibold"
-                            style={{ color: "var(--brand-gold)", fontFamily: "var(--font-jetbrains)" }}
-                          >
-                            {p.valueLabel}
-                          </span>
+                    {tierPrizes.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-[var(--b-soft)] space-y-3">
+                        <div className="text-[10px] uppercase tracking-widest text-[var(--brand-gold)] font-semibold">
+                          Призы
                         </div>
+                        {tierPrizes.map((p) => (
+                          <div key={p.id} className="text-center">
+                            <PrizeIcon title={p.title} />
+                            <div className="flex items-center justify-center gap-2">
+                              <Gift size={14} className="shrink-0 text-[var(--brand-gold)]" />
+                              <span className="text-sm text-[var(--t-1)] font-medium">{p.title}</span>
+                            </div>
+                            {p.valueLabel && (
+                              <span
+                                className="text-xs font-semibold block mt-0.5"
+                                style={{ color: "var(--brand-gold)", fontFamily: "var(--font-jetbrains)" }}
+                              >
+                                {p.valueLabel}
+                              </span>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
 
                   {/* Status / CTA */}

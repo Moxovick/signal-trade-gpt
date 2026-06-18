@@ -1045,14 +1045,27 @@ export function SignalRequestButton({
 
     return (
       <div style={{ width: "100%", maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
-        {/* OTC → decorative visual, non-OTC → chart card */}
+        {/* OTC → decorative visual + analysis, non-OTC → chart card */}
         {isOtc ? (
-          <OtcSignalVisual
-            pair={lastSignal.pair}
-            direction={lastSignal.direction}
-            confidence={lastSignal.confidence}
-            expiration={lastSignal.expiration}
-          />
+          <div className="space-y-3">
+            <OtcSignalVisual
+              pair={lastSignal.pair}
+              direction={lastSignal.direction}
+              confidence={lastSignal.confidence}
+              expiration={lastSignal.expiration}
+            />
+            {lastSignal.analysis && (
+              <div
+                className="rounded-xl px-4 py-3 text-[12px] leading-relaxed text-[var(--t-2)] whitespace-pre-line"
+                style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--b-soft)" }}
+              >
+                <div className="text-[10px] uppercase tracking-wider text-[var(--brand-gold)] font-semibold mb-1.5">
+                  Аналитика
+                </div>
+                {lastSignal.analysis}
+              </div>
+            )}
+          </div>
         ) : (
           <div
             className="rounded-2xl border overflow-hidden w-full"

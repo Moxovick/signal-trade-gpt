@@ -50,9 +50,8 @@ export function SignalHistoryList({ signals }: Props) {
   const visibleSignals = signals.slice(0, visibleCount);
   const hasMore = visibleCount < signals.length;
 
-  function toggle(id: string, tier: string, chartData: ChartData | null) {
-    // OTC signals have no real chart — don't expand them
-    if (tier === "otc" || !chartData) return;
+  function toggle(id: string, hasContent: boolean) {
+    if (!hasContent) return;
     setExpandedId((prev) => (prev === id ? null : id));
   }
 
@@ -64,7 +63,7 @@ export function SignalHistoryList({ signals }: Props) {
         const band = TIER_BAND_LABELS[s.tier];
         const isPending = s.result === "pending";
         const isNewest = idx === 0 && isPending;
-        const isExpandable = s.tier !== "otc" && s.chartData !== null;
+        const isExpandable = s.chartData !== null || !!s.analysis;
         const isExpanded = expandedId === s.id;
 
         const resultLabel =
@@ -101,11 +100,11 @@ export function SignalHistoryList({ signals }: Props) {
             <div
               role={isExpandable ? "button" : undefined}
               tabIndex={isExpandable ? 0 : undefined}
-              onClick={() => toggle(s.id, s.tier, cd)}
+              onClick={() => toggle(s.id, isExpandable)}
               onKeyDown={(e) => {
                 if (isExpandable && (e.key === "Enter" || e.key === " ")) {
                   e.preventDefault();
-                  toggle(s.id, s.tier, cd);
+                  toggle(s.id, isExpandable);
                 }
               }}
               className={[
@@ -174,7 +173,7 @@ export function SignalHistoryList({ signals }: Props) {
               {/* Confidence */}
               <div className="hidden sm:flex flex-col gap-1 w-28 shrink-0">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-[var(--t-3)]">Сила</span>
+                  <span className="text-[10px] text-[var(--t-3)]">Точность</span>
                   <span
                     className="text-[12px] font-bold tabular-nums"
                     style={{
@@ -230,13 +229,13 @@ export function SignalHistoryList({ signals }: Props) {
             </div>
 
             {/* Expanded details */}
-            {isExpanded && cd && (
+            {isExpanded && (cd || s.analysis) && (
               <div
                 className="rounded-b-xl border border-t-0 border-[var(--b-soft)] bg-[var(--bg-1)] px-5 py-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200"
                 style={{ borderLeft: `3px solid ${directionColor}` }}
               >
                 {/* Mini chart */}
-                {cd.candles.length > 0 && (
+                {cd && cd.candles.length > 0 && (
                   <MiniChart
                     candles={cd.candles}
                     direction={s.direction}
@@ -246,7 +245,7 @@ export function SignalHistoryList({ signals }: Props) {
                 )}
 
                 {/* Indicators */}
-                <div
+                {cd && <div
                   className="flex flex-wrap gap-4 text-[11px] text-[var(--t-3)]"
                   style={{ fontFamily: "var(--font-jetbrains)" }}
                 >
@@ -268,10 +267,10 @@ export function SignalHistoryList({ signals }: Props) {
                       {cd.indicators.ema50.toFixed(4)}
                     </span>
                   </span>
-                </div>
+                </div>}
 
                 {/* Levels + Entry */}
-                <div
+                {cd && <div
                   className="flex flex-wrap gap-4 text-[11px]"
                   style={{ fontFamily: "var(--font-jetbrains)" }}
                 >
@@ -293,7 +292,7 @@ export function SignalHistoryList({ signals }: Props) {
                       {cd.entryPrice.toFixed(5)}
                     </span>
                   </span>
-                </div>
+                </div>}
 
                 {/* Analysis */}
                 {s.analysis && (

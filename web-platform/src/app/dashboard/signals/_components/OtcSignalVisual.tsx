@@ -217,7 +217,7 @@ export function OtcSignalVisual({ pair, direction, confidence, expiration }: Pro
             color: gold,
             opacity: 0.5,
           }}>
-            SPACE &middot; SIGNAL
+            SIGNAL TRADE GPT
           </span>
         </div>
       </div>

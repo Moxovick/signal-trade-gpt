@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { generateSignalForUser } from "@/lib/signal-generator";
 import { rateLimit } from "@/lib/rate-limit";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,17 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Enforce PocketOption registration for all tiers
+  const poAccount = await prisma.pocketOptionAccount.findUnique({
+    where: { userId: session.user.id },
+  });
+  if (!poAccount) {
+    return NextResponse.json(
+      { error: "Сначала привяжите PocketOption аккаунт. Зарегистрируйтесь по реферальной ссылке и привяжите Trader ID." },
+      { status: 403 },
+    );
   }
 
   const rl = rateLimit(`signal:${session.user.id}`, SIGNAL_RL_LIMIT, SIGNAL_RL_WINDOW_MS);

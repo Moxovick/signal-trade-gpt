@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authTmaRequest } from "@/lib/tma-auth";
 import { generateSignalForUser } from "@/lib/signal-generator";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -15,6 +16,17 @@ export async function POST(req: NextRequest) {
   const session = await authTmaRequest(req);
   if (!session.ok) {
     return NextResponse.json({ error: session.reason }, { status: 401 });
+  }
+
+  // Enforce PocketOption registration for all tiers
+  const poAccount = await prisma.pocketOptionAccount.findUnique({
+    where: { userId: session.userId },
+  });
+  if (!poAccount) {
+    return NextResponse.json(
+      { error: "Сначала привяжи PocketOption аккаунт через /link в боте" },
+      { status: 403 },
+    );
   }
 
   let pair: string | undefined;

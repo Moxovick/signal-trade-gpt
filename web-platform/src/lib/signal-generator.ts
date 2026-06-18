@@ -207,13 +207,38 @@ function buildAnalysis(
 
 // ─── OTC signal (with synthetic chart data) ───
 
+/** Random OTC analysis phrases — gives users a "why" behind the direction. */
+const OTC_ANALYSES_CALL = [
+  "OTC-тренд: боковое движение с пробоем вверх. Объёмы указывают на рост активности покупателей.",
+  "Формируется паттерн «двойное дно» — ожидается разворот в восходящем направлении.",
+  "Уровень поддержки удержан, отскок подтверждён свечной формацией. RSI выходит из зоны перепроданности.",
+  "Бычья дивергенция на RSI. Импульс ослаб, ожидается коррекция вверх.",
+  "Объёмы выше среднего на текущих уровнях. Smart Money накопление подтверждено — вход на покупку.",
+  "Тест ключевой поддержки пройден, сформирован бычий пин-бар. Цена готова к росту.",
+  "EMA(9) пересекает EMA(21) снизу вверх — краткосрочный бычий сигнал на OTC-рынке.",
+  "Ордер-блок на покупку подтверждён. Ликвидность собрана ниже — цена уходит вверх.",
+];
+
+const OTC_ANALYSES_PUT = [
+  "OTC-тренд: нисходящий канал подтверждён. Продавцы доминируют на текущих уровнях.",
+  "Паттерн «двойная вершина» — ожидается продолжение снижения.",
+  "Уровень сопротивления не пробит, формируется откат вниз. RSI в зоне перекупленности.",
+  "Медвежья дивергенция на осцилляторе. Импульс угасает, ожидается снижение.",
+  "Объём продаж превышает объём покупок. Давление продавцов нарастает — вход на продажу.",
+  "Ложный пробой сопротивления — цена отвергнута, формируется медвежий пин-бар.",
+  "EMA(9) пересекает EMA(21) сверху вниз — краткосрочный медвежий сигнал.",
+  "Ордер-блок на продажу подтверждён. Ликвидность собрана выше — цена уходит вниз.",
+];
+
 function generateOtcSignal(overridePair?: string, overrideExpiration?: string) {
   const pair = overridePair ?? randomItem(PAIRS.otc);
   const direction = randomItem(DIRECTIONS);
   const expiration = overrideExpiration ?? randomItem(EXPIRATIONS.otc);
   const confidence = randomInt(73, 88);
 
-  // OTC has no real market data — direction-only signal, no chart.
+  const analyses = direction === "CALL" ? OTC_ANALYSES_CALL : OTC_ANALYSES_PUT;
+  const analysis = randomItem(analyses);
+
   return {
     pair,
     direction: direction as "CALL" | "PUT",
@@ -221,7 +246,7 @@ function generateOtcSignal(overridePair?: string, overrideExpiration?: string) {
     confidence,
     tier: "otc" as const,
     type: "ai" as const,
-    analysis: null,
+    analysis,
     chartData: Prisma.JsonNull,
     entryPrice: null,
     isActive: true,
