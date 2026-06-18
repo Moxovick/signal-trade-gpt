@@ -1,0 +1,35 @@
+# Render Blueprint — Signal Trade GPT bot
+# Deploy: connect this repo on render.com, it auto-detects this file.
+#
+# The web platform (Next.js) deploys separately on Vercel.
+# This file only defines the Telegram bot service.
+
+services:
+  - type: worker
+    name: signal-trade-bot
+    runtime: docker
+    dockerfilePath: ./bot/Dockerfile
+    dockerContext: ./bot
+    region: frankfurt
+    plan: starter  # $7/mo — always-on worker, no sleep
+    envVars:
+      - key: BOT_TOKEN
+        sync: false  # set manually in Render dashboard
+      - key: CHANNEL_ID
+        sync: false
+      - key: WEBAPP_URL
+        value: https://spacesignal.net/tma
+      - key: PLATFORM_API_URL
+        value: https://spacesignal.net
+      - key: BOT_SYNC_SECRET
+        sync: false
+      - key: POCKET_OPTION_URL
+        sync: false
+      - key: ADMIN_IDS
+        sync: false
+      - key: POCKETOPTION_API_TOKEN
+        sync: false
+      - key: POCKETOPTION_PARTNER_ID
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO

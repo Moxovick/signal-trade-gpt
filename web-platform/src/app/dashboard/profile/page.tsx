@@ -26,7 +26,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const SITE_URL =
-  process.env["NEXT_PUBLIC_SITE_URL"] ?? "http://localhost:3000";
+  process.env["NEXT_PUBLIC_SITE_URL"] ?? "https://spacesignal.net";
 
 export default async function ProfilePage() {
   const session = await auth();

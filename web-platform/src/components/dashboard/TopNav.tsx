@@ -31,8 +31,7 @@ const MAIN_NAV: NavItem[] = [
   { href: "/dashboard/leaderboard", label: "Лидерборд", icon: Trophy },
 ];
 
-const BOT_URL =
-  process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/traitsignaltsest_bot";
+const BOT_URL = process.env["NEXT_PUBLIC_BOT_URL"] ?? "";
 
 export function DashboardTopNav({
   user,

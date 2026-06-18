@@ -81,12 +81,12 @@ export default async function ExistingPoAccountInfoPage() {
         <p className="text-center text-xs text-[var(--t-3)]">
           Вопрос? Напиши в поддержку{" "}
           <a
-            href="https://t.me/traitsignaltsest_bot"
+            href={process.env["NEXT_PUBLIC_BOT_URL"] ?? ""}
             className="text-[var(--brand-gold)] hover:underline"
             target="_blank"
             rel="noreferrer noopener"
           >
-            @traitsignaltsest_bot
+            наш бот
           </a>
           .
         </p>

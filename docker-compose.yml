@@ -26,9 +26,7 @@ services:
       - ./bot/.env
     volumes:
       - bot-data:/app/data
-    depends_on:
-      db:
-        condition: service_healthy
+    # Bot uses SQLite, not Postgres — no dependency on db service
     healthcheck:
       test: ["CMD", "python", "-c", "open('data/bot.pid').read()"]
       interval: 30s

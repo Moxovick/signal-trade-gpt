@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 
 const SITE_URL =
-  process.env["NEXT_PUBLIC_SITE_URL"] ?? "http://localhost:3000";
+  process.env["NEXT_PUBLIC_SITE_URL"] ?? "https://spacesignal.net";
 const REVSHARE_PCT = 5;
 const WITHDRAWAL_DAYS = 7;
 

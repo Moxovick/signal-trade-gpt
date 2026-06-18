@@ -5,8 +5,7 @@ import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 
-const BOT_URL =
-  process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/traitsignaltsest_bot";
+const BOT_URL = process.env["NEXT_PUBLIC_BOT_URL"] ?? "";
 
 const CATEGORY_LABELS: Record<string, string> = {
   registration: "Регистрация и депозит",
