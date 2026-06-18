@@ -21,21 +21,25 @@ from aiogram.types import (
 BTN_SIGNAL = "🎯 Получить сигнал"
 BTN_LINK = "🔗 Привязать ID"
 BTN_REF = "👥 Рефералы"
+BTN_HELP = "❔ Помощь"
+
+# Keep old names importable but unused
 BTN_STATS = "📈 Статистика"
 BTN_SETTINGS = "⚙️ Настройки"
-BTN_HELP = "❔ Помощь"
 
 MAIN_MENU = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text=BTN_SIGNAL)],
         [KeyboardButton(text=BTN_LINK), KeyboardButton(text=BTN_REF)],
-        [KeyboardButton(text=BTN_STATS), KeyboardButton(text=BTN_SETTINGS)],
         [KeyboardButton(text=BTN_HELP)],
     ],
     resize_keyboard=True,
     is_persistent=True,
     input_field_placeholder="Выбери действие…",
 )
+
+# All menu button texts for FSM cancellation detection
+MENU_BUTTONS = {BTN_SIGNAL, BTN_LINK, BTN_REF, BTN_HELP}
 
 
 # ── inline CTAs ───────────────────────────────────────────────────────────────

@@ -70,7 +70,7 @@ export type PriceSource = {
 };
 
 export const DEFAULT_BOT_WELCOME =
-  "Привет, {first_name}! Это SpaceSignal.\n\n" +
+  "Привет, {first_name}! Это Signal Trade GPT.\n\n" +
   "Твой текущий тир: T{tier}.\n\n" +
   "Команды:\n" +
   "/signals — последние сигналы\n" +

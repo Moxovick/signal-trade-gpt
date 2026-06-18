@@ -54,7 +54,7 @@ async def _yahoo(pair: str, endpoint: str) -> float | None:
     params = {"symbols": symbol}
     async with httpx.AsyncClient(
         timeout=_HTTP_TIMEOUT,
-        headers={"User-Agent": "Mozilla/5.0 SpaceSignal-Bot"},
+        headers={"User-Agent": "Mozilla/5.0 SignalTradeGPT-Bot"},
     ) as client:
         resp = await client.get(url, params=params)
         resp.raise_for_status()

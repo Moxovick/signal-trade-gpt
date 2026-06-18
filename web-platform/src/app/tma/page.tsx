@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Activity, ArrowDownRight, ArrowUpRight, ChevronRight } from "lucide-react";
+import { Activity, ArrowDownRight, ArrowUpRight, ChevronRight, Target } from "lucide-react";
 import { TmaShell, type TmaUser } from "./_components/TmaShell";
 import { useTma } from "./_components/TmaProvider";
 
@@ -92,6 +92,21 @@ function Home({ user }: { user: TmaUser }) {
       >
         <Activity size={16} />
         Получить сигнал
+      </Link>
+
+      {/* CTA: Get signal */}
+      <Link
+        href="/tma/signals"
+        className="flex items-center gap-3 rounded-2xl border border-[var(--brand-gold)]/30 bg-[rgba(212,160,23,0.06)] p-4 active:scale-[0.98] transition-all"
+      >
+        <div className="size-10 rounded-xl bg-[var(--brand-gold)]/15 text-[var(--brand-gold)] flex items-center justify-center shrink-0">
+          <Target size={20} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-bold text-[var(--t-1)]">Получить сигнал</div>
+          <div className="text-xs text-[var(--t-3)]">Выбери пару и экспирацию</div>
+        </div>
+        <ChevronRight size={16} className="text-[var(--brand-gold)]" />
       </Link>
 
       <div className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-4">

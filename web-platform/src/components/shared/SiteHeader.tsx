@@ -135,7 +135,7 @@ export function SiteFooter() {
         <div>
           <Logo size="sm" />
           <p className="mt-4 text-xs text-[var(--t-3)] leading-relaxed max-w-xs">
-            SpaceSignal не является финансовым советником. Сигналы предоставляются в
+            Signal Trade GPT не является финансовым советником. Сигналы предоставляются в
             информационных целях. Торговля бинарными опционами сопряжена с высоким риском
             потери средств.
           </p>

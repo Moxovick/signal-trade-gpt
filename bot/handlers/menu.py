@@ -19,16 +19,12 @@ from services.imagegen import (
     make_help_sheet,
     make_leaderboard_table,
     make_referral_card,
-    make_settings_card,
-    make_stats_card,
 )
 from services.keyboards import (
     BTN_HELP,
     BTN_LINK,
     BTN_REF,
-    BTN_SETTINGS,
     BTN_SIGNAL,
-    BTN_STATS,
     MAIN_MENU,
     referral_inline,
 )
@@ -41,8 +37,22 @@ from handlers.link import cmd_link as do_link  # noqa: E402
 from handlers.signals import _send_signal_with_animation  # noqa: E402
 
 
+async def dispatch_menu_button(message: Message, state: FSMContext) -> None:
+    """Dispatch a menu button press. Called from link FSM when user taps a menu button."""
+    text = (message.text or "").strip()
+    if text == BTN_SIGNAL:
+        await btn_signal(message, state)
+    elif text == BTN_LINK:
+        await btn_link(message, state)
+    elif text == BTN_REF:
+        await btn_ref(message, state)
+    elif text == BTN_HELP:
+        await btn_help(message)
+
+
 @router.message(F.text == BTN_SIGNAL)
-async def btn_signal(message: Message) -> None:
+async def btn_signal(message: Message, state: FSMContext) -> None:
+    await state.clear()
     error = await _send_signal_with_animation(message.from_user.id, message.bot)
     if error:
         from aiogram.enums import ParseMode as _PM
@@ -51,13 +61,12 @@ async def btn_signal(message: Message) -> None:
 
 @router.message(F.text == BTN_LINK)
 async def btn_link(message: Message, state: FSMContext) -> None:
-    # aiogram injects extra kwargs (bot, dispatcher, ...). do_link only wants
-    # `state`, so we forward it explicitly rather than splatting **kwargs.
     await do_link(message, state)
 
 
 @router.message(F.text == BTN_REF)
-async def btn_ref(message: Message) -> None:
+async def btn_ref(message: Message, state: FSMContext) -> None:
+    await state.clear()
     user = await get_user(message.from_user.id)
     if user is None:
         await message.answer("Сначала /start.")
@@ -95,77 +104,14 @@ async def btn_ref(message: Message) -> None:
         )
 
 
-@router.message(F.text == BTN_STATS)
-async def btn_stats(message: Message) -> None:
-    user = await get_user(message.from_user.id)
-    if user is None:
-        await message.answer("Сначала /start.")
-        return
-    from constants import TIER_NAMES
-    level = TIER_NAMES.get(user.tier, "Free")
-    caption = (
-        "<b>📊 Твоя статистика</b>\n"
-        "\n"
-        f"<b>Уровень:</b> {level}  ·  <b>Депозит:</b> ${user.deposit_total:,.0f}\n"
-        f"<b>Сигналов получено:</b> {user.signals_received}"
-    )
-    try:
-        card = make_stats_card(
-            name=user.first_name,
-            tier=user.tier,
-            deposit=user.deposit_total,
-            signals_received=user.signals_received,
-            wins=user.wins,
-            losses=user.losses,
-        )
-        await message.answer_photo(
-            BufferedInputFile(card, filename="stats.png"),
-            caption=caption,
-            parse_mode=ParseMode.HTML,
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Could not render stats card: %s", exc)
-        await message.answer(caption, parse_mode=ParseMode.HTML)
-
-
-@router.message(F.text == BTN_SETTINGS)
-async def btn_settings(message: Message) -> None:
-    user = await get_user(message.from_user.id)
-    if user is None:
-        await message.answer("Сначала /start.")
-        return
-    text = (
-        "<b>⚙️ Настройки</b>\n"
-        "\n"
-        "Переключить уведомления — /notifications\n"
-        "Привязать PocketOption ID — /link"
-    )
-    try:
-        card = make_settings_card(
-            name=user.first_name,
-            tier=user.tier,
-            po_trader_id=user.po_trader_id,
-            notifications_enabled=user.notifications_enabled,
-        )
-        await message.answer_photo(
-            BufferedInputFile(card, filename="settings.png"),
-            caption=text,
-            parse_mode=ParseMode.HTML,
-            reply_markup=MAIN_MENU,
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Could not render settings card: %s", exc)
-        await message.answer(text, parse_mode=ParseMode.HTML, reply_markup=MAIN_MENU)
-
-
 HELP_COMMANDS: list[tuple[str, str]] = [
     ("/start", "приветствие и меню"),
+    ("/signal", "получить сигнал"),
     ("/link", "привязать PocketOption ID"),
     ("/ref", "реферальная ссылка + QR"),
-    ("/achievements", "коллекция достижений"),
     ("/leaderboard", "топ-10 трейдеров"),
     ("/calc", "калькулятор сделки"),
-    ("/notifications", "вкл/выкл уведомлений"),
+    ("/cancel", "отменить текущее действие"),
     ("/help", "эта справка"),
 ]
 

@@ -20,6 +20,7 @@ import logging
 import aiosqlite
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 
@@ -422,7 +423,7 @@ async def cmd_seed_data(message: Message) -> None:
 
 
 @router.message(Command("preview"))
-async def cmd_preview(message: Message, command: CommandObject) -> None:
+async def cmd_preview(message: Message, command: CommandObject, state: FSMContext) -> None:
     """Render any screen as image for the admin themself.
 
     Usage: /preview <screen>
@@ -449,14 +450,14 @@ async def cmd_preview(message: Message, command: CommandObject) -> None:
     if screen == "tier":
         await message.answer("Preview tier: not implemented yet")
     elif screen == "stats":
-        await menu.btn_stats(message)
+        await message.answer("Команда убрана.")
     elif screen == "ref":
-        await menu.btn_ref(message)
+        await menu.btn_ref(message, state=state)
     elif screen == "ach":
         await menu.cmd_achievements(message)
     elif screen == "top":
         await menu.cmd_leaderboard(message)
     elif screen == "settings":
-        await menu.btn_settings(message)
+        await message.answer("Команда убрана.")
     elif screen == "help":
         await menu.btn_help(message)

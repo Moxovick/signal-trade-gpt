@@ -20,7 +20,7 @@ import { ExternalLink, ShieldCheck } from "lucide-react";
 import { PoIdGateForm } from "./_components/PoIdGateForm";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Привязка PocketOption — SpaceSignal" };
+export const metadata = { title: "Привязка PocketOption — Signal Trade GPT" };
 
 export default async function OnboardingPoIdPage() {
   const session = await auth();

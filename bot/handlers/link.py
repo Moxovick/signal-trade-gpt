@@ -10,7 +10,7 @@ import re
 
 from aiogram import Router, F
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, Message
 from aiogram.enums import ParseMode
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
@@ -64,6 +64,14 @@ async def receive_id(message: Message, state: FSMContext) -> None:
         await message.answer(
             "Привязка отменена. Используй /link чтобы начать заново.",
         )
+        return
+    # If user tapped a menu button, cancel FSM and forward to menu handler
+    from services.keyboards import MENU_BUTTONS
+    if candidate in MENU_BUTTONS:
+        await state.clear()
+        # Re-process by importing and calling the menu handler directly
+        from handlers.menu import dispatch_menu_button
+        await dispatch_menu_button(message, state)
         return
     if not PO_ID_RE.match(candidate):
         await message.answer(
@@ -123,6 +131,17 @@ async def receive_id(message: Message, state: FSMContext) -> None:
             + verified_msg,
             parse_mode=ParseMode.HTML,
         )
+
+
+@router.callback_query(F.data == "link:enter_id")
+async def cb_enter_id(query: CallbackQuery, state: FSMContext) -> None:
+    """Handle inline button 'Я уже зарегистрирован — ввести ID'."""
+    await query.answer()
+    await state.set_state(LinkPo.waiting_for_id)
+    await query.message.answer(
+        "Пришли свой PocketOption Trader ID (только цифры, 4–12 знаков).\n"
+        "Найти его можно в профиле PocketOption → раздел «Мой ID».",
+    )
 
 
 @router.message(Command("cancel"))

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check, Copy, Share2, Users } from "lucide-react";
 import { TmaShell, type TmaUser } from "../_components/TmaShell";
 
-const BOT_URL = process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/spacesignal_bot";
+const BOT_URL = process.env["NEXT_PUBLIC_BOT_URL"] ?? "";
 
 export default function TmaRefPage() {
   return <TmaShell>{(user) => <RefProgram user={user} />}</TmaShell>;

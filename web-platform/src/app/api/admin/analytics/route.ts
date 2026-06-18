@@ -18,7 +18,7 @@ export async function GET() {
   const weekStart = new Date(todayStart);
   weekStart.setDate(weekStart.getDate() - 7);
   const monthStart = new Date(todayStart);
-  monthStart.setDate(weekStart.getDate() - 30);
+  monthStart.setDate(monthStart.getDate() - 30);
 
   const [
     totalUsers,

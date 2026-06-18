@@ -1,18 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
-  ArrowLeft,
   ArrowUpRight,
   ArrowDownRight,
   Lock,
   Clock,
-  Search,
-  BarChart3,
-  Shield,
-  Target,
-  Activity,
   RefreshCw,
+  Target,
 } from "lucide-react";
 import { TmaShell, type TmaUser } from "../_components/TmaShell";
 import { useTma } from "../_components/TmaProvider";
@@ -20,173 +15,144 @@ import { useTma } from "../_components/TmaProvider";
 // ─── Types ───
 
 type PairBand = "otc" | "exchange" | "elite";
+type PairCategory = "forex" | "crypto" | "stocks" | "commodities" | "indices";
 
 type PairInfo = {
   name: string;
   display: string;
-  flag: string;
+  category: PairCategory;
   band: PairBand;
+  payout: number;
   minTier: number;
 };
 
-type GeneratedSignal = {
-  id: string;
+type Step = "pick" | "result";
+
+type SignalResult = {
   pair: string;
   direction: "CALL" | "PUT";
-  expiration: string;
   confidence: number;
-  tier: string;
-  analysis: string | null;
-  entryPrice: number | null;
-  createdAt: string;
+  expiration: string;
+  payout: number;
+  entryPrice: number;
 };
 
-// ─── Pair data (same as website SignalRequestButton) ───
+// ─── Pair data ───
 
 const ALL_PAIRS: PairInfo[] = [
-  // OTC Currencies (tier 0)
-  { name: "EUR/USD (OTC)", display: "EUR/USD", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "GBP/USD (OTC)", display: "GBP/USD", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "USD/JPY (OTC)", display: "USD/JPY", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "AUD/USD (OTC)", display: "AUD/USD", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "EUR/GBP (OTC)", display: "EUR/GBP", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "USD/CHF (OTC)", display: "USD/CHF", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "NZD/USD (OTC)", display: "NZD/USD", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "EUR/JPY (OTC)", display: "EUR/JPY", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "AUD/CHF (OTC)", display: "AUD/CHF", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "AUD/NZD (OTC)", display: "AUD/NZD", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "EUR/CHF (OTC)", display: "EUR/CHF", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "GBP/JPY (OTC)", display: "GBP/JPY", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "USD/CAD (OTC)", display: "USD/CAD", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "CAD/JPY (OTC)", display: "CAD/JPY", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "GBP/AUD (OTC)", display: "GBP/AUD", flag: "OTC", band: "otc", minTier: 0 },
-  { name: "EUR/NZD (OTC)", display: "EUR/NZD", flag: "OTC", band: "otc", minTier: 0 },
-  // OTC Crypto
-  { name: "Bitcoin (OTC)", display: "BTC", flag: "Crypto", band: "otc", minTier: 0 },
-  { name: "Ethereum (OTC)", display: "ETH", flag: "Crypto", band: "otc", minTier: 0 },
-  { name: "Solana (OTC)", display: "SOL", flag: "Crypto", band: "otc", minTier: 0 },
-  { name: "Dogecoin (OTC)", display: "DOGE", flag: "Crypto", band: "otc", minTier: 0 },
-  { name: "Cardano (OTC)", display: "ADA", flag: "Crypto", band: "otc", minTier: 0 },
-  { name: "Toncoin (OTC)", display: "TON", flag: "Crypto", band: "otc", minTier: 0 },
-  { name: "BNB (OTC)", display: "BNB", flag: "Crypto", band: "otc", minTier: 0 },
-  { name: "Litecoin (OTC)", display: "LTC", flag: "Crypto", band: "otc", minTier: 0 },
-  // OTC Commodities
-  { name: "Gold (OTC)", display: "Gold", flag: "Commodity", band: "otc", minTier: 0 },
-  { name: "Silver (OTC)", display: "Silver", flag: "Commodity", band: "otc", minTier: 0 },
-  { name: "Brent Oil (OTC)", display: "Brent Oil", flag: "Commodity", band: "otc", minTier: 0 },
-  { name: "WTI Oil (OTC)", display: "WTI Oil", flag: "Commodity", band: "otc", minTier: 0 },
-  // OTC Stocks
-  { name: "Apple (OTC)", display: "AAPL", flag: "Stock", band: "otc", minTier: 0 },
-  { name: "Tesla (OTC)", display: "TSLA", flag: "Stock", band: "otc", minTier: 0 },
-  { name: "Amazon (OTC)", display: "AMZN", flag: "Stock", band: "otc", minTier: 0 },
-  { name: "Microsoft (OTC)", display: "MSFT", flag: "Stock", band: "otc", minTier: 0 },
-  { name: "Meta (OTC)", display: "META", flag: "Stock", band: "otc", minTier: 0 },
-  { name: "Netflix (OTC)", display: "NFLX", flag: "Stock", band: "otc", minTier: 0 },
-  // OTC Indices
-  { name: "S&P 500 (OTC)", display: "S&P 500", flag: "Index", band: "otc", minTier: 0 },
-  { name: "NASDAQ 100 (OTC)", display: "NASDAQ", flag: "Index", band: "otc", minTier: 0 },
-  { name: "Dow Jones (OTC)", display: "Dow Jones", flag: "Index", band: "otc", minTier: 0 },
+  // OTC Forex (16)
+  { name: "EUR/USD (OTC)", display: "EUR/USD", category: "forex", band: "otc", payout: 76, minTier: 0 },
+  { name: "GBP/USD (OTC)", display: "GBP/USD", category: "forex", band: "otc", payout: 92, minTier: 0 },
+  { name: "USD/JPY (OTC)", display: "USD/JPY", category: "forex", band: "otc", payout: 33, minTier: 0 },
+  { name: "AUD/USD (OTC)", display: "AUD/USD", category: "forex", band: "otc", payout: 56, minTier: 0 },
+  { name: "EUR/GBP (OTC)", display: "EUR/GBP", category: "forex", band: "otc", payout: 32, minTier: 0 },
+  { name: "USD/CHF (OTC)", display: "USD/CHF", category: "forex", band: "otc", payout: 85, minTier: 0 },
+  { name: "NZD/USD (OTC)", display: "NZD/USD", category: "forex", band: "otc", payout: 92, minTier: 0 },
+  { name: "EUR/JPY (OTC)", display: "EUR/JPY", category: "forex", band: "otc", payout: 49, minTier: 0 },
+  { name: "AUD/CHF (OTC)", display: "AUD/CHF", category: "forex", band: "otc", payout: 72, minTier: 0 },
+  { name: "AUD/NZD (OTC)", display: "AUD/NZD", category: "forex", band: "otc", payout: 69, minTier: 0 },
+  { name: "EUR/CHF (OTC)", display: "EUR/CHF", category: "forex", band: "otc", payout: 57, minTier: 0 },
+  { name: "GBP/JPY (OTC)", display: "GBP/JPY", category: "forex", band: "otc", payout: 49, minTier: 0 },
+  { name: "USD/CAD (OTC)", display: "USD/CAD", category: "forex", band: "otc", payout: 82, minTier: 0 },
+  { name: "CAD/JPY (OTC)", display: "CAD/JPY", category: "forex", band: "otc", payout: 65, minTier: 0 },
+  { name: "GBP/AUD (OTC)", display: "GBP/AUD", category: "forex", band: "otc", payout: 92, minTier: 0 },
+  { name: "EUR/NZD (OTC)", display: "EUR/NZD", category: "forex", band: "otc", payout: 47, minTier: 0 },
+  // OTC Crypto (8)
+  { name: "Bitcoin (OTC)", display: "BTC", category: "crypto", band: "otc", payout: 92, minTier: 0 },
+  { name: "Ethereum (OTC)", display: "ETH", category: "crypto", band: "otc", payout: 92, minTier: 0 },
+  { name: "Solana (OTC)", display: "SOL", category: "crypto", band: "otc", payout: 80, minTier: 0 },
+  { name: "Dogecoin (OTC)", display: "DOGE", category: "crypto", band: "otc", payout: 92, minTier: 0 },
+  { name: "Cardano (OTC)", display: "ADA", category: "crypto", band: "otc", payout: 92, minTier: 0 },
+  { name: "Toncoin (OTC)", display: "TON", category: "crypto", band: "otc", payout: 66, minTier: 0 },
+  { name: "BNB (OTC)", display: "BNB", category: "crypto", band: "otc", payout: 71, minTier: 0 },
+  { name: "Litecoin (OTC)", display: "LTC", category: "crypto", band: "otc", payout: 92, minTier: 0 },
+  // OTC Commodities (4)
+  { name: "Gold (OTC)", display: "Gold", category: "commodities", band: "otc", payout: 80, minTier: 0 },
+  { name: "Silver (OTC)", display: "Silver", category: "commodities", band: "otc", payout: 80, minTier: 0 },
+  { name: "Brent Oil (OTC)", display: "Brent Oil", category: "commodities", band: "otc", payout: 80, minTier: 0 },
+  { name: "WTI Oil (OTC)", display: "WTI Oil", category: "commodities", band: "otc", payout: 80, minTier: 0 },
+  // OTC Stocks (6)
+  { name: "Apple (OTC)", display: "AAPL", category: "stocks", band: "otc", payout: 92, minTier: 0 },
+  { name: "Tesla (OTC)", display: "TSLA", category: "stocks", band: "otc", payout: 88, minTier: 0 },
+  { name: "Amazon (OTC)", display: "AMZN", category: "stocks", band: "otc", payout: 84, minTier: 0 },
+  { name: "Microsoft (OTC)", display: "MSFT", category: "stocks", band: "otc", payout: 55, minTier: 0 },
+  { name: "Meta (OTC)", display: "META", category: "stocks", band: "otc", payout: 66, minTier: 0 },
+  { name: "Netflix (OTC)", display: "NFLX", category: "stocks", band: "otc", payout: 62, minTier: 0 },
+  // OTC Indices (3)
+  { name: "S&P 500 (OTC)", display: "S&P 500", category: "indices", band: "otc", payout: 45, minTier: 0 },
+  { name: "NASDAQ 100 (OTC)", display: "NASDAQ", category: "indices", band: "otc", payout: 45, minTier: 0 },
+  { name: "Dow Jones (OTC)", display: "Dow Jones", category: "indices", band: "otc", payout: 45, minTier: 0 },
 
-  // Exchange (tier 1)
-  { name: "EUR/USD", display: "EUR/USD", flag: "", band: "exchange", minTier: 1 },
-  { name: "GBP/USD", display: "GBP/USD", flag: "", band: "exchange", minTier: 1 },
-  { name: "USD/JPY", display: "USD/JPY", flag: "", band: "exchange", minTier: 1 },
-  { name: "AUD/USD", display: "AUD/USD", flag: "", band: "exchange", minTier: 1 },
-  { name: "EUR/GBP", display: "EUR/GBP", flag: "", band: "exchange", minTier: 1 },
-  { name: "USD/CHF", display: "USD/CHF", flag: "", band: "exchange", minTier: 1 },
-  { name: "USD/CAD", display: "USD/CAD", flag: "", band: "exchange", minTier: 1 },
-  { name: "EUR/JPY", display: "EUR/JPY", flag: "", band: "exchange", minTier: 1 },
-  { name: "GBP/JPY", display: "GBP/JPY", flag: "", band: "exchange", minTier: 1 },
-  { name: "EUR/CHF", display: "EUR/CHF", flag: "", band: "exchange", minTier: 1 },
-  { name: "AUD/CAD", display: "AUD/CAD", flag: "", band: "exchange", minTier: 1 },
-  { name: "EUR/AUD", display: "EUR/AUD", flag: "", band: "exchange", minTier: 1 },
-  { name: "GBP/AUD", display: "GBP/AUD", flag: "", band: "exchange", minTier: 1 },
-  { name: "AUD/JPY", display: "AUD/JPY", flag: "", band: "exchange", minTier: 1 },
-  { name: "CAD/JPY", display: "CAD/JPY", flag: "", band: "exchange", minTier: 1 },
-  { name: "CHF/JPY", display: "CHF/JPY", flag: "", band: "exchange", minTier: 1 },
+  // Exchange Forex (16)
+  { name: "EUR/USD", display: "EUR/USD", category: "forex", band: "exchange", payout: 82, minTier: 1 },
+  { name: "GBP/USD", display: "GBP/USD", category: "forex", band: "exchange", payout: 85, minTier: 1 },
+  { name: "USD/JPY", display: "USD/JPY", category: "forex", band: "exchange", payout: 43, minTier: 1 },
+  { name: "AUD/USD", display: "AUD/USD", category: "forex", band: "exchange", payout: 38, minTier: 1 },
+  { name: "EUR/GBP", display: "EUR/GBP", category: "forex", band: "exchange", payout: 58, minTier: 1 },
+  { name: "USD/CHF", display: "USD/CHF", category: "forex", band: "exchange", payout: 75, minTier: 1 },
+  { name: "USD/CAD", display: "USD/CAD", category: "forex", band: "exchange", payout: 87, minTier: 1 },
+  { name: "EUR/JPY", display: "EUR/JPY", category: "forex", band: "exchange", payout: 77, minTier: 1 },
+  { name: "GBP/JPY", display: "GBP/JPY", category: "forex", band: "exchange", payout: 83, minTier: 1 },
+  { name: "EUR/CHF", display: "EUR/CHF", category: "forex", band: "exchange", payout: 85, minTier: 1 },
+  { name: "AUD/CAD", display: "AUD/CAD", category: "forex", band: "exchange", payout: 62, minTier: 1 },
+  { name: "EUR/AUD", display: "EUR/AUD", category: "forex", band: "exchange", payout: 32, minTier: 1 },
+  { name: "GBP/AUD", display: "GBP/AUD", category: "forex", band: "exchange", payout: 77, minTier: 1 },
+  { name: "AUD/JPY", display: "AUD/JPY", category: "forex", band: "exchange", payout: 45, minTier: 1 },
+  { name: "CAD/JPY", display: "CAD/JPY", category: "forex", band: "exchange", payout: 72, minTier: 1 },
+  { name: "CHF/JPY", display: "CHF/JPY", category: "forex", band: "exchange", payout: 76, minTier: 1 },
 
-  // Elite (tier 2)
-  { name: "AAPL", display: "Apple", flag: "Stock", band: "elite", minTier: 2 },
-  { name: "TSLA", display: "Tesla", flag: "Stock", band: "elite", minTier: 2 },
-  { name: "AMZN", display: "Amazon", flag: "Stock", band: "elite", minTier: 2 },
-  { name: "MSFT", display: "Microsoft", flag: "Stock", band: "elite", minTier: 2 },
-  { name: "META", display: "Meta", flag: "Stock", band: "elite", minTier: 2 },
-  { name: "NFLX", display: "Netflix", flag: "Stock", band: "elite", minTier: 2 },
-  { name: "NVDA", display: "NVIDIA", flag: "Stock", band: "elite", minTier: 2 },
-  { name: "GOLD", display: "Gold", flag: "Commodity", band: "elite", minTier: 2 },
-  { name: "SILVER", display: "Silver", flag: "Commodity", band: "elite", minTier: 2 },
-  { name: "BTC/USD", display: "Bitcoin", flag: "Crypto", band: "elite", minTier: 2 },
-  { name: "ETH/USD", display: "Ethereum", flag: "Crypto", band: "elite", minTier: 2 },
-  { name: "SOL/USD", display: "Solana", flag: "Crypto", band: "elite", minTier: 2 },
-  { name: "SP500", display: "S&P 500", flag: "Index", band: "elite", minTier: 2 },
-  { name: "US100", display: "NASDAQ", flag: "Index", band: "elite", minTier: 2 },
+  // Elite (7 stocks, 2 commodities, 3 crypto, 2 indices)
+  { name: "AAPL", display: "Apple", category: "stocks", band: "elite", payout: 92, minTier: 2 },
+  { name: "TSLA", display: "Tesla", category: "stocks", band: "elite", payout: 88, minTier: 2 },
+  { name: "AMZN", display: "Amazon", category: "stocks", band: "elite", payout: 84, minTier: 2 },
+  { name: "MSFT", display: "Microsoft", category: "stocks", band: "elite", payout: 55, minTier: 2 },
+  { name: "META", display: "Meta", category: "stocks", band: "elite", payout: 66, minTier: 2 },
+  { name: "NFLX", display: "Netflix", category: "stocks", band: "elite", payout: 62, minTier: 2 },
+  { name: "NVDA", display: "NVIDIA", category: "stocks", band: "elite", payout: 80, minTier: 2 },
+  { name: "GOLD", display: "Gold", category: "commodities", band: "elite", payout: 80, minTier: 2 },
+  { name: "SILVER", display: "Silver", category: "commodities", band: "elite", payout: 80, minTier: 2 },
+  { name: "BTC/USD", display: "Bitcoin", category: "crypto", band: "elite", payout: 15, minTier: 2 },
+  { name: "ETH/USD", display: "Ethereum", category: "crypto", band: "elite", payout: 80, minTier: 2 },
+  { name: "SOL/USD", display: "Solana", category: "crypto", band: "elite", payout: 80, minTier: 2 },
+  { name: "SP500", display: "S&P 500", category: "indices", band: "elite", payout: 45, minTier: 2 },
+  { name: "US100", display: "NASDAQ", category: "indices", band: "elite", payout: 45, minTier: 2 },
 ];
-
-const PAIR_PAYOUTS: Record<string, number> = {
-  "EUR/USD (OTC)": 76, "GBP/USD (OTC)": 92, "USD/JPY (OTC)": 33,
-  "AUD/USD (OTC)": 56, "EUR/GBP (OTC)": 32, "USD/CHF (OTC)": 85,
-  "NZD/USD (OTC)": 92, "EUR/JPY (OTC)": 49, "AUD/CHF (OTC)": 72,
-  "AUD/NZD (OTC)": 69, "EUR/CHF (OTC)": 57, "GBP/JPY (OTC)": 49,
-  "USD/CAD (OTC)": 82, "CAD/JPY (OTC)": 65, "GBP/AUD (OTC)": 92,
-  "EUR/NZD (OTC)": 47,
-  "Bitcoin (OTC)": 92, "Ethereum (OTC)": 92, "Solana (OTC)": 80,
-  "Dogecoin (OTC)": 92, "Cardano (OTC)": 92, "Toncoin (OTC)": 66,
-  "BNB (OTC)": 71, "Litecoin (OTC)": 92,
-  "Gold (OTC)": 80, "Silver (OTC)": 80, "Brent Oil (OTC)": 80, "WTI Oil (OTC)": 80,
-  "Apple (OTC)": 92, "Tesla (OTC)": 88, "Amazon (OTC)": 84,
-  "Microsoft (OTC)": 55, "Meta (OTC)": 66, "Netflix (OTC)": 62,
-  "S&P 500 (OTC)": 45, "NASDAQ 100 (OTC)": 45, "Dow Jones (OTC)": 45,
-  "EUR/USD": 82, "GBP/USD": 85, "USD/JPY": 43, "AUD/USD": 38,
-  "EUR/GBP": 58, "USD/CHF": 75, "USD/CAD": 87, "EUR/JPY": 77,
-  "GBP/JPY": 83, "EUR/CHF": 85, "AUD/CAD": 62, "EUR/AUD": 32,
-  "GBP/AUD": 77, "AUD/JPY": 45, "CAD/JPY": 72, "CHF/JPY": 76,
-  "AAPL": 92, "TSLA": 88, "AMZN": 84, "MSFT": 55, "META": 66,
-  "NFLX": 62, "NVDA": 80, "GOLD": 80, "SILVER": 80,
-  "BTC/USD": 15, "ETH/USD": 80, "SOL/USD": 80, "SP500": 45, "US100": 45,
-};
 
 const EXPIRATIONS: Record<PairBand, { value: string; label: string }[]> = {
   otc: [
     { value: "30s", label: "30 сек" },
     { value: "60s", label: "1 мин" },
-    { value: "5m", label: "5 мин" },
+    { value: "2m", label: "2 мин" },
   ],
   exchange: [
     { value: "60s", label: "1 мин" },
+    { value: "2m", label: "2 мин" },
     { value: "5m", label: "5 мин" },
-    { value: "15m", label: "15 мин" },
-    { value: "1h", label: "1 час" },
   ],
   elite: [
     { value: "60s", label: "1 мин" },
+    { value: "2m", label: "2 мин" },
     { value: "5m", label: "5 мин" },
     { value: "15m", label: "15 мин" },
-    { value: "1h", label: "1 час" },
   ],
 };
 
-const BAND_META: Record<PairBand, { label: string; color: string }> = {
-  otc: { label: "OTC", color: "#8888ff" },
-  exchange: { label: "Биржевые", color: "#8ee06b" },
-  elite: { label: "Elite", color: "#d4a017" },
-};
-
-const FLAG_LABELS: Record<string, string> = {
-  OTC: "Валюты",
-  Crypto: "Крипто",
-  Commodity: "Товары",
-  Stock: "Акции",
-  Index: "Индексы",
-  "": "Форекс",
-};
-
-const ANALYSIS_STEPS = [
-  { icon: Search, text: "Сканируем рынок" },
-  { icon: BarChart3, text: "Анализ индикаторов" },
-  { icon: Target, text: "Точка входа" },
-  { icon: Shield, text: "Оценка рисков" },
-  { icon: Activity, text: "Формируем сигнал" },
+const BANDS: { key: PairBand; label: string; minTier: number; color: string }[] = [
+  { key: "otc", label: "OTC", minTier: 0, color: "#8888ff" },
+  { key: "exchange", label: "Биржевые", minTier: 1, color: "#8ee06b" },
+  { key: "elite", label: "Elite", minTier: 2, color: "#d4a017" },
 ];
+
+const CATEGORIES: { key: PairCategory | "all"; label: string }[] = [
+  { key: "all", label: "Все" },
+  { key: "forex", label: "Форекс" },
+  { key: "crypto", label: "Крипто" },
+  { key: "stocks", label: "Акции" },
+  { key: "commodities", label: "Товары" },
+  { key: "indices", label: "Индексы" },
+];
+
+// ─── Helpers ───
 
 function getPayoutColor(pct: number): string {
   if (pct >= 80) return "#8ee06b";
@@ -195,409 +161,339 @@ function getPayoutColor(pct: number): string {
   return "#ff6b3d";
 }
 
-function groupByFlag(pairs: PairInfo[]): { flag: string; label: string; items: PairInfo[] }[] {
-  const map = new Map<string, PairInfo[]>();
-  for (const p of pairs) {
-    const key = p.flag;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(p);
-  }
-  return Array.from(map.entries()).map(([flag, items]) => ({
-    flag,
-    label: FLAG_LABELS[flag] ?? flag,
-    items,
-  }));
-}
-
-// ─── Steps ───
-
-type Step = "pair" | "expiration" | "analysis" | "result";
-
 // ─── Page ───
 
 export default function TmaSignalsPage() {
-  return <TmaShell>{(user) => <SignalsContent user={user} />}</TmaShell>;
+  return <TmaShell>{(user) => <SignalsPicker user={user} />}</TmaShell>;
 }
 
-function SignalsContent({ user }: { user: TmaUser }) {
+function SignalsPicker({ user }: { user: TmaUser }) {
   const { tmaFetch } = useTma();
-  const tier = user.tier;
-
-  const [step, setStep] = useState<Step>("pair");
+  const [step, setStep] = useState<Step>("pick");
   const [activeTab, setActiveTab] = useState<PairBand>("otc");
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<PairCategory | "all">("all");
   const [selectedPair, setSelectedPair] = useState<PairInfo | null>(null);
   const [selectedExpiration, setSelectedExpiration] = useState<string | null>(null);
-  const [lastSignal, setLastSignal] = useState<GeneratedSignal | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [analysisStep, setAnalysisStep] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const completedRef = useRef<Set<number>>(new Set());
+  const [result, setResult] = useState<SignalResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
 
-  const reset = useCallback(() => {
-    setStep("pair");
+  // remaining and limitReached are updated by the API response; user.tier is used for band lock UI
+
+  const filteredPairs = useMemo(() => {
+    return ALL_PAIRS
+      .filter((p) => p.band === activeTab)
+      .filter((p) => categoryFilter === "all" || p.category === categoryFilter)
+      .sort((a, b) => b.payout - a.payout);
+  }, [activeTab, categoryFilter]);
+
+  const availableCategories = useMemo(() => {
+    const cats = new Set(ALL_PAIRS.filter((p) => p.band === activeTab).map((p) => p.category));
+    return CATEGORIES.filter((c) => c.key === "all" || cats.has(c.key as PairCategory));
+  }, [activeTab]);
+
+  const handleTabChange = useCallback((band: PairBand) => {
+    setActiveTab(band);
+    setCategoryFilter("all");
     setSelectedPair(null);
     setSelectedExpiration(null);
-    setLastSignal(null);
-    setError(null);
-    setProgress(0);
-    setAnalysisStep(0);
-    completedRef.current = new Set();
   }, []);
 
-  // Filtered pairs
-  const tabPairs = ALL_PAIRS.filter((p) => p.band === activeTab);
-  const categories = Array.from(new Set(tabPairs.map((p) => p.flag)));
-  const filteredPairs = activeCategory !== null
-    ? tabPairs.filter((p) => p.flag === activeCategory)
-    : tabPairs;
-  const groups = groupByFlag(filteredPairs);
+  const handlePairSelect = useCallback((pair: PairInfo) => {
+    if (selectedPair?.name === pair.name) {
+      setSelectedPair(null);
+      setSelectedExpiration(null);
+    } else {
+      setSelectedPair(pair);
+      setSelectedExpiration(null);
+    }
+  }, [selectedPair]);
 
-  function handlePairSelect(p: PairInfo) {
-    if (p.minTier > tier) return;
-    setSelectedPair(p);
-    setStep("expiration");
-  }
-
-  function handleExpirationSelect(exp: string) {
-    if (!selectedPair) return;
-    setSelectedExpiration(exp);
-    setStep("analysis");
-  }
-
-  // Analysis: animate + fetch
-  useEffect(() => {
-    if (step !== "analysis" || !selectedPair || !selectedExpiration) return;
-
-    const totalMs = (3 + Math.random() * 4) * 1000;
-    const startTime = Date.now();
-    let cancelled = false;
-    completedRef.current = new Set();
-    const stepDuration = totalMs / ANALYSIS_STEPS.length;
-
-    const interval = setInterval(() => {
-      if (cancelled) return;
-      const elapsed = Date.now() - startTime;
-      setProgress(Math.min(97, (elapsed / totalMs) * 100));
-      const cs = Math.min(ANALYSIS_STEPS.length - 1, Math.floor(elapsed / stepDuration));
-      setAnalysisStep(cs);
-    }, 60);
-
-    const fetchPromise = tmaFetch("/api/tma/signal-request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pair: selectedPair.name, expiration: selectedExpiration }),
-    }).then(async (res) => {
-      const data = await res.json();
-      return { ok: res.ok, status: res.status, data };
-    });
-
-    const timerPromise = new Promise<void>((r) => setTimeout(r, totalMs));
-
-    Promise.all([fetchPromise, timerPromise])
-      .then(([res]) => {
-        if (cancelled) return;
-        clearInterval(interval);
-        setProgress(100);
-        if (!res.ok) {
-          setError(res.data.error ?? `Ошибка ${res.status}`);
-          setStep("pair");
-        } else {
-          setLastSignal(res.data.signal ?? res.data);
-          setStep("result");
-        }
-      })
-      .catch(() => {
-        if (cancelled) return;
-        clearInterval(interval);
-        setError("Не удалось получить сигнал");
-        setStep("pair");
+  const handleGenerate = useCallback(async () => {
+    if (!selectedPair || !selectedExpiration) return;
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const res = await tmaFetch("/api/tma/signal-request", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pair: selectedPair.name, tier: selectedPair.band, expiration: selectedExpiration }),
       });
 
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [step, selectedPair, selectedExpiration, tmaFetch]);
+      if (res.status === 429) {
+        setLimitReached(true);
+        setRemaining(0);
+        setErrorMsg("Дневной лимит сигналов исчерпан");
+        return;
+      }
 
-  // ─── ANALYSIS VIEW ───
-  if (step === "analysis") {
+      if (!res.ok) {
+        const err = await res.json() as { error?: string };
+        setErrorMsg(err.error ?? "Ошибка генерации сигнала");
+        return;
+      }
+
+      const data = await res.json() as {
+        signal: {
+          pair: string;
+          direction: string;
+          confidence: number;
+          expiration: string;
+          entryPrice: number | null;
+        };
+        access: {
+          dailyLimit: number | null;
+          remaining: number | null;
+        };
+      };
+
+      const sig: SignalResult = {
+        pair: data.signal.pair,
+        direction: data.signal.direction === "PUT" ? "PUT" : "CALL",
+        confidence: data.signal.confidence,
+        expiration: data.signal.expiration,
+        payout: selectedPair.payout,
+        entryPrice: data.signal.entryPrice ?? 0,
+      };
+
+      setRemaining(data.access.remaining);
+      if (data.access.remaining !== null && data.access.remaining <= 0) {
+        setLimitReached(true);
+      }
+      setResult(sig);
+      setStep("result");
+    } catch {
+      setErrorMsg("Ошибка сети. Попробуйте снова.");
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedPair, selectedExpiration, tmaFetch]);
+
+  const handleReset = useCallback(() => {
+    setStep("pick");
+    setSelectedPair(null);
+    setSelectedExpiration(null);
+    setResult(null);
+  }, []);
+
+  // ─── Result step ───
+  if (step === "result" && result) {
+    const isCall = result.direction === "CALL";
     return (
-      <main className="max-w-md mx-auto p-4 pt-6">
-        <div className="text-center mb-4">
-          <div className="text-xs text-[var(--t-3)]">
-            {selectedPair?.display} / {selectedExpiration}
-          </div>
-          <h2 className="text-base font-bold text-[var(--t-1)] mt-1">Анализ</h2>
-        </div>
-        <div className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-4 space-y-2.5 mb-4">
-          {ANALYSIS_STEPS.map((s, i) => {
-            const isActive = i === analysisStep;
-            const isDone = i < analysisStep || progress >= 100;
-            const Icon = s.icon;
-            return (
-              <div
-                key={i}
-                className="flex items-center gap-2.5 transition-all"
-                style={{ opacity: isDone ? 0.45 : isActive ? 1 : 0.2 }}
+      <main className="max-w-md mx-auto p-4 space-y-4">
+        <div className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <span
+              className={`size-12 rounded-full flex items-center justify-center shrink-0 ${
+                isCall
+                  ? "bg-[var(--green)]/15 text-[var(--green)]"
+                  : "bg-[var(--red)]/15 text-[var(--red)]"
+              }`}
+            >
+              {isCall ? <ArrowUpRight size={24} /> : <ArrowDownRight size={24} />}
+            </span>
+            <div>
+              <div className="text-lg font-bold text-[var(--t-1)]">{result.pair}</div>
+              <span
+                className="text-xs font-semibold"
+                style={{ color: isCall ? "var(--green)" : "var(--red)" }}
               >
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                  style={{
-                    background: isActive ? "rgba(212,160,23,0.15)" : isDone ? "rgba(142,224,107,0.10)" : "var(--bg-2)",
-                    color: isActive ? "var(--brand-gold)" : isDone ? "var(--green)" : "var(--t-3)",
-                  }}
-                >
-                  {isDone ? (
-                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                      <path d="M2.5 7L5.5 10L11.5 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  ) : (
-                    <Icon size={13} className={isActive ? "animate-pulse" : ""} />
-                  )}
-                </div>
-                <span className="text-xs" style={{ color: isActive ? "var(--t-1)" : "var(--t-3)", fontWeight: isActive ? 600 : 400 }}>
-                  {s.text}
-                </span>
-                {isActive && (
-                  <div className="ml-auto flex gap-0.5">
-                    <div className="w-1 h-1 rounded-full bg-[var(--brand-gold)] animate-pulse" />
-                    <div className="w-1 h-1 rounded-full bg-[var(--brand-gold)] animate-pulse" style={{ animationDelay: "0.2s" }} />
-                    <div className="w-1 h-1 rounded-full bg-[var(--brand-gold)] animate-pulse" style={{ animationDelay: "0.4s" }} />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <div className="h-1 rounded-full bg-[var(--bg-2)] overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-200"
-            style={{
-              width: `${progress}%`,
-              background: progress >= 100 ? "var(--green)" : "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
-            }}
-          />
-        </div>
-      </main>
-    );
-  }
+                {result.direction}
+              </span>
+            </div>
+          </div>
 
-  // ─── RESULT VIEW ───
-  if (step === "result" && lastSignal) {
-    const isCall = lastSignal.direction === "CALL";
-    return (
-      <main className="max-w-md mx-auto p-4 pt-6 space-y-3">
-        <div
-          className="rounded-2xl border overflow-hidden"
-          style={{
-            borderColor: isCall ? "rgba(0,229,160,0.3)" : "rgba(255,107,61,0.3)",
-            background: isCall ? "rgba(0,229,160,0.04)" : "rgba(255,107,61,0.04)",
-          }}
-        >
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{
-                    background: isCall ? "rgba(0,229,160,0.12)" : "rgba(255,107,61,0.12)",
-                    color: isCall ? "var(--green)" : "var(--red)",
-                  }}
-                >
-                  {isCall ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
-                </div>
-                <div>
-                  <div className="text-base font-bold text-[var(--t-1)]">{lastSignal.pair}</div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs font-semibold" style={{ color: isCall ? "var(--green)" : "var(--red)" }}>
-                      {lastSignal.direction}
-                    </span>
-                    <span className="text-[10px] text-[var(--t-3)]">{lastSignal.expiration}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-xl font-bold tabular-nums" style={{ color: "var(--brand-gold)" }}>
-                  {lastSignal.confidence}%
-                </div>
-                <div className="text-[9px] text-[var(--t-3)] uppercase tracking-wider">Точность</div>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="rounded-xl bg-[var(--bg-2)] p-3 text-center">
+              <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">Точность</div>
+              <div className="text-xl font-bold text-[var(--brand-gold)]">{result.confidence}%</div>
+            </div>
+            <div className="rounded-xl bg-[var(--bg-2)] p-3 text-center">
+              <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">Экспирация</div>
+              <div className="text-sm font-semibold text-[var(--t-1)]">{result.expiration}</div>
+            </div>
+            <div className="rounded-xl bg-[var(--bg-2)] p-3 text-center">
+              <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">Выплата</div>
+              <div className="text-sm font-semibold" style={{ color: getPayoutColor(result.payout) }}>
+                +{result.payout}%
               </div>
             </div>
+          </div>
 
-            {lastSignal.entryPrice != null && (
-              <div className="flex items-center gap-2 text-xs text-[var(--t-2)] px-3 py-2 rounded-lg" style={{ background: "rgba(212,160,23,0.06)" }}>
-                <Target size={11} className="text-[var(--brand-gold)]" />
-                Вход: <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryPrice.toFixed(5)}</span>
-              </div>
-            )}
-
-            {lastSignal.analysis && (
-              <div className="mt-3 rounded-xl px-3 py-2.5 text-[11px] leading-relaxed text-[var(--t-2)]" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--b-soft)" }}>
-                <div className="text-[9px] uppercase tracking-wider text-[var(--t-3)] font-semibold mb-1">Аналитика</div>
-                {lastSignal.analysis}
-              </div>
-            )}
+          <div className="flex items-center gap-2 text-xs text-[var(--t-2)] px-3 py-2 rounded-lg bg-[rgba(212,160,23,0.06)]">
+            <Target size={12} className="text-[var(--brand-gold)]" />
+            Вход: <span className="text-[var(--brand-gold)] font-semibold">{result.entryPrice.toFixed(5)}</span>
           </div>
         </div>
 
         <button
-          onClick={reset}
-          className="w-full h-11 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
-          style={{ background: "linear-gradient(135deg, var(--brand-gold-deep), var(--brand-gold-bright))", color: "#1a1208" }}
+          type="button"
+          onClick={handleReset}
+          className="w-full h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+          style={{
+            background: "linear-gradient(135deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+            color: "#1a1208",
+          }}
         >
-          <RefreshCw size={14} />
-          Новый сигнал
+          <RefreshCw size={15} />
+          Ещё сигнал
         </button>
       </main>
     );
   }
 
-  // ─── EXPIRATION VIEW ───
-  if (step === "expiration" && selectedPair) {
-    const exps = EXPIRATIONS[selectedPair.band];
-    return (
-      <main className="max-w-md mx-auto p-4 pt-6">
-        <div className="flex items-center gap-3 mb-5">
-          <button
-            onClick={() => { setSelectedPair(null); setStep("pair"); }}
-            className="w-8 h-8 flex items-center justify-center rounded-lg border border-[var(--b-soft)] text-[var(--t-2)]"
-          >
-            <ArrowLeft size={16} />
-          </button>
-          <div>
-            <div className="text-sm font-bold text-[var(--t-1)]">{selectedPair.display}</div>
-            {selectedPair.flag && (
-              <span className="text-[9px] uppercase tracking-wider text-[var(--t-3)]">{selectedPair.flag}</span>
-            )}
-          </div>
-        </div>
-
-        <p className="text-xs text-[var(--t-3)] mb-3">Время экспирации</p>
-
-        <div className="space-y-1.5">
-          {exps.map((exp) => (
-            <button
-              key={exp.value}
-              onClick={() => handleExpirationSelect(exp.value)}
-              className="flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-[var(--b-soft)] bg-[var(--bg-1)] active:bg-[var(--bg-2)] transition-colors text-left"
-            >
-              <Clock size={14} className="text-[var(--t-3)] shrink-0" />
-              <span className="text-sm font-bold text-[var(--t-1)]">{exp.label}</span>
-            </button>
-          ))}
-        </div>
-      </main>
-    );
-  }
-
-  // ─── PAIR SELECTION VIEW ───
-  const tabs: PairBand[] = ["otc", "exchange", "elite"];
-
+  // ─── Pick step ───
   return (
-    <main className="max-w-md mx-auto p-4 pt-2 space-y-3">
-      <h1 className="text-base font-bold text-[var(--t-1)]">Выбери пару</h1>
+    <main className="max-w-md mx-auto p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-bold text-[var(--t-1)]">Сигналы</h1>
+        {remaining !== null ? (
+          <span className="text-xs text-[var(--t-3)]">
+            Осталось: <span className="text-[var(--brand-gold)] font-semibold">{remaining}</span>
+          </span>
+        ) : (
+          <span className="text-xs text-[var(--brand-gold)]">Безлимит</span>
+        )}
+      </div>
 
-      {error && (
-        <div className="text-xs text-center py-2 px-3 rounded-lg border border-[var(--red)]/20 bg-[var(--red)]/5 text-[var(--red)]">
-          {error}
+      {errorMsg && (
+        <div className="rounded-xl bg-[var(--red)]/10 border border-[var(--red)]/30 px-4 py-2.5 text-sm text-[var(--red)]">
+          {errorMsg}
         </div>
       )}
 
-      {/* Tab bar */}
-      <div className="flex rounded-xl border border-[var(--b-soft)] overflow-hidden bg-[var(--bg-1)]">
-        {tabs.map((band) => {
-          const bm = BAND_META[band];
-          const locked = (ALL_PAIRS.find((p) => p.band === band)?.minTier ?? 0) > tier;
-          const active = activeTab === band;
+      {/* Band tabs */}
+      <div className="flex rounded-xl overflow-hidden border border-[var(--b-soft)]">
+        {BANDS.map((b) => {
+          const locked = b.minTier > user.tier;
+          const active = activeTab === b.key;
           return (
             <button
-              key={band}
-              onClick={() => { if (!locked) { setActiveTab(band); setActiveCategory(null); } }}
+              key={b.key}
+              type="button"
+              onClick={() => !locked && handleTabChange(b.key)}
               disabled={locked}
-              className="flex-1 py-2.5 text-xs font-semibold flex items-center justify-center gap-1 transition-all"
+              className={`flex-1 py-2.5 text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
+                active ? "text-[#1a1208]" : locked ? "text-[var(--t-3)] opacity-40" : "text-[var(--t-2)]"
+              }`}
               style={{
-                color: active ? bm.color : locked ? "var(--t-3)" : "var(--t-2)",
-                background: active ? `${bm.color}12` : "transparent",
-                opacity: locked ? 0.35 : 1,
-                borderBottom: active ? `2px solid ${bm.color}` : "2px solid transparent",
+                background: active ? b.color : "var(--bg-1)",
+                cursor: locked ? "not-allowed" : "pointer",
               }}
             >
               {locked && <Lock size={10} />}
-              {bm.label}
+              {b.label}
             </button>
           );
         })}
       </div>
 
       {/* Category chips */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        <button
-          onClick={() => setActiveCategory(null)}
-          className="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
-          style={{
-            background: activeCategory === null ? "var(--brand-gold)" : "var(--bg-1)",
-            color: activeCategory === null ? "#1a1208" : "var(--t-2)",
-            border: activeCategory === null ? "none" : "1px solid var(--b-soft)",
-          }}
-        >
-          Все
-        </button>
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat === activeCategory ? null : cat)}
-            className="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
-            style={{
-              background: activeCategory === cat ? "var(--brand-gold)" : "var(--bg-1)",
-              color: activeCategory === cat ? "#1a1208" : "var(--t-2)",
-              border: activeCategory === cat ? "none" : "1px solid var(--b-soft)",
-            }}
-          >
-            {FLAG_LABELS[cat] ?? cat}
-          </button>
-        ))}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+        {availableCategories.map((c) => {
+          const active = categoryFilter === c.key;
+          return (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => setCategoryFilter(c.key)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                active
+                  ? "bg-[var(--brand-gold)] text-[#1a1208]"
+                  : "bg-[var(--bg-2)] text-[var(--t-2)]"
+              }`}
+            >
+              {c.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Pair grid */}
-      {groups.map((group) => (
-        <div key={group.flag}>
-          {groups.length > 1 && (
-            <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] font-semibold mb-1.5 mt-2">
-              {group.label}
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-1.5">
-            {group.items.map((p) => {
-              const locked = p.minTier > tier;
-              const payout = PAIR_PAYOUTS[p.name];
-              return (
-                <button
-                  key={p.name}
-                  onClick={() => handlePairSelect(p)}
-                  disabled={locked}
-                  className="relative flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[var(--b-soft)] bg-[var(--bg-1)] active:bg-[var(--bg-2)] transition-colors text-left"
-                  style={{ opacity: locked ? 0.3 : 1 }}
+      {/* Pair list */}
+      <div className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] overflow-hidden divide-y divide-[var(--b-soft)]">
+        {filteredPairs.length === 0 && (
+          <div className="py-8 text-center text-sm text-[var(--t-3)]">Нет пар в этой категории</div>
+        )}
+        {filteredPairs.map((p) => {
+          const isSelected = selectedPair?.name === p.name;
+          return (
+            <div key={p.name}>
+              <button
+                type="button"
+                onClick={() => handlePairSelect(p)}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all active:scale-[0.99] ${
+                  isSelected ? "bg-[var(--bg-2)]" : ""
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-semibold text-[var(--t-1)] truncate block">
+                    {p.display}
+                  </span>
+                </div>
+                <span
+                  className="text-xs font-bold shrink-0"
+                  style={{ color: getPayoutColor(p.payout) }}
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold text-[var(--t-1)] truncate">{p.display}</div>
-                    {payout != null && (
-                      <div className="text-[10px] font-semibold mt-0.5" style={{ color: getPayoutColor(payout) }}>
-                        +{payout}%
-                      </div>
-                    )}
+                  +{p.payout}%
+                </span>
+              </button>
+
+              {isSelected && (
+                <div className="px-4 pb-3 space-y-2">
+                  <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[var(--t-3)]">
+                    <Clock size={10} />
+                    Экспирация
                   </div>
-                  {locked && (
-                    <div className="absolute inset-0 rounded-xl flex items-center justify-center bg-black/50 backdrop-blur-[1px]">
-                      <Lock size={12} className="text-[var(--t-3)]" />
-                    </div>
+                  <div className="flex gap-2">
+                    {EXPIRATIONS[p.band].map((exp) => {
+                      const expActive = selectedExpiration === exp.value;
+                      return (
+                        <button
+                          key={exp.value}
+                          type="button"
+                          onClick={() => setSelectedExpiration(exp.value)}
+                          className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
+                            expActive
+                              ? "bg-[var(--brand-gold)] text-[#1a1208]"
+                              : "bg-[var(--bg-2)] text-[var(--t-2)]"
+                          }`}
+                        >
+                          {exp.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {selectedExpiration && (
+                    <button
+                      type="button"
+                      onClick={() => { void handleGenerate(); }}
+                      disabled={limitReached || loading}
+                      className="w-full h-11 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+                      style={{
+                        background: limitReached
+                          ? "var(--bg-3)"
+                          : "linear-gradient(135deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+                        color: limitReached ? "var(--t-3)" : "#1a1208",
+                      }}
+                    >
+                      {loading ? (
+                        <RefreshCw size={15} className="animate-spin" />
+                      ) : limitReached ? (
+                        "Лимит исчерпан"
+                      ) : (
+                        "Получить сигнал"
+                      )}
+                    </button>
                   )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </main>
   );
 }
