@@ -11,4 +11,5 @@
  * short-link). Falls back to the canonical PocketOption homepage.
  */
 export const PO_AFFILIATE_URL =
-  process.env["NEXT_PUBLIC_PO_AFFILIATE_URL"] ?? "https://pocketoption.com/";
+  process.env["NEXT_PUBLIC_PO_AFFILIATE_URL"] ??
+  "https://po-ru4.click/register?utm_campaign=825519&utm_source=affiliate&utm_medium=sr&a=Be8CXM52oc4EOp&al=1769855&ac=signal&cid=960046&code=WELCOME50";

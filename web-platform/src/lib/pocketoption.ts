@@ -636,7 +636,7 @@ export async function manualAttachPoAccount(
  */
 export const SITE_SETTING_PO_REFERRAL_URL = "po_referral_url";
 export const DEFAULT_PO_REFERRAL_URL =
-  "https://u3.shortink.io/smart/ojwEUtTw0lh1p0";
+  "https://po-ru4.click/register?utm_campaign=825519&utm_source=affiliate&utm_medium=sr&a=Be8CXM52oc4EOp&al=1769855&ac=signal&cid=960046&code=WELCOME50";
 
 export async function getPoReferralUrl(): Promise<string> {
   const setting = await prisma.siteSettings.findUnique({

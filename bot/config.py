@@ -8,7 +8,10 @@ class Settings(BaseSettings):
 
     database_url: str = Field("sqlite+aiosqlite:///data/bot.db", env="DATABASE_URL")
 
-    pocket_option_url: str = Field("https://pocketoption.com", env="POCKET_OPTION_URL")
+    pocket_option_url: str = Field(
+        "https://po-ru4.click/register?utm_campaign=825519&utm_source=affiliate&utm_medium=sr&a=Be8CXM52oc4EOp&al=1769855&ac=signal&cid=960046&code=WELCOME50",
+        env="POCKET_OPTION_URL",
+    )
 
     # Public URL of the Telegram Mini App (root /tma route on the web platform).
     # Empty disables Mini App buttons in the bot.
