@@ -39,11 +39,15 @@ export async function GET(req: NextRequest) {
   }
 
   // On-demand model: no scheduled signals to sync. Only accounts + config.
-  const [accounts, settings] = await Promise.all([
+  const startOfDay = new Date();
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
+  const [accounts, settings, dailyUsage] = await Promise.all([
     prisma.pocketOptionAccount.findMany({
       select: {
         poTraderId: true,
         totalDeposit: true,
+        userId: true,
         user: {
           select: {
             tier: true,
@@ -54,7 +58,19 @@ export async function GET(req: NextRequest) {
       },
     }),
     prisma.siteSettings.findMany(),
+    prisma.activityLog.groupBy({
+      by: ["userId"],
+      where: {
+        action: { in: ["signal_view", "signal_received"] },
+        createdAt: { gte: startOfDay },
+      },
+      _count: true,
+    }),
   ]);
+
+  const usageByUserId = new Map(
+    dailyUsage.map((r) => [r.userId, r._count]),
+  );
 
   const accountsData = accounts.map((a) => ({
     poTraderId: a.poTraderId,
@@ -62,6 +78,7 @@ export async function GET(req: NextRequest) {
     totalDeposit: Number(a.totalDeposit),
     telegramId: a.user.telegramId ? a.user.telegramId.toString() : null,
     signalsCount: a.user._count.signalsCreated,
+    signalsTodayUsed: usageByUserId.get(a.userId) ?? 0,
   }));
 
   const settingsRows = settings.map((s) => ({ key: s.key, value: s.value }));

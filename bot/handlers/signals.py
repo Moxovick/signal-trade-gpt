@@ -120,15 +120,34 @@ async def _validate_user(user_id: int) -> tuple[str | None, Any]:
     return None, user
 
 
+def _get_web_daily_usage(telegram_id: int) -> int | None:
+    """Get today's signal usage from web_sync snapshot. Returns None if unavailable."""
+    snapshot = web_sync.state().accounts
+    tg_str = str(telegram_id)
+    for item in snapshot:
+        if item.get("telegramId") == tg_str:
+            val = item.get("signalsTodayUsed")
+            return int(val) if val is not None else None
+    return None
+
+
 async def _check_daily_limit(user: Any) -> str | None:
     """Check daily limit. Returns error text or None if OK."""
     await reset_daily_signals_if_expired(user.telegram_id)
     daily_limit = web_sync.get_daily_limit(user.tier)
     if daily_limit is None:
         daily_limit = TIER_DAILY_LIMITS.get(user.tier)
-    used, limit, can_request = await get_daily_signal_count(
-        user.telegram_id, daily_limit
-    )
+
+    # Use web platform's daily usage as source of truth (synced via web_sync)
+    web_used = _get_web_daily_usage(user.telegram_id)
+    if web_used is not None:
+        used = web_used
+        limit = daily_limit
+        can_request = limit is None or used < limit
+    else:
+        used, limit, can_request = await get_daily_signal_count(
+            user.telegram_id, daily_limit
+        )
     if not can_request:
         if user.tier < 2:
             next_tier = TIER_NAMES.get(user.tier + 1, "Pro")
