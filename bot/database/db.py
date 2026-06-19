@@ -147,6 +147,15 @@ async def increment_signals_received(telegram_id: int) -> None:
         await db.commit()
 
 
+async def set_signals_received(telegram_id: int, count: int) -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE users SET signals_received = ? WHERE telegram_id = ?",
+            (count, telegram_id),
+        )
+        await db.commit()
+
+
 async def save_signal(signal: Signal, telegram_id: Optional[int] = None) -> int:
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(

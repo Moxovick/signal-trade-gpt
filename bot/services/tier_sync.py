@@ -22,7 +22,7 @@ from aiogram.types import BufferedInputFile
 
 from config import settings
 from constants import TIER_DEPOSIT_THRESHOLDS, TIER_NAMES
-from database.db import DB_PATH, set_deposit_total, set_tier
+from database.db import DB_PATH, set_deposit_total, set_signals_received, set_tier
 from services import web_sync
 from services.imagegen import make_tier_card
 
@@ -118,6 +118,14 @@ async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
 
     if abs(deposit - old_deposit) > 1e-2:
         await set_deposit_total(telegram_id, deposit)
+
+    # Sync signal count from web (includes signals from website + MiniApp + bot)
+    web_signals = int(item.get("signalsCount") or 0)
+    if web_signals > 0:
+        from database.db import get_user as _get_user
+        _u = await _get_user(telegram_id)
+        if _u and web_signals > _u.signals_received:
+            await set_signals_received(telegram_id, web_signals)
 
     if new_tier > old_tier:
         await set_tier(telegram_id, new_tier)

@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
           select: {
             tier: true,
             telegramId: true,
+            _count: { select: { signalsCreated: true } },
           },
         },
       },
@@ -60,6 +61,7 @@ export async function GET(req: NextRequest) {
     tier: a.user.tier,
     totalDeposit: Number(a.totalDeposit),
     telegramId: a.user.telegramId ? a.user.telegramId.toString() : null,
+    signalsCount: a.user._count.signalsCreated,
   }));
 
   const settingsRows = settings.map((s) => ({ key: s.key, value: s.value }));
