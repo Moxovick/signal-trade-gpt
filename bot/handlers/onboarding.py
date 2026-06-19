@@ -4,8 +4,8 @@ Onboarding flow for new users.
 Triggered automatically after /start for users without PocketOption linked.
 
 Flow:
-  Welcome → "Есть аккаунт?" → [Нет] → send to website → enter ID
-                              → [Есть] → enter ID (must verify via API)
+  Welcome → "Есть аккаунт?" → [Нет] → register on site + new PO account via referral → enter ID
+                              → [Есть] → create NEW PO account via referral → enter ID
 """
 from __future__ import annotations
 
@@ -101,33 +101,36 @@ async def cb_no_account(query: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data == "onb:has_account")
-async def cb_has_account(query: CallbackQuery, state: FSMContext) -> None:
-    """User claims to have an account — prompt for PO ID."""
+async def cb_has_account(query: CallbackQuery) -> None:
+    """User has an existing account but needs a NEW PocketOption via our referral."""
     text = (
-        "<b>Привязка аккаунта</b>\n"
+        "<b>Важно: нужен новый аккаунт PocketOption</b>\n"
         "\n"
-        "Отлично! Если ты уже зарегистрирован на PocketOption по нашей "
-        "реф-ссылке — пришли свой <b>Trader ID</b>.\n"
+        "Даже если у тебя уже есть аккаунт на PocketOption — "
+        "для работы с нашей системой нужен аккаунт, "
+        "зарегистрированный <b>по нашей реферальной ссылке</b>.\n"
         "\n"
-        "Найти его можно: PocketOption → <b>Профиль</b> → раздел <b>«Мой ID»</b>.\n"
-        "Это 6–12-значный номер.\n"
+        "Это обязательное условие — именно так PocketOption "
+        "передаёт нам данные о твоих сделках и мы можем "
+        "предоставить тебе доступ к сигналам.\n"
         "\n"
-        "⚠️ ID будет проверен — он должен быть зарегистрирован через нашу партнёрскую ссылку."
+        "<b>Что делать:</b>\n"
+        "1️⃣ Зарегистрируйся на нашем сайте\n"
+        "2️⃣ Создай <b>новый</b> аккаунт PocketOption по кнопке ниже\n"
+        "3️⃣ Вернись сюда и введи свой новый Trader ID\n"
+        "\n"
+        "<i>Trader ID можно найти: PocketOption → Профиль → «Мой ID»</i>"
     )
     if query.message:
         await query.message.edit_text(
             text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="💎 Открыть PocketOption", url=settings.pocket_option_url)],
-                [InlineKeyboardButton(text="❌ Отменить", callback_data="onb:cancel")],
+                [InlineKeyboardButton(text="📋 Зарегистрироваться на сайте", url=f"{SITE_URL}/register")],
+                [InlineKeyboardButton(text="💎 Создать новый аккаунт PocketOption", url=settings.pocket_option_url)],
+                [InlineKeyboardButton(text="✅ Готово — ввести Trader ID", callback_data="onb:enter_id")],
             ]),
         )
-        await query.message.answer(
-            "Пришли свой PocketOption Trader ID (6–12 цифр):",
-        )
-    await state.set_state(LinkPo.waiting_for_id)
-    await state.update_data(onboarding=True)
     await query.answer()
 
 
