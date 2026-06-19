@@ -90,6 +90,8 @@ export async function fetchTraderInfo(userId: string): Promise<PoVerifyOutcome> 
     return { ok: false, reason: "invalid_response" };
   }
 
+  console.log("[po-api] response for", userId, "status:", resp.status, "body:", JSON.stringify(data).slice(0, 500));
+
   // Accept several common shapes — PO docs are sparse.
   let payload: Record<string, unknown> = {};
   if (data && typeof data === "object") {
