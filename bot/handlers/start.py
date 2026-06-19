@@ -221,6 +221,26 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     if click_id:
         await set_click_id(user_id, click_id)
 
+    # For existing users, try to sync PO ID from web if missing locally
+    if existing is not None and not user.po_trader_id:
+        from services.tier_sync import try_sync_user
+        if await try_sync_user(user_id):
+            user = await get_user(user_id)
+
+    # Existing user with PO ID linked — short welcome, no onboarding
+    if existing is not None and user.po_trader_id:
+        from constants import TIER_NAMES
+        tier_name = TIER_NAMES.get(user.tier, "Free")
+        await message.answer(
+            f"С возвращением, <b>{first_name}</b>! 👋\n\n"
+            f"Уровень: <b>{tier_name}</b>\n"
+            f"PocketOption ID: <code>{user.po_trader_id}</code>\n\n"
+            "Нажми «🎯 Получить сигнал» в меню.",
+            parse_mode=ParseMode.HTML,
+            reply_markup=MAIN_MENU,
+        )
+        return
+
     bot_info = await message.bot.get_me()
 
     # Send brand card image (cached on disk after first generation)
@@ -246,13 +266,7 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         reply_markup=MAIN_MENU,
     )
 
-    # Auto-trigger onboarding for users who haven't linked PocketOption yet.
-    # First, try immediate sync from web platform in case PO ID was verified there.
-    if existing is not None and not user.po_trader_id:
-        from services.tier_sync import try_sync_user
-        if await try_sync_user(user_id):
-            user = await get_user(user_id)
-
+    # New user or PO ID not linked — trigger onboarding
     if not user.po_trader_id:
         from handlers.onboarding import trigger_for_new_user
         await trigger_for_new_user(message)

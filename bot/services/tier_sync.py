@@ -147,9 +147,9 @@ async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
 
 
 async def try_sync_user(telegram_id: int) -> bool:
-    """Check web platform for this user's PO account and auto-link if found.
+    """Check web platform for this user's PO account and sync all fields.
 
-    Returns True if a po_trader_id was linked (caller should re-read user).
+    Returns True if anything was updated (caller should re-read user).
     Does NOT require a Bot instance — no upgrade message is sent.
     """
     if not settings.platform_api_url or not settings.bot_sync_secret:
@@ -173,14 +173,28 @@ async def try_sync_user(telegram_id: int) -> bool:
         po_id = str(po_id)
         new_tier = int(item.get("tier") or 0)
         deposit = float(item.get("totalDeposit") or 0.0)
+        web_signals = int(item.get("signalsCount") or 0)
         from database.db import get_user, set_po_trader_id
         user = await get_user(telegram_id)
-        if user and not user.po_trader_id:
+        if not user:
+            return False
+        changed = False
+        if not user.po_trader_id:
             await set_po_trader_id(telegram_id, po_id)
             await set_deposit_total(telegram_id, deposit)
             await set_tier(telegram_id, new_tier)
             logger.info("Immediate sync: linked PO ID %s to telegram_id %s", po_id, telegram_id)
-            return True
+            changed = True
+        if abs(deposit - user.deposit_total) > 1e-2:
+            await set_deposit_total(telegram_id, deposit)
+            changed = True
+        if new_tier != user.tier:
+            await set_tier(telegram_id, new_tier)
+            changed = True
+        if web_signals > user.signals_received:
+            await set_signals_received(telegram_id, web_signals)
+            changed = True
+        return changed
     return False
 
 
