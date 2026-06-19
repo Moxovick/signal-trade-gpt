@@ -131,6 +131,11 @@ async def btn_profile(message: Message) -> None:
         await message.answer("Сначала нажми /start.")
         return
 
+    if not user.po_trader_id:
+        from services.tier_sync import try_sync_user
+        if await try_sync_user(message.from_user.id):
+            user = await get_user(message.from_user.id)
+
     from constants import TIER_NAMES, TIER_DAILY_LIMITS
 
     tier_name = TIER_NAMES.get(user.tier, "Free")

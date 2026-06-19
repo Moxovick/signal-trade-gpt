@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const allowedBands = TIER_ACCESS[tier] ?? ["otc"];
 
   const signals = await prisma.signal.findMany({
-    where: { tier: { in: allowedBands }, isActive: true },
+    where: { createdById: session.userId, tier: { in: allowedBands }, isActive: true },
     orderBy: { createdAt: "desc" },
     take: limit,
     select: {
