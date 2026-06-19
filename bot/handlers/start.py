@@ -109,7 +109,7 @@ async def _redeem_link_token(message: Message, token: str) -> bool:
     }
     url = f"{settings.platform_api_url.rstrip('/')}/api/bot/telegram-link"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
             resp = await client.post(
                 url,
                 json=payload,

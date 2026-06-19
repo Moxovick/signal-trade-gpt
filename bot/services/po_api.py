@@ -118,15 +118,8 @@ async def fetch_trader_info(user_id: str) -> TraderInfo | None:
         logger.warning("PO API returned error for %s: %s", user_id, payload)
         return None
 
-    # Reject empty/null payloads — API sometimes returns 200 with no real data
-    if not payload or (isinstance(payload, dict) and not any(
-        payload.get(k) for k in (
-            "totalDeposit", "deposit", "total_deposit", "deposit_amount",
-            "ftdAt", "ftd_at", "firstDeposit", "first_deposit_at",
-            "email", "username", "name", "id", "user_id",
-            "registeredAt", "registered_at", "created_at",
-        )
-    )):
+    # Reject truly empty payloads (no keys at all, or non-dict)
+    if not payload or not isinstance(payload, dict) or len(payload) == 0:
         logger.warning("PO API returned empty/unrecognized data for %s: %s", user_id, payload)
         return None
 

@@ -532,7 +532,7 @@ async def _request_signal_via_api(telegram_id: int) -> dict[str, Any] | None:
     payload = {"telegramId": telegram_id}
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
             resp = await client.post(url, json=payload, headers=headers)
             data: dict[str, Any] = resp.json()
             data["_status"] = resp.status_code
