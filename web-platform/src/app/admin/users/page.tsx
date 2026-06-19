@@ -71,7 +71,7 @@ export default async function AdminUsersPage({
           className="grid grid-cols-12 px-5 py-3 text-xs text-[#555] border-b"
           style={{ borderColor: "rgba(255,255,255,0.06)" }}
         >
-          <span className="col-span-4">Email</span>
+          <span className="col-span-4">Email / Username</span>
           <span className="col-span-2">Тир</span>
           <span className="col-span-2">Роль</span>
           <span className="col-span-2">Статус</span>
@@ -84,7 +84,7 @@ export default async function AdminUsersPage({
             className="grid grid-cols-12 px-5 py-3 items-center border-b text-sm hover:bg-white/[0.02]"
             style={{ borderColor: "rgba(255,255,255,0.04)" }}
           >
-            <span className="col-span-4 truncate text-[#aaa]">{u.email}</span>
+            <span className="col-span-4 truncate text-[#aaa]">{u.email || (u.username ? `@${u.username}` : "—")}</span>
             <span className="col-span-2">
               <span
                 className="text-xs font-semibold px-2 py-0.5 rounded-full"
