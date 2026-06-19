@@ -93,6 +93,14 @@ async def main() -> None:
         except Exception:  # noqa: BLE001
             logger.exception("Failed to set Mini App MenuButton")
 
+    # Diagnostic: log whether PO API credentials are available
+    po_token_set = bool((settings.pocket_option_api_token or "").strip())
+    po_partner_set = bool((settings.pocket_option_partner_id or "").strip())
+    logger.info(
+        "PO API credentials: token=%s, partner_id=%s",
+        "SET" if po_token_set else "MISSING",
+        settings.pocket_option_partner_id if po_partner_set else "MISSING",
+    )
     logger.info("Webhook cleared. Bot starting (polling mode), PID=%s", os.getpid())
     try:
         await dp.start_polling(bot)
