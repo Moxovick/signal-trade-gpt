@@ -119,11 +119,25 @@ async def _redeem_link_token(message: Message, token: str) -> bool:
             content_type = resp.headers.get("content-type", "")
             body = resp.json() if content_type.startswith("application/json") else {}
             reason = str(body.get("reason", "unknown"))
-            logger.warning("link-token redeem HTTP %d: %s", resp.status_code, reason)
-            await message.answer(
-                "Не удалось привязать аккаунт (сервер вернул ошибку). "
-                "Попробуй ещё раз позже.",
-            )
+            logger.warning("link-token redeem HTTP %d: %s (url=%s)", resp.status_code, reason, url)
+            if reason == "expired" or resp.status_code == 410:
+                await message.answer(
+                    "⏰ Ссылка для привязки истекла. Запроси новую на сайте "
+                    "(нажми «Привязать Telegram» ещё раз).",
+                )
+            elif reason == "telegram_taken":
+                await message.answer(
+                    "⚠️ Этот Telegram уже привязан к другому аккаунту на сайте.",
+                )
+            elif reason == "already_used":
+                await message.answer(
+                    "Эта ссылка уже использована. Запроси новую на сайте.",
+                )
+            else:
+                await message.answer(
+                    "Не удалось привязать аккаунт (сервер вернул ошибку). "
+                    "Попробуй ещё раз позже.",
+                )
             return True
         body = resp.json()
     except Exception as exc:  # noqa: BLE001

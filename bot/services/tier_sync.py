@@ -92,7 +92,27 @@ async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
 
     state = await _local_state(po_id)
     if state is None:
-        # Account exists on web but bot user hasn't /linked locally yet — skip.
+        # Account exists on web but bot user hasn't /linked locally yet.
+        # Try to match by telegramId and auto-link the PO ID.
+        tg_id_str = item.get("telegramId")
+        if tg_id_str:
+            try:
+                from database.db import get_user, set_po_trader_id
+                tg_id = int(tg_id_str)
+                user = await get_user(tg_id)
+                if user and not user.po_trader_id:
+                    await set_po_trader_id(tg_id, po_id)
+                    await set_deposit_total(tg_id, deposit)
+                    await set_tier(tg_id, new_tier)
+                    logger.info("Auto-linked PO ID %s to telegram_id %s via web sync", po_id, tg_id)
+                    if new_tier > 0:
+                        try:
+                            await _send_upgrade(bot, tg_id, new_tier, deposit)
+                        except Exception:  # noqa: BLE001
+                            pass
+                    return
+            except (ValueError, TypeError):
+                pass
         return
     old_tier, old_deposit, telegram_id = state
 
