@@ -10,7 +10,7 @@ import re
 
 from aiogram import Router, F
 from aiogram.filters import Command
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.enums import ParseMode
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
@@ -20,7 +20,7 @@ from database.db import get_user, set_po_trader_id  # noqa: F401
 logger = logging.getLogger(__name__)
 router = Router()
 
-PO_ID_RE = re.compile(r"^\d{4,12}$")
+PO_ID_RE = re.compile(r"^\d{6,12}$")
 
 
 class LinkPo(StatesGroup):
@@ -36,16 +36,15 @@ async def cmd_link(message: Message, state: FSMContext) -> None:
 
     if user.po_trader_id:
         await message.answer(
-            f"Аккаунт уже привязан: <code>{user.po_trader_id}</code>.\n"
-            f"Если нужно сменить — пришли новый ID цифрами в ответ.",
+            f"Аккаунт привязан: <code>{user.po_trader_id}</code>.\n"
+            f"Если нужно сменить — пришли новый ID (6–12 цифр).",
             parse_mode=ParseMode.HTML,
         )
+        await state.set_state(LinkPo.waiting_for_id)
     else:
-        await message.answer(
-            "Пришли свой PocketOption Trader ID (только цифры, 4–12 знаков).\n"
-            "Найти его можно в профиле PocketOption → раздел «Мой ID».",
-        )
-    await state.set_state(LinkPo.waiting_for_id)
+        # No PO ID — redirect to onboarding
+        from handlers.onboarding import trigger_for_new_user
+        await trigger_for_new_user(message)
 
 
 @router.message(LinkPo.waiting_for_id, Command("cancel"))
@@ -75,34 +74,71 @@ async def receive_id(message: Message, state: FSMContext) -> None:
         return
     if not PO_ID_RE.match(candidate):
         await message.answer(
-            "Жду только цифры (4–12 знаков). Нажми «❌ Отменить» или /cancel чтобы выйти.",
+            "Trader ID должен быть числовым, 6–12 цифр.\n"
+            "Найти его можно: PocketOption → Профиль → «Мой ID».\n\n"
+            "Нажми /cancel чтобы отменить.",
         )
         return
 
-    # Phase Q — best-effort verification + deposit refresh.
-    verified_msg = ""
+    # Strict PO API verification
     try:
-        from services.po_api import fetch_trader_info
+        from services.po_api import fetch_trader_info, _credentials
+
+        if _credentials() is None:
+            # API not configured — save as pending with warning
+            logger.warning("PO API not configured — saving ID %s without verification", candidate)
+            await set_po_trader_id(message.from_user.id, candidate)
+            await state.clear()
+            await _send_success(message, state, candidate, verified=False, deposit=0)
+            return
 
         info = await fetch_trader_info(candidate)
-        if info is not None:
-            from database.db import set_deposit_total
-
-            try:
-                await set_deposit_total(message.from_user.id, info.deposit_total)
-            except Exception:  # noqa: BLE001
-                logger.warning("Could not store deposit_total from PO API", exc_info=True)
-            verified_msg = (
-                f"\n\n✅ <b>Подтверждено в PocketOption</b> — "
-                f"депозит: ${info.deposit_total:,.0f}"
+        if info is None:
+            # ID not found in our partner network — REJECT
+            from config import settings
+            await message.answer(
+                "❌ <b>Trader ID не найден</b> в нашей партнёрской сети.\n\n"
+                "Убедись, что ты зарегистрировался на PocketOption "
+                "<b>по нашей реферальной ссылке</b>.\n\n"
+                "Если ещё не зарегистрирован — нажми кнопку ниже:",
+                parse_mode=ParseMode.HTML,
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🚀 Зарегистрироваться в PocketOption", url=settings.pocket_option_url)],
+                    [InlineKeyboardButton(text="🔄 Ввести другой ID", callback_data="link:enter_id")],
+                    [InlineKeyboardButton(text="❌ Отменить", callback_data="onb:cancel")],
+                ]),
             )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("PO verification skipped: %s", exc)
+            await state.clear()
+            return
 
-    await set_po_trader_id(message.from_user.id, candidate)
+        # Verified! Save ID and deposit
+        await set_po_trader_id(message.from_user.id, candidate)
+        try:
+            from database.db import set_deposit_total
+            await set_deposit_total(message.from_user.id, info.deposit_total)
+        except Exception:
+            logger.warning("Could not store deposit_total", exc_info=True)
+
+        await _send_success(message, state, candidate, verified=True, deposit=info.deposit_total)
+
+    except Exception as exc:
+        logger.warning("PO verification error: %s", exc)
+        await message.answer(
+            "⚠️ PocketOption API временно недоступен. Попробуй через минуту.\n"
+            "Нажми /cancel чтобы отменить.",
+        )
+        # Keep FSM state so user can retry
+
+
+async def _send_success(message: Message, state: FSMContext, trader_id: str, verified: bool, deposit: float) -> None:
+    """Send success message after PO ID is saved."""
     data = await state.get_data()
     is_onboarding = bool(data.get("onboarding"))
     await state.clear()
+
+    verify_line = ""
+    if verified:
+        verify_line = f"\n✅ <b>Подтверждено</b> — депозит: ${deposit:,.0f}"
 
     if is_onboarding:
         bot_info = await message.bot.get_me()
@@ -112,23 +148,23 @@ async def receive_id(message: Message, state: FSMContext) -> None:
         await message.answer(
             f"<b>✅ Готово — PocketOption привязан!</b>\n"
             f"\n"
-            f"Trader ID: <code>{candidate}</code>\n"
+            f"Trader ID: <code>{trader_id}</code>"
+            f"{verify_line}\n"
             f"Уровень: <b>Free</b> — OTC-сигналы, 3/день\n"
             f"\n"
             f"Нажми «🎯 Получить сигнал» в меню, чтобы запросить сигнал.\n"
             f"Депозит ≥ $20 → <b>Basic</b> (10/день), ≥ $100 → <b>Pro</b> (безлимит).\n"
             f"\n"
             f"Реф-ссылка (5% с FTD приглашённых):\n"
-            f"<code>{ref_link}</code>"
-            + verified_msg,
+            f"<code>{ref_link}</code>",
             parse_mode=ParseMode.HTML,
         )
     else:
         await message.answer(
-            f"<b>✅ Привязано.</b>\n\n"
-            f"PocketOption ID: <code>{candidate}</code>\n"
-            f"Уровень обновится автоматически после депозита на PocketOption."
-            + verified_msg,
+            f"<b>✅ PocketOption привязан.</b>\n\n"
+            f"Trader ID: <code>{trader_id}</code>"
+            f"{verify_line}\n"
+            f"Уровень обновится автоматически после депозита.",
             parse_mode=ParseMode.HTML,
         )
 
@@ -139,7 +175,7 @@ async def cb_enter_id(query: CallbackQuery, state: FSMContext) -> None:
     await query.answer()
     await state.set_state(LinkPo.waiting_for_id)
     await query.message.answer(
-        "Пришли свой PocketOption Trader ID (только цифры, 4–12 знаков).\n"
+        "Пришли свой PocketOption Trader ID (только цифры, 6–12 знаков).\n"
         "Найти его можно в профиле PocketOption → раздел «Мой ID».",
     )
 

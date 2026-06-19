@@ -30,8 +30,7 @@ BTN_SETTINGS = "⚙️ Настройки"
 MAIN_MENU = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text=BTN_SIGNAL)],
-        [KeyboardButton(text=BTN_LINK), KeyboardButton(text=BTN_REF)],
-        [KeyboardButton(text=BTN_HELP)],
+        [KeyboardButton(text=BTN_REF), KeyboardButton(text=BTN_HELP)],
     ],
     resize_keyboard=True,
     is_persistent=True,
@@ -39,7 +38,7 @@ MAIN_MENU = ReplyKeyboardMarkup(
 )
 
 # All menu button texts for FSM cancellation detection
-MENU_BUTTONS = {BTN_SIGNAL, BTN_LINK, BTN_REF, BTN_HELP}
+MENU_BUTTONS = {BTN_SIGNAL, BTN_REF, BTN_HELP}
 
 
 # ── inline CTAs ───────────────────────────────────────────────────────────────

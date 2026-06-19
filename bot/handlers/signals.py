@@ -114,8 +114,8 @@ async def _validate_user(user_id: int) -> tuple[str | None, Any]:
         return "Сначала нажми /start, чтобы зарегистрироваться.", None
     if not user.po_trader_id:
         return (
-            "Сначала привяжи PocketOption аккаунт.\n"
-            "Используй /link или кнопку «🔗 Привязать ID» в меню."
+            "⚠️ Для получения сигналов нужен привязанный PocketOption аккаунт.\n\n"
+            "Нажми /start чтобы пройти регистрацию и привязать Trader ID."
         ), None
     return None, user
 

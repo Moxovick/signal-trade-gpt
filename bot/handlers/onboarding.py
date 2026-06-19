@@ -1,14 +1,11 @@
 """
-Step-by-step onboarding flow for new users.
+Onboarding flow for new users.
 
-Triggered automatically right after /start for users who haven't linked a
-PocketOption account yet, and on demand via the "Начать обучение" button.
+Triggered automatically after /start for users without PocketOption linked.
 
 Flow:
-  Step 1/3 — explain RevShare model + show "Открыть PocketOption" CTA
-  Step 2/3 — explain tier system + show "Я зарегистрировался" button
-  Step 3/3 — collect PocketOption ID via FSM (reuses LinkPo state)
-  Done    — confirmation + first demo signal unlock hint
+  Welcome → "Есть аккаунт?" → [Нет] → send to website → enter ID
+                              → [Есть] → enter ID (must verify via API)
 """
 from __future__ import annotations
 
@@ -31,100 +28,118 @@ from handlers.link import LinkPo
 logger = logging.getLogger(__name__)
 router = Router()
 
-
-def _step_keyboard(po_url: str, next_cb: str | None) -> InlineKeyboardMarkup:
-    rows: list[list[InlineKeyboardButton]] = [
-        [InlineKeyboardButton(text="💎 Открыть PocketOption", url=po_url)],
-    ]
-    if next_cb:
-        rows.append(
-            [InlineKeyboardButton(text="Дальше →", callback_data=next_cb)]
-        )
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+SITE_URL = "https://spacesignal.net"
 
 
-@router.message(Command("onboard", "tutorial", "start_tour"))
-async def cmd_onboard(message: Message) -> None:
-    await _send_step1(message)
+async def trigger_for_new_user(message: Message) -> None:
+    """Launch onboarding for a freshly-registered or PO-unlinked user."""
+    await _send_welcome(message)
 
 
-async def _send_step1(message: Message) -> None:
+async def _send_welcome(message: Message) -> None:
+    first_name = message.from_user.first_name or "Трейдер"
     text = (
-        "<b>🎓 Шаг 1 из 3 · Как это работает</b>\n"
-        "\n"
-        "Signal Trade GPT — <b>не подписка</b>. Ты не платишь нам ни цента.\n"
-        "\n"
-        "Мы зарабатываем <b>RevShare</b> — процент с прибыли, которую брокер "
-        "получает с твоих сделок. Поэтому нам выгодно, чтобы <b>ты зарабатывал</b>: "
-        "чем дольше ты в плюсе — тем больше депозит, тем выше твой тир, тем "
-        "сильнее перки бота.\n"
-        "\n"
-        "Жми кнопку ниже — это <b>наша партнёрская ссылка</b>. Она нужна, "
-        "чтобы PocketOption знал, что ты пришёл от нас, и активировал тебе "
-        "тир в боте автоматически после депозита."
+        f"Приветствую, <b>{first_name}</b>!\n"
+        f"\n"
+        f"Ты в <b>Signal Trade GPT</b> — пространстве, где технологии, "
+        f"аналитика и скорость принятия решений объединены в одной системе.\n"
+        f"\n"
+        f"Signal Trade GPT создан для тех, кто хочет работать с рынком не на "
+        f"эмоциях, а на данных, структуре и современных AI-инструментах.\n"
+        f"\n"
+        f"У тебя уже есть действующий аккаунт в системе?"
     )
     await message.answer(
         text,
         parse_mode=ParseMode.HTML,
-        reply_markup=_step_keyboard(settings.pocket_option_url, "onb:step2"),
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Нет аккаунта", callback_data="onb:no_account"),
+                InlineKeyboardButton(text="Есть аккаунт", callback_data="onb:has_account"),
+            ],
+        ]),
     )
 
 
-@router.callback_query(F.data == "onb:step2")
-async def cb_step2(query: CallbackQuery) -> None:
+@router.message(Command("onboard", "tutorial", "start_tour"))
+async def cmd_onboard(message: Message) -> None:
+    await _send_welcome(message)
+
+
+@router.callback_query(F.data == "onb:no_account")
+async def cb_no_account(query: CallbackQuery) -> None:
+    """User has no account — send to website + PocketOption registration."""
     text = (
-        "<b>🎓 Шаг 2 из 3 · Как открывается доступ</b>\n"
+        "<b>Регистрация нового аккаунта</b>\n"
         "\n"
-        "Как только PocketOption подтверждает регистрацию по нашей ссылке — "
-        "доступ открывается автоматически.\n"
+        "Для начала работы нужно:\n"
         "\n"
-        "  • <b>Free</b> — OTC-сигналы, 3 в день\n"
-        "  • <b>Basic</b> (депозит ≥ $20) — OTC + биржа, 10 в день\n"
-        "  • <b>Pro</b> (депозит ≥ $100) — всё безлимитно + Elite\n"
+        "1️⃣ <b>Зарегистрируйся на нашем сайте</b>\n"
+        f'   → <a href="{SITE_URL}/register">spacesignal.net/register</a>\n'
         "\n"
-        "Дополнительно — <b>5% sub-affiliate</b> с FTD каждого приглашённого тобой "
-        "трейдера. Реф-ссылку дам в конце.\n"
+        "2️⃣ <b>Открой счёт на PocketOption</b> по нашей реф-ссылке\n"
+        "   (это обязательно — именно так система знает, что ты от нас)\n"
         "\n"
-        "Если уже зарегистрировался по нашей ссылке — жми «Я зарегистрировался» и "
-        "пришли свой PocketOption Trader ID."
+        "3️⃣ <b>Привяжи свой Trader ID</b> — его можно найти в PocketOption:\n"
+        "   Профиль → раздел «Мой ID» (6–12 цифр)\n"
+        "\n"
+        "После привязки ты сразу получаешь уровень <b>Free</b> — "
+        "3 OTC-сигнала в день. Депозит открывает больше."
     )
     if query.message:
         await query.message.edit_text(
             text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [InlineKeyboardButton(text="💎 Открыть PocketOption", url=settings.pocket_option_url)],
-                    [InlineKeyboardButton(text="Я зарегистрировался — ввести ID", callback_data="onb:step3")],
-                ]
-            ),
+            disable_web_page_preview=True,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="📋 Зарегистрироваться на сайте", url=f"{SITE_URL}/register")],
+                [InlineKeyboardButton(text="💎 Открыть PocketOption", url=settings.pocket_option_url)],
+                [InlineKeyboardButton(text="✅ Готово — ввести Trader ID", callback_data="onb:enter_id")],
+            ]),
         )
     await query.answer()
 
 
-@router.callback_query(F.data == "onb:step3")
-async def cb_step3(query: CallbackQuery, state: FSMContext) -> None:
+@router.callback_query(F.data == "onb:has_account")
+async def cb_has_account(query: CallbackQuery, state: FSMContext) -> None:
+    """User claims to have an account — prompt for PO ID."""
     text = (
-        "<b>🎓 Шаг 3 из 3 · Привязка ID</b>\n"
+        "<b>Привязка аккаунта</b>\n"
         "\n"
-        "Открой PocketOption → <b>Профиль</b> → раздел <b>«Мой ID»</b>. "
-        "Там 6–9-значный номер. Пришли его сюда сообщением (только цифры).\n"
+        "Отлично! Если ты уже зарегистрирован на PocketOption по нашей "
+        "реф-ссылке — пришли свой <b>Trader ID</b>.\n"
         "\n"
-        "<i>Если ещё не зарегистрирован — нажми кнопку ниже сначала.</i>"
+        "Найти его можно: PocketOption → <b>Профиль</b> → раздел <b>«Мой ID»</b>.\n"
+        "Это 6–12-значный номер.\n"
+        "\n"
+        "⚠️ ID будет проверен — он должен быть зарегистрирован через нашу партнёрскую ссылку."
     )
     if query.message:
         await query.message.edit_text(
             text,
             parse_mode=ParseMode.HTML,
-            reply_markup=InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [InlineKeyboardButton(text="💎 Открыть PocketOption", url=settings.pocket_option_url)],
-                    [InlineKeyboardButton(text="❌ Отменить", callback_data="onb:cancel")],
-                ]
-            ),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="💎 Открыть PocketOption", url=settings.pocket_option_url)],
+                [InlineKeyboardButton(text="❌ Отменить", callback_data="onb:cancel")],
+            ]),
+        )
+        await query.message.answer(
+            "Пришли свой PocketOption Trader ID (6–12 цифр):",
         )
     await state.set_state(LinkPo.waiting_for_id)
-    # Tag this state as onboarding so receive_id can offer post-link bonus message.
+    await state.update_data(onboarding=True)
+    await query.answer()
+
+
+@router.callback_query(F.data == "onb:enter_id")
+async def cb_enter_id(query: CallbackQuery, state: FSMContext) -> None:
+    """User completed registration — now enter their PO Trader ID."""
+    if query.message:
+        await query.message.answer(
+            "Пришли свой PocketOption Trader ID (6–12 цифр).\n"
+            "Найти: PocketOption → Профиль → «Мой ID».",
+        )
+    await state.set_state(LinkPo.waiting_for_id)
     await state.update_data(onboarding=True)
     await query.answer()
 
@@ -134,13 +149,8 @@ async def cb_cancel(query: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     if query.message:
         await query.message.edit_text(
-            "Обучение отложено. Запустишь заново командой /onboard.\n"
-            "Привязать ID можно в любой момент — /link.",
+            "Привязка отложена.\n\n"
+            "Без привязанного PocketOption ID сигналы недоступны.\n"
+            "Когда будешь готов — нажми /start.",
         )
     await query.answer()
-
-
-# Public helper called from start.py for brand-new users.
-async def trigger_for_new_user(message: Message) -> None:
-    """Launch step 1 of the onboarding for a freshly-registered user."""
-    await _send_step1(message)

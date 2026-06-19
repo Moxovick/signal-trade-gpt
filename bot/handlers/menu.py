@@ -22,7 +22,6 @@ from services.imagegen import (
 )
 from services.keyboards import (
     BTN_HELP,
-    BTN_LINK,
     BTN_REF,
     BTN_SIGNAL,
     MAIN_MENU,
@@ -33,7 +32,6 @@ from aiogram.types import BufferedInputFile
 logger = logging.getLogger(__name__)
 router = Router()
 
-from handlers.link import cmd_link as do_link  # noqa: E402
 from handlers.signals import _send_signal_with_animation  # noqa: E402
 
 
@@ -42,8 +40,6 @@ async def dispatch_menu_button(message: Message, state: FSMContext) -> None:
     text = (message.text or "").strip()
     if text == BTN_SIGNAL:
         await btn_signal(message, state)
-    elif text == BTN_LINK:
-        await btn_link(message, state)
     elif text == BTN_REF:
         await btn_ref(message, state)
     elif text == BTN_HELP:
@@ -53,15 +49,22 @@ async def dispatch_menu_button(message: Message, state: FSMContext) -> None:
 @router.message(F.text == BTN_SIGNAL)
 async def btn_signal(message: Message, state: FSMContext) -> None:
     await state.clear()
+    # Check if user has PO ID before allowing signal
+    user = await get_user(message.from_user.id)
+    if user is None:
+        await message.answer("Сначала нажми /start.")
+        return
+    if not user.po_trader_id:
+        await message.answer(
+            "⚠️ Для получения сигналов нужен привязанный PocketOption аккаунт.\n\n"
+            "Нажми /start чтобы пройти регистрацию.",
+            parse_mode=ParseMode.HTML,
+        )
+        return
     error = await _send_signal_with_animation(message.from_user.id, message.bot)
     if error:
         from aiogram.enums import ParseMode as _PM
         await message.answer(error, parse_mode=_PM.HTML)
-
-
-@router.message(F.text == BTN_LINK)
-async def btn_link(message: Message, state: FSMContext) -> None:
-    await do_link(message, state)
 
 
 @router.message(F.text == BTN_REF)
@@ -105,9 +108,8 @@ async def btn_ref(message: Message, state: FSMContext) -> None:
 
 
 HELP_COMMANDS: list[tuple[str, str]] = [
-    ("/start", "приветствие и меню"),
+    ("/start", "запуск и онбординг"),
     ("/signal", "получить сигнал"),
-    ("/link", "привязать PocketOption ID"),
     ("/ref", "реферальная ссылка + QR"),
     ("/leaderboard", "топ-10 трейдеров"),
     ("/calc", "калькулятор сделки"),
