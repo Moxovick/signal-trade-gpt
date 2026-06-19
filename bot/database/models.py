@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE_SIGNALS_TABLE = """
 CREATE TABLE IF NOT EXISTS signals (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    telegram_id INTEGER,
     pair TEXT NOT NULL,
     direction TEXT NOT NULL CHECK(direction IN ('CALL', 'PUT')),
     expiration TEXT NOT NULL,

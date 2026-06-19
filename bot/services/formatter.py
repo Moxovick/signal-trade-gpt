@@ -145,20 +145,24 @@ def format_otc_minimal(signal: Signal) -> str:
     conf_bar_full = round(signal.confidence / 10)
     conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
     payout = _payout_line(signal.pair)
-    analysis_line = f"\n<i>{signal.analysis}</i>\n" if signal.analysis else ""
-    return (
-        f"<b>OTC СИГНАЛ</b>\n"
-        f"\n"
-        f"{_pair_emoji(signal.pair)} <b>{signal.pair}</b>\n"
-        f"{arrow} <b>{signal.direction}</b>  ·  {signal.expiration}\n"
-        f"\n"
-        f"Точность: <b>{signal.confidence}%</b>  {conf_bar}\n"
-        f"{payout}"
-        f"{analysis_line}"
-        f"\n"
-        f"Объём: 1–3% депозита\n"
-        f"#otc #signal"
-    )
+
+    lines = [
+        "<b>OTC СИГНАЛ</b>",
+        "",
+        f"{_pair_emoji(signal.pair)} <b>{signal.pair}</b>  ·  {arrow} {signal.direction}  ·  {signal.expiration}",
+        "",
+        f"Точность: <b>{signal.confidence}%</b>  {conf_bar}",
+    ]
+    if payout:
+        lines.append(payout.rstrip("\n"))
+    if signal.analysis:
+        lines.extend(["", f"<b>Анализ:</b>\n<i>{signal.analysis}</i>"])
+    lines.extend([
+        "",
+        "Объём: 1–3% депозита",
+        "#otc #signal",
+    ])
+    return "\n".join(lines)
 
 
 def format_pro_signal_caption(

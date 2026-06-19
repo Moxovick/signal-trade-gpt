@@ -138,6 +138,44 @@ async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
         await set_tier(telegram_id, new_tier)
 
 
+async def try_sync_user(telegram_id: int) -> bool:
+    """Check web platform for this user's PO account and auto-link if found.
+
+    Returns True if a po_trader_id was linked (caller should re-read user).
+    Does NOT require a Bot instance — no upgrade message is sent.
+    """
+    if not settings.platform_api_url or not settings.bot_sync_secret:
+        return False
+    ok = await web_sync.refresh_now()
+    if not ok:
+        return False
+    snapshot = web_sync.state().accounts
+    for item in snapshot:
+        tg_id_str = item.get("telegramId")
+        if not tg_id_str:
+            continue
+        try:
+            if int(tg_id_str) != telegram_id:
+                continue
+        except (ValueError, TypeError):
+            continue
+        po_id = item.get("poTraderId")
+        if not po_id:
+            continue
+        po_id = str(po_id)
+        new_tier = int(item.get("tier") or 0)
+        deposit = float(item.get("totalDeposit") or 0.0)
+        from database.db import get_user, set_po_trader_id
+        user = await get_user(telegram_id)
+        if user and not user.po_trader_id:
+            await set_po_trader_id(telegram_id, po_id)
+            await set_deposit_total(telegram_id, deposit)
+            await set_tier(telegram_id, new_tier)
+            logger.info("Immediate sync: linked PO ID %s to telegram_id %s", po_id, telegram_id)
+            return True
+    return False
+
+
 async def tier_sync_loop(bot: Bot) -> None:
     """Background task that polls the web platform every POLL_INTERVAL_SECONDS."""
     if not settings.platform_api_url or not settings.bot_sync_secret:

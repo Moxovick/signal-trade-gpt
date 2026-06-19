@@ -10,7 +10,6 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ExternalLink, Info } from "lucide-react";
 import {
   registerAction,
   type RegisterActionResult,
@@ -66,7 +65,6 @@ export function RegisterForm() {
   const errorToShow = autoLoginError ?? state.error ?? errFromUrl ?? null;
   const fv = state.formValues;
   const isAutoLogging = state.ok && !autoLoginError;
-  const poRefUrl = "/po/refer";
 
   return (
     <form action={action} className="space-y-4" noValidate>
@@ -75,22 +73,6 @@ export function RegisterForm() {
           {errorToShow}
         </div>
       )}
-
-      <div className="p-3 rounded-xl border border-[var(--brand-gold)]/20 bg-[var(--brand-gold)]/5 flex gap-2 text-xs text-[var(--t-2)]">
-        <Info size={14} className="shrink-0 mt-0.5 text-[var(--brand-gold)]" />
-        <span>
-          Для получения сигналов нужна регистрация на{" "}
-          <a
-            href={poRefUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[var(--brand-gold)] underline inline-flex items-center gap-1"
-          >
-            PocketOption <ExternalLink size={11} />
-          </a>
-          . Trader ID можно добавить позже.
-        </span>
-      </div>
 
       {/* Username (login) */}
       <label className="block">
@@ -143,23 +125,6 @@ export function RegisterForm() {
           autoComplete="new-password"
           placeholder="Ещё раз"
           className={FIELD}
-        />
-      </label>
-
-      {/* PO Trader ID */}
-      <label className="block">
-        <span className="text-xs font-medium text-[var(--t-2)] mb-1 block">
-          PocketOption Trader ID <span className="text-[var(--t-3)] font-normal">(необязательно)</span>
-        </span>
-        <input
-          type="text"
-          name="poTraderId"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="Числовой ID из PocketOption"
-          className={FIELD}
-          maxLength={12}
-          defaultValue={fv?.poTraderId ?? ""}
         />
       </label>
 

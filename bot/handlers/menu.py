@@ -60,12 +60,17 @@ async def btn_signal(message: Message, state: FSMContext) -> None:
         await message.answer("Сначала нажми /start.")
         return
     if not user.po_trader_id:
-        await message.answer(
-            "⚠️ Для получения сигналов нужен привязанный PocketOption аккаунт.\n\n"
-            "Нажми /start чтобы пройти регистрацию.",
-            parse_mode=ParseMode.HTML,
-        )
-        return
+        from services.tier_sync import try_sync_user
+        synced = await try_sync_user(message.from_user.id)
+        if synced:
+            user = await get_user(message.from_user.id)
+        if not user or not user.po_trader_id:
+            await message.answer(
+                "⚠️ Для получения сигналов нужен привязанный PocketOption аккаунт.\n\n"
+                "Нажми /start чтобы пройти регистрацию.",
+                parse_mode=ParseMode.HTML,
+            )
+            return
     error = await _send_signal_with_animation(message.from_user.id, message.bot)
     if error:
         from aiogram.enums import ParseMode as _PM

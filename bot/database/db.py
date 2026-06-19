@@ -49,6 +49,7 @@ async def init_db() -> None:
         await _ensure_column(
             db, "users", "daily_signals_reset_at", "daily_signals_reset_at TEXT"
         )
+        await _ensure_column(db, "signals", "telegram_id", "telegram_id INTEGER")
         await db.execute(
             """
             CREATE TABLE IF NOT EXISTS achievements (
@@ -146,14 +147,15 @@ async def increment_signals_received(telegram_id: int) -> None:
         await db.commit()
 
 
-async def save_signal(signal: Signal) -> int:
+async def save_signal(signal: Signal, telegram_id: Optional[int] = None) -> int:
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
             """
-            INSERT INTO signals (pair, direction, expiration, confidence, signal_type, tier, result)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO signals (telegram_id, pair, direction, expiration, confidence, signal_type, tier, result)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                telegram_id,
                 signal.pair,
                 signal.direction,
                 signal.expiration,

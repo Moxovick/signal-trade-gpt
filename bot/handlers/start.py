@@ -150,8 +150,9 @@ async def _redeem_link_token(message: Message, token: str) -> bool:
 
     if body.get("ok"):
         await message.answer(
-            "✅ Telegram привязан к твоему аккаунту на сайте.\n\n"
-            "Возвращайся на вкладку — она обновится автоматически.",
+            "✅ Telegram привязан к твоему аккаунту на сайте!\n\n"
+            "Бот автоматически подтянет данные аккаунта в течение минуты.\n"
+            "Нажми /start чтобы начать пользоваться ботом.",
         )
         return True
 
@@ -246,10 +247,14 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     )
 
     # Auto-trigger onboarding for users who haven't linked PocketOption yet.
-    if existing is None or not user.po_trader_id:
-        # Defer import to avoid circular dependency.
-        from handlers.onboarding import trigger_for_new_user
+    # First, try immediate sync from web platform in case PO ID was verified there.
+    if existing is not None and not user.po_trader_id:
+        from services.tier_sync import try_sync_user
+        if await try_sync_user(user_id):
+            user = await get_user(user_id)
 
+    if not user.po_trader_id:
+        from handlers.onboarding import trigger_for_new_user
         await trigger_for_new_user(message)
 
 

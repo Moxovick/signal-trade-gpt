@@ -373,6 +373,32 @@ def _can_use_web_api() -> bool:
     return bool(settings.platform_api_url and settings.bot_sync_secret)
 
 
+async def _mirror_signal_to_web(telegram_id: int, pair: str, expiration: str) -> None:
+    """Fire-and-forget: mirror a locally-generated signal to the web platform's Postgres."""
+    if not (settings.platform_api_url and settings.bot_sync_secret):
+        return
+    url = f"{settings.platform_api_url.rstrip('/')}/api/bot/signal-request"
+    headers = {
+        "X-Bot-Secret": settings.bot_sync_secret,
+        "Content-Type": "application/json",
+    }
+    payload = {"telegramId": telegram_id, "pair": pair, "expiration": expiration}
+    try:
+        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            if resp.status_code >= 400:
+                logger.warning(
+                    "mirror_signal_to_web: non-2xx %s for telegram_id=%s: %s",
+                    resp.status_code,
+                    telegram_id,
+                    resp.text[:200],
+                )
+    except Exception:
+        logger.warning(
+            "mirror_signal_to_web: request failed for telegram_id=%s", telegram_id, exc_info=True
+        )
+
+
 async def _show_analysis_animation(bot: Bot, chat_id: int, delay_seconds: float) -> Message:
     """Send and animate analysis progress messages."""
     msg = await bot.send_message(chat_id, f"⏳ {ANALYSIS_STEPS[0]}")
@@ -460,8 +486,11 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
 
             # Generate signal
             signal = generate_signal_for_pair(sig_tier, pair_symbol, exp_code)
-            sid = await save_signal(signal)
+            sid = await save_signal(signal, telegram_id=user_id)
             signal.id = sid
+
+            # Mirror to web platform for cross-platform history
+            asyncio.create_task(_mirror_signal_to_web(user_id, pair_symbol, exp_code))
 
             analysis_msg = await animation_task
             try:
