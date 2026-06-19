@@ -22,6 +22,8 @@ BTN_SIGNAL = "🎯 Получить сигнал"
 BTN_LINK = "🔗 Привязать ID"
 BTN_REF = "👥 Рефералы"
 BTN_HELP = "❔ Помощь"
+BTN_LEADERBOARD = "🏆 Лидерборд"
+BTN_PROFILE = "👤 Профиль"
 
 # Keep old names importable but unused
 BTN_STATS = "📈 Статистика"
@@ -30,7 +32,8 @@ BTN_SETTINGS = "⚙️ Настройки"
 MAIN_MENU = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text=BTN_SIGNAL)],
-        [KeyboardButton(text=BTN_REF), KeyboardButton(text=BTN_HELP)],
+        [KeyboardButton(text=BTN_LEADERBOARD), KeyboardButton(text=BTN_REF)],
+        [KeyboardButton(text=BTN_PROFILE), KeyboardButton(text=BTN_HELP)],
     ],
     resize_keyboard=True,
     is_persistent=True,
@@ -38,7 +41,7 @@ MAIN_MENU = ReplyKeyboardMarkup(
 )
 
 # All menu button texts for FSM cancellation detection
-MENU_BUTTONS = {BTN_SIGNAL, BTN_REF, BTN_HELP}
+MENU_BUTTONS = {BTN_SIGNAL, BTN_REF, BTN_HELP, BTN_LEADERBOARD, BTN_PROFILE}
 
 
 # ── inline CTAs ───────────────────────────────────────────────────────────────

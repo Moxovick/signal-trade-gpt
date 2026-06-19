@@ -197,42 +197,16 @@ const STOCK_ICON: Record<string, string> = {
   Meta: "https://cdn.simpleicons.org/meta/ffffff",
   NFLX: "https://cdn.simpleicons.org/netflix/ffffff",
   Netflix: "https://cdn.simpleicons.org/netflix/ffffff",
+  AMZN: "https://cdn.simpleicons.org/amazon/ffffff",
+  Amazon: "https://cdn.simpleicons.org/amazon/ffffff",
+  MSFT: "https://cdn.simpleicons.org/microsoft/ffffff",
+  Microsoft: "https://cdn.simpleicons.org/microsoft/ffffff",
   NVDA: "https://cdn.simpleicons.org/nvidia/ffffff",
   NVIDIA: "https://cdn.simpleicons.org/nvidia/ffffff",
 };
 
-// Inline SVG icons for stocks without Simple Icons, commodities & indices (24x24)
+// Inline SVG icons for commodities & indices (24x24)
 const ASSET_SVG: Record<string, React.ReactElement> = {
-  AMZN: (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path d="M3 17.5C3 17.5 8 20 12 20C16 20 21 17.5 21 17.5" stroke="#ff9900" strokeWidth="2" strokeLinecap="round" />
-      <path d="M18 16L21 17.5L18 19" stroke="#ff9900" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <text x="12" y="14" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#ffffff" fontFamily="sans-serif">a</text>
-    </svg>
-  ),
-  Amazon: (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <path d="M3 17.5C3 17.5 8 20 12 20C16 20 21 17.5 21 17.5" stroke="#ff9900" strokeWidth="2" strokeLinecap="round" />
-      <path d="M18 16L21 17.5L18 19" stroke="#ff9900" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <text x="12" y="14" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#ffffff" fontFamily="sans-serif">a</text>
-    </svg>
-  ),
-  MSFT: (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <rect x="4" y="4" width="7" height="7" fill="#f25022" />
-      <rect x="13" y="4" width="7" height="7" fill="#7fba00" />
-      <rect x="4" y="13" width="7" height="7" fill="#00a4ef" />
-      <rect x="13" y="13" width="7" height="7" fill="#ffb900" />
-    </svg>
-  ),
-  Microsoft: (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-      <rect x="4" y="4" width="7" height="7" fill="#f25022" />
-      <rect x="13" y="4" width="7" height="7" fill="#7fba00" />
-      <rect x="4" y="13" width="7" height="7" fill="#00a4ef" />
-      <rect x="13" y="13" width="7" height="7" fill="#ffb900" />
-    </svg>
-  ),
   Gold: (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
       <path d="M6 18L3 10H21L18 18H6Z" fill="#d4a017" />

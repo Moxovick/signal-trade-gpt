@@ -16,12 +16,13 @@ from aiogram.enums import ParseMode
 from database.db import get_referral_count, get_user, toggle_notifications
 from services.imagegen import (
     make_achievements_grid,
-    make_help_sheet,
     make_leaderboard_table,
     make_referral_card,
 )
 from services.keyboards import (
     BTN_HELP,
+    BTN_LEADERBOARD,
+    BTN_PROFILE,
     BTN_REF,
     BTN_SIGNAL,
     MAIN_MENU,
@@ -42,6 +43,10 @@ async def dispatch_menu_button(message: Message, state: FSMContext) -> None:
         await btn_signal(message, state)
     elif text == BTN_REF:
         await btn_ref(message, state)
+    elif text == BTN_LEADERBOARD:
+        await btn_leaderboard(message)
+    elif text == BTN_PROFILE:
+        await btn_profile(message)
     elif text == BTN_HELP:
         await btn_help(message)
 
@@ -107,6 +112,57 @@ async def btn_ref(message: Message, state: FSMContext) -> None:
         )
 
 
+@router.message(F.text == BTN_LEADERBOARD)
+async def btn_leaderboard(message: Message) -> None:
+    """Shortcut for /leaderboard from menu button."""
+    await cmd_leaderboard(message)
+
+
+@router.message(F.text == BTN_PROFILE)
+async def btn_profile(message: Message) -> None:
+    """Show user profile with tier, stats, PO ID."""
+    user = await get_user(message.from_user.id)
+    if user is None:
+        await message.answer("Сначала нажми /start.")
+        return
+
+    from constants import TIER_NAMES, TIER_DAILY_LIMITS
+
+    tier_name = TIER_NAMES.get(user.tier, "Free")
+    daily_limit = TIER_DAILY_LIMITS.get(user.tier, 3)
+    limit_text = "безлимит" if daily_limit is None else f"{daily_limit}/день"
+    wins = user.wins or 0
+    losses = user.losses or 0
+    total_trades = wins + losses
+    winrate = (wins / total_trades * 100) if total_trades > 0 else 0
+
+    po_line = f"<code>{user.po_trader_id}</code>" if user.po_trader_id else "не привязан"
+
+    text = (
+        f"<b>👤 Профиль</b>\n"
+        f"\n"
+        f"<b>Имя:</b> {user.first_name or user.username or 'Трейдер'}\n"
+        f"<b>Уровень:</b> {tier_name}\n"
+        f"<b>PocketOption ID:</b> {po_line}\n"
+        f"\n"
+        f"<b>📊 Статистика</b>\n"
+        f"Сигналов получено: <b>{user.signals_received}</b>\n"
+        f"Лимит: <b>{limit_text}</b>\n"
+        f"Побед: <b>{wins}</b>  |  Поражений: <b>{losses}</b>\n"
+        f"Винрейт: <b>{winrate:.0f}%</b>\n"
+    )
+
+    if user.tier < 2:
+        next_tier = TIER_NAMES.get(user.tier + 1, "Pro")
+        from constants import TIER_DEPOSIT_THRESHOLDS
+        threshold = TIER_DEPOSIT_THRESHOLDS.get(user.tier + 1, 100)
+        text += (
+            f"\n<i>До уровня {next_tier}: депозит ≥ ${threshold} на PocketOption.</i>"
+        )
+
+    await message.answer(text, parse_mode=ParseMode.HTML)
+
+
 HELP_COMMANDS: list[tuple[str, str]] = [
     ("/start", "запуск и онбординг"),
     ("/signal", "получить сигнал"),
@@ -120,23 +176,12 @@ HELP_COMMANDS: list[tuple[str, str]] = [
 
 @router.message(F.text == BTN_HELP)
 async def btn_help(message: Message) -> None:
-    caption = "<b>❔ Справка по командам</b>"
-    try:
-        sheet = make_help_sheet(HELP_COMMANDS)
-        await message.answer_photo(
-            BufferedInputFile(sheet, filename="help.png"),
-            caption=caption,
-            parse_mode=ParseMode.HTML,
-            reply_markup=MAIN_MENU,
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Could not render help sheet: %s", exc)
-        await message.answer(
-            "<b>Команды</b>\n\n"
-            + "\n".join(f"{c} — {d}" for c, d in HELP_COMMANDS),
-            parse_mode=ParseMode.HTML,
-            reply_markup=MAIN_MENU,
-        )
+    text = (
+        "<b>❔ Справка по командам</b>\n\n"
+        + "\n".join(f"{c} — {d}" for c, d in HELP_COMMANDS)
+        + "\n\n<i>Signal Trade GPT — AI-сигналы для PocketOption.</i>"
+    )
+    await message.answer(text, parse_mode=ParseMode.HTML, reply_markup=MAIN_MENU)
 
 
 @router.message(F.text.in_({"/notifications", "/notif"}))

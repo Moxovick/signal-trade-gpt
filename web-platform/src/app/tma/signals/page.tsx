@@ -176,17 +176,16 @@ const STOCK_ICON: Record<string, string> = {
   Apple: "https://cdn.simpleicons.org/apple/ffffff",
   TSLA: "https://cdn.simpleicons.org/tesla/ffffff",
   Tesla: "https://cdn.simpleicons.org/tesla/ffffff",
+  AMZN: "https://cdn.simpleicons.org/amazon/ffffff",
+  Amazon: "https://cdn.simpleicons.org/amazon/ffffff",
+  MSFT: "https://cdn.simpleicons.org/microsoft/ffffff",
+  Microsoft: "https://cdn.simpleicons.org/microsoft/ffffff",
   META: "https://cdn.simpleicons.org/meta/ffffff",
   Meta: "https://cdn.simpleicons.org/meta/ffffff",
   NFLX: "https://cdn.simpleicons.org/netflix/ffffff",
   Netflix: "https://cdn.simpleicons.org/netflix/ffffff",
   NVDA: "https://cdn.simpleicons.org/nvidia/ffffff",
   NVIDIA: "https://cdn.simpleicons.org/nvidia/ffffff",
-};
-
-const STOCK_COLORS: Record<string, string> = {
-  AMZN: "#ff9900", Amazon: "#ff9900",
-  MSFT: "#00a4ef", Microsoft: "#00a4ef",
 };
 
 const COMMODITY_COLORS: Record<string, { bg: string; color: string; label: string }> = {
@@ -228,15 +227,6 @@ function PairIconSmall({ display, size = 32 }: { display: string; size?: number 
     return (
       <div style={{ width: size, height: size, flexShrink: 0, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "#222" }}>
         <img src={stockUrl} alt={display} width={size * 0.65} height={size * 0.65} style={{ objectFit: "contain" }} />
-      </div>
-    );
-  }
-  // Stock colored badge (Amazon, Microsoft)
-  const stockColor = STOCK_COLORS[display];
-  if (stockColor) {
-    return (
-      <div style={{ width: size, height: size, borderRadius: 6, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, background: `${stockColor}20`, color: stockColor, border: `1px solid ${stockColor}40` }}>
-        {display.slice(0, 4)}
       </div>
     );
   }
