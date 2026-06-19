@@ -138,7 +138,8 @@ async def _check_daily_limit(user: Any) -> str | None:
     if daily_limit is None:
         daily_limit = TIER_DAILY_LIMITS.get(user.tier)
 
-    # Use web platform's daily usage as source of truth (synced via web_sync)
+    # Refresh web sync for real-time usage data (fast — single HTTP call)
+    await web_sync.refresh_now()
     web_used = _get_web_daily_usage(user.telegram_id)
     if web_used is not None:
         used = web_used

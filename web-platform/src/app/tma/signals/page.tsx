@@ -26,7 +26,7 @@ type PairInfo = {
   minTier: number;
 };
 
-type Step = "pick" | "result";
+type Step = "pick" | "analyzing" | "result";
 
 type SignalResult = {
   pair: string;
@@ -258,6 +258,15 @@ function PairIconSmall({ display, size = 32 }: { display: string; size?: number 
 
 // ─── Helpers ───
 
+const ANALYSIS_STEPS = [
+  "Подключение к рынку...",
+  "Анализ графика...",
+  "RSI + MACD проверка...",
+  "Расчёт точки входа...",
+  "Оценка уровней поддержки...",
+  "Формирование сигнала...",
+];
+
 function getPayoutColor(pct: number): string {
   if (pct >= 80) return "#8ee06b";
   if (pct >= 60) return "#e6b840";
@@ -283,6 +292,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [remaining, setRemaining] = useState<number | null>(null);
   const [limitReached, setLimitReached] = useState(false);
+  const [analysisStep, setAnalysisStep] = useState(0);
 
   // remaining and limitReached are updated by the API response; user.tier is used for band lock UI
 
@@ -319,23 +329,44 @@ function SignalsPicker({ user }: { user: TmaUser }) {
     if (!selectedPair || !selectedExpiration) return;
     setLoading(true);
     setErrorMsg(null);
+    setStep("analyzing");
+    setAnalysisStep(0);
+
+    // Start analysis animation in parallel with API call
+    const animationPromise = new Promise<void>((resolve) => {
+      let step = 0;
+      const interval = setInterval(() => {
+        step++;
+        setAnalysisStep(step);
+        if (step >= ANALYSIS_STEPS.length - 1) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 500);
+    });
+
     try {
-      const res = await tmaFetch("/api/tma/signal-request", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ pair: selectedPair.name, tier: selectedPair.band, expiration: selectedExpiration }),
-      });
+      const [res] = await Promise.all([
+        tmaFetch("/api/tma/signal-request", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ pair: selectedPair.name, tier: selectedPair.band, expiration: selectedExpiration }),
+        }),
+        animationPromise,
+      ]);
 
       if (res.status === 429) {
         setLimitReached(true);
         setRemaining(0);
         setErrorMsg("Дневной лимит сигналов исчерпан");
+        setStep("pick");
         return;
       }
 
       if (!res.ok) {
         const err = await res.json() as { error?: string };
         setErrorMsg(err.error ?? "Ошибка генерации сигнала");
+        setStep("pick");
         return;
       }
 
@@ -371,6 +402,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
       setStep("result");
     } catch {
       setErrorMsg("Ошибка сети. Попробуйте снова.");
+      setStep("pick");
     } finally {
       setLoading(false);
     }
@@ -382,6 +414,35 @@ function SignalsPicker({ user }: { user: TmaUser }) {
     setSelectedExpiration(null);
     setResult(null);
   }, []);
+
+  // ─── Analyzing step ───
+  if (step === "analyzing") {
+    const progress = Math.min(100, ((analysisStep + 1) / ANALYSIS_STEPS.length) * 100);
+    return (
+      <main className="max-w-md mx-auto p-4 flex flex-col items-center justify-center" style={{ minHeight: "60vh" }}>
+        <div className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-8 w-full text-center space-y-5">
+          <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center"
+            style={{ background: "rgba(212,160,23,0.1)", border: "1px solid rgba(212,160,23,0.2)" }}>
+            <RefreshCw size={28} className="text-[var(--brand-gold)] animate-spin" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-[var(--t-1)] mb-1">Анализируем рынок</div>
+            <div className="text-xs text-[var(--brand-gold)] h-4 transition-all duration-300">
+              {ANALYSIS_STEPS[Math.min(analysisStep, ANALYSIS_STEPS.length - 1)]}
+            </div>
+          </div>
+          <div className="h-1.5 rounded-full bg-[var(--bg-2)] overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${progress}%`,
+                background: "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+              }}
+            />
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   // ─── Result step ───
   if (step === "result" && result) {
@@ -419,10 +480,12 @@ function SignalsPicker({ user }: { user: TmaUser }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-[var(--t-2)] px-3 py-2 rounded-lg bg-[rgba(212,160,23,0.06)]">
-            <Target size={12} className="text-[var(--brand-gold)]" />
-            Вход: <span className="text-[var(--brand-gold)] font-semibold">{result.entryPrice.toFixed(5)}</span>
-          </div>
+          {result.entryPrice > 0 && (
+            <div className="flex items-center gap-2 text-xs text-[var(--t-2)] px-3 py-2 rounded-lg bg-[rgba(212,160,23,0.06)]">
+              <Target size={12} className="text-[var(--brand-gold)]" />
+              Вход: <span className="text-[var(--brand-gold)] font-semibold">{result.entryPrice.toFixed(5)}</span>
+            </div>
+          )}
 
           {result.analysis && (
             <div className="rounded-xl px-4 py-3 text-[12px] leading-relaxed text-[var(--t-2)] mt-3"
