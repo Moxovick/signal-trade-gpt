@@ -7,6 +7,45 @@ DIRECTION_ARROW = {"CALL": "⬆", "PUT": "⬇"}
 DIRECTION_TAG = {"CALL": "call", "PUT": "put"}
 DIRECTION_WORD = {"CALL": "ВВЕРХ", "PUT": "ВНИЗ"}
 
+# Pair-type emoji for signal messages
+PAIR_EMOJI: dict[str, str] = {
+    # Forex — flag pairs
+    "EUR/USD": "🇪🇺🇺🇸", "GBP/USD": "🇬🇧🇺🇸", "USD/JPY": "🇺🇸🇯🇵",
+    "AUD/USD": "🇦🇺🇺🇸", "EUR/GBP": "🇪🇺🇬🇧", "USD/CHF": "🇺🇸🇨🇭",
+    "NZD/USD": "🇳🇿🇺🇸", "EUR/JPY": "🇪🇺🇯🇵", "AUD/CHF": "🇦🇺🇨🇭",
+    "AUD/NZD": "🇦🇺🇳🇿", "EUR/CHF": "🇪🇺🇨🇭", "GBP/JPY": "🇬🇧🇯🇵",
+    "USD/CAD": "🇺🇸🇨🇦", "CAD/JPY": "🇨🇦🇯🇵", "GBP/AUD": "🇬🇧🇦🇺",
+    "EUR/NZD": "🇪🇺🇳🇿", "AUD/CAD": "🇦🇺🇨🇦", "EUR/AUD": "🇪🇺🇦🇺",
+    "AUD/JPY": "🇦🇺🇯🇵", "CHF/JPY": "🇨🇭🇯🇵",
+    # Crypto
+    "Bitcoin": "₿", "Ethereum": "⟠", "Solana": "◎",
+    "Dogecoin": "🐕", "Cardano": "♦️", "Toncoin": "💎",
+    "BNB": "🔶", "Litecoin": "Ł",
+    "BTC/USD": "₿", "ETH/USD": "⟠", "SOL/USD": "◎",
+    # Stocks
+    "Apple": "🍎", "AAPL": "🍎",
+    "Tesla": "⚡", "TSLA": "⚡",
+    "Amazon": "📦", "AMZN": "📦",
+    "Microsoft": "🪟", "MSFT": "🪟",
+    "Meta": "Ⓜ️", "META": "Ⓜ️",
+    "Netflix": "🎬", "NFLX": "🎬",
+    "NVIDIA": "🟢", "NVDA": "🟢",
+    # Commodities
+    "Gold": "🥇", "GOLD": "🥇",
+    "Silver": "🥈", "SILVER": "🥈",
+    "Brent Oil": "🛢", "WTI Oil": "🛢",
+    # Indices
+    "S&P 500": "📊", "SP500": "📊",
+    "NASDAQ 100": "📈", "US100": "📈",
+    "Dow Jones": "📉",
+}
+
+
+def _pair_emoji(pair: str) -> str:
+    """Return emoji for pair, checking both full name and stripped OTC version."""
+    clean = pair.replace(" (OTC)", "")
+    return PAIR_EMOJI.get(pair, PAIR_EMOJI.get(clean, ""))
+
 # Payout percentages per pair (from PocketOption)
 PAIR_PAYOUTS: dict[str, int] = {
     "EUR/USD (OTC)": 76, "GBP/USD (OTC)": 92, "USD/JPY (OTC)": 33,
@@ -53,8 +92,10 @@ def _render_admin_template(template: str, signal: Signal, entry_price: float | N
     pct = PAIR_PAYOUTS.get(signal.pair)
     payout_str = f"+{pct}%" if pct else "—"
     payout_line = f"Выплата: <b>+{pct}%</b>\n" if pct else ""
+    pair_emoji = _pair_emoji(signal.pair)
     return (
         template
+        .replace("{pair_emoji}", pair_emoji)
         .replace("{pair}", signal.pair)
         .replace("{direction}", signal.direction)
         .replace("{direction_word}", word)
@@ -108,7 +149,7 @@ def format_otc_minimal(signal: Signal) -> str:
     return (
         f"<b>OTC СИГНАЛ</b>\n"
         f"\n"
-        f"<b>{signal.pair}</b>\n"
+        f"{_pair_emoji(signal.pair)} <b>{signal.pair}</b>\n"
         f"{arrow} <b>{signal.direction}</b>  ·  {signal.expiration}\n"
         f"\n"
         f"Точность: <b>{signal.confidence}%</b>  {conf_bar}\n"
@@ -147,7 +188,7 @@ def format_pro_signal_caption(
     lines = [
         f"{header}",
         "",
-        f"<b>{signal.pair}</b>  ·  {arrow} {signal.direction}  ·  {signal.expiration}",
+        f"{_pair_emoji(signal.pair)} <b>{signal.pair}</b>  ·  {arrow} {signal.direction}  ·  {signal.expiration}",
         "",
         f"Точность: <b>{signal.confidence}%</b>  {conf_bar}",
     ]
@@ -197,7 +238,7 @@ def format_signal(signal: Signal, pocket_option_url: str) -> str:
         f"{header}",
         "━━━━━━━━━━━━━━━",
         "",
-        f"<b>Пара:</b> {signal.pair}",
+        f"<b>Пара:</b> {_pair_emoji(signal.pair)} {signal.pair}",
         f"<b>Направление:</b> {signal.direction} {arrow}",
         f"<b>Экспирация:</b> {signal.expiration}",
         f"<b>Точность:</b> {signal.confidence}%  {conf_bar}",

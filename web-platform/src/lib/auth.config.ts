@@ -13,12 +13,34 @@ export const authConfig: NextAuthConfig = {
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id ?? "";
         token.role = user.role ?? "user";
         token.subscriptionPlan = user.subscriptionPlan;
         token.tier = user.tier;
+        token.tierRefreshedAt = Date.now();
+      }
+      // Refresh tier from DB every 60 seconds so postback upgrades are reflected
+      if (
+        token.id &&
+        trigger !== "signIn" &&
+        (typeof token.tierRefreshedAt !== "number" || Date.now() - token.tierRefreshedAt > 60_000)
+      ) {
+        try {
+          const { prisma } = await import("@/lib/prisma");
+          const freshUser = await prisma.user.findUnique({
+            where: { id: String(token.id) },
+            select: { tier: true, role: true },
+          });
+          if (freshUser) {
+            token.tier = freshUser.tier;
+            token.role = freshUser.role;
+          }
+        } catch {
+          // Edge runtime or DB unavailable — keep cached tier
+        }
+        token.tierRefreshedAt = Date.now();
       }
       return token;
     },

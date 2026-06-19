@@ -20,6 +20,12 @@ export type RegisterActionResult = {
   password?: string;
   /** True when the user must finish PO attachment at /onboarding/po-id. */
   needsPoOnboarding?: boolean;
+  /** Echo back form values so the client can preserve them on error. */
+  formValues?: {
+    username?: string;
+    telegramUsername?: string;
+    poTraderId?: string;
+  };
 };
 
 export async function registerAction(
@@ -46,21 +52,23 @@ export async function registerAction(
   const poTraderIdRaw = String(formData.get("poTraderId") ?? "").trim();
   const poTraderId = poTraderIdRaw.length > 0 ? poTraderIdRaw : null;
 
+  const fv = { username, telegramUsername: telegramUsernameRaw || telegramUsername, poTraderId: poTraderIdRaw };
+
   // ── Validation ──────────────────────────────────────────────────────
   if (!username || username.length < 3) {
-    return { ok: false, error: "Логин минимум 3 символа" };
+    return { ok: false, error: "Логин минимум 3 символа", formValues: fv };
   }
   if (!/^[a-z0-9_]+$/.test(username)) {
-    return { ok: false, error: "Логин: только латиница, цифры и _" };
+    return { ok: false, error: "Логин: только латиница, цифры и _", formValues: fv };
   }
   if (!telegramUsername) {
-    return { ok: false, error: "Укажи свой Telegram username" };
+    return { ok: false, error: "Укажи свой Telegram username", formValues: fv };
   }
   if (password.length < 6) {
-    return { ok: false, error: "Пароль минимум 6 символов" };
+    return { ok: false, error: "Пароль минимум 6 символов", formValues: fv };
   }
   if (password !== confirm) {
-    return { ok: false, error: "Пароли не совпадают" };
+    return { ok: false, error: "Пароли не совпадают", formValues: fv };
   }
 
   // ── Optional PO attachment ─────────────────────────────────────────
@@ -71,6 +79,7 @@ export async function registerAction(
       return {
         ok: false,
         error: "PocketOption Trader ID должен быть числовым, 6-12 цифр.",
+        formValues: fv,
       };
     }
 
@@ -81,6 +90,7 @@ export async function registerAction(
       return {
         ok: false,
         error: "Этот Trader ID уже привязан к другому аккаунту.",
+        formValues: fv,
       };
     }
 
@@ -91,6 +101,7 @@ export async function registerAction(
           ok: false,
           error:
             "PocketOption не видит этот Trader ID в нашей партнёрской сети. Зарегистрируйся по нашей реф-ссылке.",
+          formValues: fv,
         };
       }
       if (verify.reason === "not_configured") {
@@ -99,6 +110,7 @@ export async function registerAction(
         return {
           ok: false,
           error: "PocketOption API сейчас не отвечает. Попробуй через минуту.",
+          formValues: fv,
         };
       }
     } else {
@@ -115,7 +127,7 @@ export async function registerAction(
       where: { username: { equals: username, mode: "insensitive" } },
     });
     if (existing) {
-      return { ok: false, error: "Этот логин уже занят" };
+      return { ok: false, error: "Этот логин уже занят", formValues: fv };
     }
 
     let referredById: string | null = null;
@@ -194,6 +206,6 @@ export async function registerAction(
   } catch (err) {
     console.error("[register action] failed:", err);
     const msg = err instanceof Error ? err.message : "unknown";
-    return { ok: false, error: `Внутренняя ошибка: ${msg}` };
+    return { ok: false, error: `Внутренняя ошибка: ${msg}`, formValues: fv };
   }
 }

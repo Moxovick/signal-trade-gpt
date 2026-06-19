@@ -171,6 +171,37 @@ const CRYPTO_IMG: Record<string, string> = {
   LTC: "https://assets.coingecko.com/coins/images/2/small/litecoin.png",
 };
 
+const STOCK_ICON: Record<string, string> = {
+  AAPL: "https://cdn.simpleicons.org/apple/ffffff",
+  Apple: "https://cdn.simpleicons.org/apple/ffffff",
+  TSLA: "https://cdn.simpleicons.org/tesla/ffffff",
+  Tesla: "https://cdn.simpleicons.org/tesla/ffffff",
+  META: "https://cdn.simpleicons.org/meta/ffffff",
+  Meta: "https://cdn.simpleicons.org/meta/ffffff",
+  NFLX: "https://cdn.simpleicons.org/netflix/ffffff",
+  Netflix: "https://cdn.simpleicons.org/netflix/ffffff",
+  NVDA: "https://cdn.simpleicons.org/nvidia/ffffff",
+  NVIDIA: "https://cdn.simpleicons.org/nvidia/ffffff",
+};
+
+const STOCK_COLORS: Record<string, string> = {
+  AMZN: "#ff9900", Amazon: "#ff9900",
+  MSFT: "#00a4ef", Microsoft: "#00a4ef",
+};
+
+const COMMODITY_COLORS: Record<string, { bg: string; color: string; label: string }> = {
+  Gold: { bg: "#d4a017", color: "#1a1a1a", label: "AU" },
+  Silver: { bg: "#a0a0a0", color: "#1a1a1a", label: "AG" },
+  "Brent Oil": { bg: "#3a6b35", color: "#fff", label: "OIL" },
+  "WTI Oil": { bg: "#4a7b45", color: "#fff", label: "WTI" },
+};
+
+const INDEX_COLORS: Record<string, { bg: string; color: string; label: string }> = {
+  "S&P 500": { bg: "#1a3c6e", color: "#fff", label: "S&P" },
+  NASDAQ: { bg: "#0096d6", color: "#fff", label: "NDQ" },
+  "Dow Jones": { bg: "#1a3c6e", color: "#fff", label: "DJI" },
+};
+
 function PairIconSmall({ display, size = 32 }: { display: string; size?: number }) {
   const parts = display.split("/");
   // Currency pair flags
@@ -190,6 +221,42 @@ function PairIconSmall({ display, size = 32 }: { display: string; size?: number 
   const cryptoUrl = CRYPTO_IMG[display];
   if (cryptoUrl) {
     return <img src={cryptoUrl} alt={display} width={size} height={size} style={{ borderRadius: "50%", flexShrink: 0, background: "#222" }} />;
+  }
+  // Stock icon (Simple Icons CDN)
+  const stockUrl = STOCK_ICON[display];
+  if (stockUrl) {
+    return (
+      <div style={{ width: size, height: size, flexShrink: 0, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", background: "#222" }}>
+        <img src={stockUrl} alt={display} width={size * 0.65} height={size * 0.65} style={{ objectFit: "contain" }} />
+      </div>
+    );
+  }
+  // Stock colored badge (Amazon, Microsoft)
+  const stockColor = STOCK_COLORS[display];
+  if (stockColor) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: 6, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, background: `${stockColor}20`, color: stockColor, border: `1px solid ${stockColor}40` }}>
+        {display.slice(0, 4)}
+      </div>
+    );
+  }
+  // Commodity
+  const commodity = COMMODITY_COLORS[display];
+  if (commodity) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: 6, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, background: commodity.bg, color: commodity.color, border: "1px solid rgba(255,255,255,0.12)" }}>
+        {commodity.label}
+      </div>
+    );
+  }
+  // Index
+  const index = INDEX_COLORS[display];
+  if (index) {
+    return (
+      <div style={{ width: size, height: size, borderRadius: 6, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 900, background: index.bg, color: index.color, border: "1px solid rgba(255,255,255,0.12)" }}>
+        {index.label}
+      </div>
+    );
   }
   // Fallback
   return (

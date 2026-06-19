@@ -64,6 +64,8 @@ export function RegisterForm() {
   }, [state.ok, state.username, state.password, state.needsPoOnboarding, router]);
 
   const errorToShow = autoLoginError ?? state.error ?? errFromUrl ?? null;
+  const fv = state.formValues;
+  const isAutoLogging = state.ok && !autoLoginError;
   const poRefUrl = "/po/refer";
 
   return (
@@ -101,6 +103,7 @@ export function RegisterForm() {
           placeholder="Придумай логин"
           className={FIELD}
           maxLength={32}
+          defaultValue={fv?.username ?? ""}
         />
       </label>
 
@@ -115,6 +118,7 @@ export function RegisterForm() {
           placeholder="@username в Telegram"
           className={FIELD}
           maxLength={32}
+          defaultValue={fv?.telegramUsername ?? ""}
         />
       </label>
 
@@ -155,6 +159,7 @@ export function RegisterForm() {
           placeholder="Числовой ID из PocketOption"
           className={FIELD}
           maxLength={12}
+          defaultValue={fv?.poTraderId ?? ""}
         />
       </label>
 
@@ -165,10 +170,10 @@ export function RegisterForm() {
 
       <button
         type="submit"
-        disabled={isPending}
+        disabled={isPending || isAutoLogging}
         className="w-full h-12 rounded-full bg-[var(--brand-gold)] text-[#1a1208] font-semibold text-sm hover:bg-[var(--brand-gold-bright)] transition-colors disabled:opacity-50 mt-2"
       >
-        {isPending ? "Создаём аккаунт..." : "Создать аккаунт"}
+        {isAutoLogging ? "Входим в аккаунт..." : isPending ? "Создаём аккаунт..." : "Создать аккаунт"}
       </button>
     </form>
   );

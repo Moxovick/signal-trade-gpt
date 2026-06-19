@@ -9,6 +9,7 @@ type Entry = {
   user: { firstName: string | null; email: string | null };
   tier: number;
   signalsReceived: number;
+  earnings: number;
 };
 
 const LEVEL: Record<number, string> = { 0: "Бесплатный", 1: "Базовый", 2: "Про" };
@@ -76,7 +77,8 @@ function Leaders() {
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold truncate">{name}</div>
                   <div className="text-xs text-[var(--t-3)]">
-                    {level} · {e.signalsReceived} сигн.
+                    {level} · {e.signalsReceived} сигн. ·{" "}
+                    <span style={{ color: "#8ee06b", fontWeight: 600 }}>${e.earnings.toLocaleString("en-US")}</span>
                   </div>
                 </div>
               </div>

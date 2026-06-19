@@ -5,7 +5,7 @@
  */
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { Gift, Trophy, Medal, Award, Laptop, Smartphone, Headphones } from "lucide-react";
+import { Gift, Trophy, Medal, Award } from "lucide-react";
 import { redirect } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 
@@ -23,12 +23,47 @@ const PLACE_STYLE: Record<number, { icon: LucideIcon; accentColor: string; borde
   3: { icon: Award, accentColor: "#cd7f32", borderColor: "rgba(205,127,50,0.4)", bgGradient: "linear-gradient(135deg, rgba(205,127,50,0.06) 0%, transparent 100%)" },
 };
 
-/** Pick a device icon based on prize title keywords. */
-function getDeviceIcon(title: string): LucideIcon | null {
+/** Return an inline SVG illustration based on prize title keywords. */
+function getPrizeImage(title: string): React.ReactElement | null {
   const t = title.toLowerCase();
-  if (t.includes("macbook") || t.includes("ноутбук") || t.includes("laptop")) return Laptop;
-  if (t.includes("iphone") || t.includes("телефон") || t.includes("смартфон") || t.includes("phone")) return Smartphone;
-  if (t.includes("airpods") || t.includes("наушники") || t.includes("headphone")) return Headphones;
+  if (t.includes("macbook") || t.includes("ноутбук") || t.includes("laptop")) {
+    return (
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="8" y="12" width="48" height="32" rx="3" fill="#2a2a2a" stroke="#555" strokeWidth="1"/>
+        <rect x="11" y="15" width="42" height="26" rx="1" fill="#1a1a2e"/>
+        <path d="M32 25L28 30H36L32 25Z" fill="#d4a017" opacity="0.8"/>
+        <circle cx="32" cy="29" r="4" fill="none" stroke="#d4a017" strokeWidth="0.8" opacity="0.5"/>
+        <path d="M4 44H60L56 48H8L4 44Z" fill="#3a3a3a" stroke="#555" strokeWidth="0.5"/>
+        <rect x="24" y="44" width="16" height="1" fill="#555"/>
+      </svg>
+    );
+  }
+  if (t.includes("iphone") || t.includes("телефон") || t.includes("смартфон") || t.includes("phone")) {
+    return (
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="18" y="4" width="28" height="56" rx="6" fill="#2a2a2a" stroke="#555" strokeWidth="1"/>
+        <rect x="20" y="10" width="24" height="42" rx="2" fill="#1a1a2e"/>
+        <circle cx="32" cy="7" r="1.5" fill="#444"/>
+        <rect x="28" y="7" width="8" height="1" rx="0.5" fill="#444"/>
+        <rect x="26" y="54" width="12" height="3" rx="1.5" fill="#444"/>
+        <path d="M32 24L28 31H36L32 24Z" fill="#d4a017" opacity="0.8"/>
+        <circle cx="32" cy="29" r="5" fill="none" stroke="#d4a017" strokeWidth="0.8" opacity="0.5"/>
+      </svg>
+    );
+  }
+  if (t.includes("airpods") || t.includes("наушники") || t.includes("headphone")) {
+    return (
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="22" cy="28" rx="8" ry="10" fill="#e8e8e8" stroke="#ccc" strokeWidth="0.5"/>
+        <ellipse cx="42" cy="28" rx="8" ry="10" fill="#e8e8e8" stroke="#ccc" strokeWidth="0.5"/>
+        <rect x="20" y="36" width="4" height="16" rx="2" fill="#e8e8e8" stroke="#ccc" strokeWidth="0.5"/>
+        <rect x="40" y="36" width="4" height="16" rx="2" fill="#e8e8e8" stroke="#ccc" strokeWidth="0.5"/>
+        <ellipse cx="22" cy="28" rx="4" ry="5" fill="#ddd"/>
+        <ellipse cx="42" cy="28" rx="4" ry="5" fill="#ddd"/>
+        <rect x="20" y="14" width="24" height="4" rx="2" fill="#f0f0f0" stroke="#ccc" strokeWidth="0.3"/>
+      </svg>
+    );
+  }
   return null;
 }
 
@@ -85,8 +120,8 @@ export default async function DashboardGiveawayPage() {
             >
               {/* Device illustration */}
               {(() => {
-                const DeviceIcon = getDeviceIcon(prize.title);
-                return DeviceIcon ? (
+                const image = getPrizeImage(prize.title);
+                return image ? (
                   <div
                     style={{
                       width: "80px",
@@ -99,7 +134,7 @@ export default async function DashboardGiveawayPage() {
                       border: `1.5px solid ${style.borderColor}`,
                     }}
                   >
-                    <DeviceIcon size={38} style={{ color: style.accentColor }} />
+                    {image}
                   </div>
                 ) : null;
               })()}
