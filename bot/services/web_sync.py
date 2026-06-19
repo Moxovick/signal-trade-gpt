@@ -202,7 +202,7 @@ async def _fetch() -> dict[str, Any] | None:
         return None
     url = f"{settings.platform_api_url.rstrip('/')}/api/bot/sync"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
             resp = await client.get(
                 url, headers={"X-Bot-Secret": settings.bot_sync_secret}
             )

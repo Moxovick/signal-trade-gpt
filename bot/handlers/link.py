@@ -85,12 +85,10 @@ async def receive_id(message: Message, state: FSMContext) -> None:
         from services.po_api import fetch_trader_info, _credentials
 
         if _credentials() is None:
-            # API not configured — REJECT, cannot verify
-            logger.error("PO API credentials missing — cannot verify ID %s", candidate)
-            await message.answer(
-                "⚠️ Верификация временно недоступна (API не настроен).\n"
-                "Обратись к администратору или попробуй позже.",
-            )
+            # API not configured — save without verification, warn in logs
+            logger.warning("PO API credentials missing — saving ID %s without verification", candidate)
+            await set_po_trader_id(message.from_user.id, candidate)
+            await _send_success(message, state, candidate, verified=False, deposit=0.0)
             return
 
         info = await fetch_trader_info(candidate)
