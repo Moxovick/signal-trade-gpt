@@ -105,14 +105,29 @@ async def fetch_trader_info(user_id: str) -> TraderInfo | None:
         )
         return None
 
+    logger.info("PO API raw response for %s (HTTP %s): %s", user_id, resp.status_code, resp.text[:500])
+
     # PO docs are sparse — accept several common shapes.
     payload: dict[str, Any] = data
     if isinstance(data, dict) and isinstance(data.get("data"), dict):
         # Some endpoints wrap the user object under {"data": {...}}.
         payload = data["data"]
 
+    # Reject explicit error responses
     if isinstance(payload.get("error"), bool) and payload["error"]:
         logger.warning("PO API returned error for %s: %s", user_id, payload)
+        return None
+
+    # Reject empty/null payloads — API sometimes returns 200 with no real data
+    if not payload or (isinstance(payload, dict) and not any(
+        payload.get(k) for k in (
+            "totalDeposit", "deposit", "total_deposit", "deposit_amount",
+            "ftdAt", "ftd_at", "firstDeposit", "first_deposit_at",
+            "email", "username", "name", "id", "user_id",
+            "registeredAt", "registered_at", "created_at",
+        )
+    )):
+        logger.warning("PO API returned empty/unrecognized data for %s: %s", user_id, payload)
         return None
 
     deposit = (
