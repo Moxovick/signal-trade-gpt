@@ -120,7 +120,7 @@ export function SettingsForm({
           value={refTpl}
           onChange={(e) => setRefTpl(e.target.value)}
           className={FIELD}
-          placeholder="https://po.cash/smart/aff?click_id={click_id}"
+          placeholder="https://po-ru4.click/register?...&cid={click_id}&code=WELCOME50"
         />
       </label>
 
