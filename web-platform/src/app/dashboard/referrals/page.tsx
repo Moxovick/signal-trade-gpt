@@ -108,7 +108,7 @@ export default async function ReferralsPage() {
           {REVSHARE_PCT}% с каждого депозита
         </h1>
         <p className="text-[var(--t-2)] mt-1.5 text-sm">
-          Приводи трейдеров на Signal Trade GPT — получай&nbsp;
+          Приводи трейдеров на SpaceSignal — получай&nbsp;
           <span className="text-[var(--brand-gold)] font-semibold">
             {REVSHARE_PCT}%
           </span>{" "}

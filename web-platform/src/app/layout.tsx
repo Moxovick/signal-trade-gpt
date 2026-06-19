@@ -26,7 +26,7 @@ const bebas = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "Signal Trade GPT — AI Trading Signals",
+  title: "SpaceSignal — AI Trading Signals",
   description:
     "Сигналы для PocketOption. Открывай аккаунт по нашей ссылке — получи доступ к боту в Telegram. Чем выше депозит, тем сильнее перки.",
 };

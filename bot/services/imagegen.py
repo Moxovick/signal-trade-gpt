@@ -14,11 +14,14 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import random
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+logger = logging.getLogger(__name__)
 
 import matplotlib
 
@@ -42,6 +45,7 @@ RED = "#ff6b3d"
 
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+FONTS_DIR = ASSETS_DIR / "fonts"
 
 LOGO_CARD = ASSETS_DIR / "brand_card.png"
 
@@ -55,11 +59,18 @@ def _try_font(*candidates: str, size: int) -> ImageFont.ImageFont:
             return ImageFont.truetype(path, size=size)
         except (OSError, IOError):
             continue
+    logger.warning(
+        "No Cyrillic-capable font found (tried: %s). "
+        "Falling back to PIL default bitmap font — Cyrillic text will render as blank squares. "
+        "Install fonts-dejavu-core or place DejaVuSans*.ttf into bot/assets/fonts/.",
+        ", ".join(candidates),
+    )
     return ImageFont.load_default()
 
 
 def _font_bold(size: int) -> ImageFont.ImageFont:
     return _try_font(
+        str(FONTS_DIR / "DejaVuSans-Bold.ttf"),
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/Library/Fonts/Arial Bold.ttf",
         "C:/Windows/Fonts/arialbd.ttf",
@@ -69,6 +80,7 @@ def _font_bold(size: int) -> ImageFont.ImageFont:
 
 def _font_regular(size: int) -> ImageFont.ImageFont:
     return _try_font(
+        str(FONTS_DIR / "DejaVuSans.ttf"),
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/Library/Fonts/Arial.ttf",
         "C:/Windows/Fonts/arial.ttf",
@@ -135,7 +147,7 @@ def _generate_brand_card() -> Path:
     # Brand wordmark
     title_font = _font_bold(96)
     sub_font = _font_regular(28)
-    title = "SIGNAL · TRADE · GPT"
+    title = "SPACESIGNAL"
     tw = draw.textlength(title, font=title_font)
     draw.text(
         ((w - tw) // 2, cy + 130),
@@ -145,7 +157,7 @@ def _generate_brand_card() -> Path:
         stroke_width=0,
     )
     # tagline
-    tag = "AI · POCKETOPTION · REVSHARE"
+    tag = "AI · SPACESIGNAL · POCKETOPTION"
     tw2 = draw.textlength(tag, font=sub_font)
     draw.text(
         ((w - tw2) // 2, cy + 240),
@@ -281,7 +293,7 @@ def make_signal_chart(
     fig.text(
         0.985,
         0.025,
-        "SIGNAL · TRADE · GPT",
+        "SPACESIGNAL",
         color=GOLD_SOFT,
         fontsize=10,
         ha="right",
@@ -472,7 +484,7 @@ def make_signal_chart_advanced(
     fig.text(
         0.985,
         0.012,
-        "SIGNAL · TRADE · GPT  ·  PRO ANALYSIS",
+        "SPACESIGNAL  ·  PRO ANALYSIS",
         color=GOLD_SOFT,
         fontsize=9,
         ha="right",
@@ -496,7 +508,7 @@ def make_otc_banner(signal: Signal) -> bytes:
     - Large direction arrow ("▲" / "▼") centred on the canvas.
     - Pair name + OTC badge (top-left area).
     - Expiration and confidence on a second line below.
-    - "SIGNAL · TRADE · GPT" watermark bottom-right.
+    - "SPACESIGNAL" watermark bottom-right.
     """
     import math
 
@@ -666,7 +678,7 @@ def _frame(w: int, h: int, accent_x: int | None = None) -> Image.Image:
 
 def _watermark(draw: ImageDraw.ImageDraw, w: int, h: int) -> None:
     f = _font_bold(18)
-    draw.text((w - 280, h - 32), "SIGNAL · TRADE · GPT", font=f, fill=GOLD_SOFT)
+    draw.text((w - 280, h - 32), "SPACESIGNAL", font=f, fill=GOLD_SOFT)
 
 
 def make_stats_card(

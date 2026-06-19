@@ -40,7 +40,7 @@ export default function AboutPage() {
             Про нас
           </div>
           <h1 className="mt-8 text-5xl md:text-6xl font-bold leading-[1.05]">
-            Signal Trade GPT
+            SpaceSignal
           </h1>
           <p className="mt-6 text-lg text-[var(--t-2)] leading-relaxed">
             Платформа AI-сигналов для PocketOption. Мы не продаём подписки и не
@@ -96,7 +96,7 @@ export default function AboutPage() {
           <h2 className="text-3xl font-bold mb-6">Дисклеймер</h2>
           <div className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-6 text-sm text-[var(--t-2)] leading-relaxed">
             <p>
-              Signal Trade GPT не является финансовым советником. Все сигналы
+              SpaceSignal не является финансовым советником. Все сигналы
               предоставляются в информационных целях. Торговля бинарными
               опционами сопряжена с высоким риском потери средств. Прошлые
               результаты не гарантируют будущей доходности. Решение об открытии

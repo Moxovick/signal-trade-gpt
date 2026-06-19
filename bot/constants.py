@@ -1,4 +1,4 @@
-"""Shared constants for the Signal Trade GPT bot."""
+"""Shared constants for the SpaceSignal bot."""
 from typing import TypedDict
 
 

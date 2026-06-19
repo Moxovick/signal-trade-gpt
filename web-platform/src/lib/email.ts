@@ -23,7 +23,7 @@ const RESEND_URL = "https://api.resend.com/emails";
 export async function sendEmail(msg: SendEmail): Promise<SendResult> {
   const key = process.env["RESEND_API_KEY"];
   const from =
-    process.env["EMAIL_FROM"] ?? "Signal Trade GPT <no-reply@localhost>";
+    process.env["EMAIL_FROM"] ?? "SpaceSignal <no-reply@localhost>";
 
   if (!key) {
     console.warn(
@@ -78,7 +78,7 @@ export function renderOtpEmail(code: string, purpose: string): {
   const text =
     `${title}\n\nТвой код: ${code}\n\n` +
     `Код действителен 10 минут. Если не запрашивал — просто проигнорируй письмо.\n\n` +
-    `Signal Trade GPT`;
+    `SpaceSignal`;
   const html = `
 <!doctype html>
 <html lang="ru"><body style="font-family:system-ui,Segoe UI,sans-serif;background:#0a0a13;color:#eee;padding:32px">
@@ -87,7 +87,7 @@ export function renderOtpEmail(code: string, purpose: string): {
     <p style="color:#aaa;font-size:14px;line-height:1.5;margin:0 0 24px">Твой код подтверждения:</p>
     <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:28px;letter-spacing:8px;font-weight:700;color:#f5c518;padding:16px 20px;background:#0a0a13;border:1px solid rgba(255,255,255,.08);border-radius:10px;text-align:center">${code}</div>
     <p style="color:#666;font-size:12px;line-height:1.5;margin:24px 0 0">Код действителен 10 минут. Если ты не запрашивал код — просто проигнорируй письмо.</p>
-    <p style="color:#666;font-size:11px;margin-top:24px">Signal Trade GPT</p>
+    <p style="color:#666;font-size:11px;margin-top:24px">SpaceSignal</p>
   </div>
 </body></html>`.trim();
   return { subject: `${title} — ${code}`, html, text };
@@ -111,7 +111,7 @@ export function renderNotifEmail(
     <h1 style="margin:0 0 12px;font-size:18px;font-weight:600">${title}</h1>
     <div style="color:#aaa;font-size:14px;line-height:1.6">${body.replace(/\n/g, "<br>")}</div>
     ${cta}
-    <p style="color:#666;font-size:11px;margin-top:32px">Signal Trade GPT</p>
+    <p style="color:#666;font-size:11px;margin-top:32px">SpaceSignal</p>
   </div>
 </body></html>`.trim();
   return { subject: title, html, text };

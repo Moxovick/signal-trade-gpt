@@ -13,6 +13,7 @@ import secrets
 import httpx
 from aiogram import Router
 from aiogram.filters import Command, CommandStart
+from aiogram.fsm.context import FSMContext
 from aiogram.types import FSInputFile, Message
 from aiogram.enums import ParseMode
 
@@ -36,7 +37,7 @@ def _format_welcome(first_name: str, ref_code: str, bot_username: str) -> str:
     return (
         f"Привет, <b>{first_name}</b>! 👋\n"
         f"\n"
-        f"<b>Signal Trade GPT</b> — AI-сигналы для PocketOption.\n"
+        f"<b>SpaceSignal</b> — AI-сигналы для PocketOption.\n"
         f"Доступ открывается регистрацией, а не подпиской.\n"
         f"\n"
         f"<b>Как начать:</b>\n"
@@ -160,7 +161,8 @@ async def _redeem_link_token(message: Message, token: str) -> bool:
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message) -> None:
+async def cmd_start(message: Message, state: FSMContext) -> None:
+    await state.clear()
     user_id = message.from_user.id
     first_name = message.from_user.first_name or "Трейдер"
     username = message.from_user.username
@@ -240,7 +242,7 @@ async def cmd_start(message: Message) -> None:
 @router.message(Command("help"))
 async def cmd_help(message: Message) -> None:
     text = (
-        "<b>Signal Trade GPT — справка</b>\n"
+        "<b>SpaceSignal — справка</b>\n"
         "\n"
         "<b>Основные команды:</b>\n"
         "/start — запуск бота и онбординг\n"

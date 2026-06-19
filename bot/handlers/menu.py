@@ -179,7 +179,7 @@ async def btn_help(message: Message) -> None:
     text = (
         "<b>❔ Справка по командам</b>\n\n"
         + "\n".join(f"{c} — {d}" for c, d in HELP_COMMANDS)
-        + "\n\n<i>Signal Trade GPT — AI-сигналы для PocketOption.</i>"
+        + "\n\n<i>SpaceSignal — AI-сигналы для PocketOption.</i>"
     )
     await message.answer(text, parse_mode=ParseMode.HTML, reply_markup=MAIN_MENU)
 
