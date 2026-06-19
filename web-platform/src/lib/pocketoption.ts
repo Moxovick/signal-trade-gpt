@@ -534,7 +534,7 @@ export async function buildReferralLink(userId: string): Promise<string> {
   const template =
     typeof setting?.value === "string"
       ? setting.value
-      : "https://po.cash/smart/aff?click_id={click_id}";
+      : "https://po-ru4.click/register?utm_campaign=825519&utm_source=affiliate&utm_medium=sr&a=Be8CXM52oc4EOp&al=1769855&ac=signal&cid={click_id}&code=WELCOME50";
   return template.replace(/\{click_id\}/g, userId).replace(/\{user_id\}/g, userId);
 }
 
