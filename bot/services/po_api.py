@@ -41,8 +41,8 @@ def _hash(user_id: str, partner_id: str, token: str) -> str:
 
 
 def _credentials() -> tuple[str, str] | None:
-    token = (settings.pocket_option_api_token or "").strip()
-    partner = (settings.pocket_option_partner_id or "").strip()
+    token = (settings.pocketoption_api_token or "").strip()
+    partner = (settings.pocketoption_partner_id or "").strip()
     if not token or not partner:
         return None
     return partner, token

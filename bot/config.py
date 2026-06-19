@@ -30,8 +30,8 @@ class Settings(BaseSettings):
 
     # Phase Q — PocketOption Affiliate API direct-query credentials.
     # Both must be set to enable live trader-info lookup.
-    pocket_option_api_token: str = Field("", env="POCKETOPTION_API_TOKEN")
-    pocket_option_partner_id: str = Field("", env="POCKETOPTION_PARTNER_ID")
+    pocketoption_api_token: str = Field("", env="POCKETOPTION_API_TOKEN")
+    pocketoption_partner_id: str = Field("", env="POCKETOPTION_PARTNER_ID")
 
     # Analysis animation delay (seconds) before showing signal
     analysis_delay_min: int = Field(5, env="ANALYSIS_DELAY_MIN")
