@@ -85,13 +85,24 @@ async def _send_upgrade(bot: Bot, telegram_id: int, new_tier: int, deposit: floa
         await bot.send_message(telegram_id, text, parse_mode=ParseMode.HTML)
 
 
+def _compute_tier_from_deposit(deposit: float) -> int:
+    """Mirror the web-platform computeTier logic locally."""
+    thresholds = USER_TIER_DEPOSIT_THRESHOLDS
+    if deposit >= thresholds.get(2, 100):
+        return 2
+    if deposit >= thresholds.get(1, 20):
+        return 1
+    return 0
+
+
 async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
     po_id = item.get("poTraderId")
     if not po_id:
         return
     po_id = str(po_id)
-    new_tier = int(item.get("tier") or 0)
     deposit = float(item.get("totalDeposit") or 0.0)
+    # Compute tier from deposit locally, don't blindly trust API tier
+    new_tier = _compute_tier_from_deposit(deposit)
 
     state = await _local_state(po_id)
     if state is None:
