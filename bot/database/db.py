@@ -81,7 +81,7 @@ async def get_user(telegram_id: int) -> Optional[User]:
         """
         SELECT u.*, pa."poTraderId"
         FROM "users" u
-        LEFT JOIN "PocketOptionAccount" pa ON pa."userId" = u.id
+        LEFT JOIN "po_accounts" pa ON pa."userId" = u.id
         WHERE u."telegramId" = $1
         """,
         telegram_id,
@@ -141,7 +141,7 @@ async def set_po_trader_id(telegram_id: int, po_trader_id: str) -> None:
 
     await pool.execute(
         """
-        INSERT INTO "PocketOptionAccount" (id, "userId", "poTraderId", "createdAt", "updatedAt")
+        INSERT INTO "po_accounts" (id, "userId", "poTraderId", "createdAt", "updatedAt")
         VALUES ($1, $2, $3, NOW(), NOW())
         ON CONFLICT ("userId") DO UPDATE SET "poTraderId" = $3, "updatedAt" = NOW()
         """,
@@ -193,7 +193,7 @@ async def save_signal(signal: Signal, telegram_id: Optional[int] = None) -> int:
 
     await pool.execute(
         """
-        INSERT INTO "Signal" (id, pair, direction, expiration, confidence, type,
+        INSERT INTO "signals" (id, pair, direction, expiration, confidence, type,
                               tier, analysis, result, "createdById", "createdAt")
         VALUES ($1, $2, $3::"SignalDirection", $4, $5, $6::"SignalType",
                 $7::"SignalTier", $8, $9::"SignalResult", $10, NOW())
@@ -215,7 +215,7 @@ async def save_signal(signal: Signal, telegram_id: Optional[int] = None) -> int:
 
 async def get_total_signals() -> int:
     pool = _get_pool()
-    row = await pool.fetchrow('SELECT COUNT(*) AS cnt FROM "Signal"')
+    row = await pool.fetchrow('SELECT COUNT(*) AS cnt FROM "signals"')
     return int(row["cnt"]) if row else 0
 
 
@@ -231,7 +231,7 @@ async def get_user_by_referral_code(code: str) -> Optional[User]:
         """
         SELECT u.*, pa."poTraderId"
         FROM "users" u
-        LEFT JOIN "PocketOptionAccount" pa ON pa."userId" = u.id
+        LEFT JOIN "po_accounts" pa ON pa."userId" = u.id
         WHERE u."referralCode" = $1
         """,
         code,
@@ -313,7 +313,7 @@ async def get_top_users(limit: int = 10) -> list[User]:
         """
         SELECT u.*, pa."poTraderId"
         FROM "users" u
-        LEFT JOIN "PocketOptionAccount" pa ON pa."userId" = u.id
+        LEFT JOIN "po_accounts" pa ON pa."userId" = u.id
         WHERE u."signalsReceived" > 0
         ORDER BY u.tier DESC, u."signalsReceived" DESC
         LIMIT $1
@@ -329,7 +329,7 @@ async def get_users_with_notifications() -> list[User]:
         """
         SELECT u.*, pa."poTraderId"
         FROM "users" u
-        LEFT JOIN "PocketOptionAccount" pa ON pa."userId" = u.id
+        LEFT JOIN "po_accounts" pa ON pa."userId" = u.id
         WHERE u.status = 'active'
         """,
     )

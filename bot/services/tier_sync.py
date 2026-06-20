@@ -39,7 +39,7 @@ async def _local_state(po_trader_id: str) -> tuple[int, float, int | None] | Non
         """
         SELECT u.tier, u."depositTotal", u."telegramId"
         FROM "users" u
-        JOIN "PocketOptionAccount" pa ON pa."userId" = u.id
+        JOIN "po_accounts" pa ON pa."userId" = u.id
         WHERE pa."poTraderId" = $1
         """,
         po_trader_id,

@@ -212,7 +212,7 @@ async def cmd_stats_global(message: Message) -> None:
         'COALESCE(SUM(u."losses"), 0) AS sum_losses, '
         'COUNT(pa."poTraderId") AS linked '
         'FROM "users" u '
-        'LEFT JOIN "PocketOptionAccount" pa ON pa."userId" = u."id" '
+        'LEFT JOIN "po_accounts" pa ON pa."userId" = u."id" '
         'WHERE pa."poTraderId" IS NOT NULL'
     )
     sum_dep = float(row["sum_dep"])
