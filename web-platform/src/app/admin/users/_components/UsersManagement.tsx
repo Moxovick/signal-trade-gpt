@@ -658,7 +658,6 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
         <div
           className="hidden md:grid px-5 py-3 text-xs text-[var(--t-3)] border-b gap-2"
           style={{ gridTemplateColumns: "2.5fr 0.8fr 1.2fr 0.8fr 0.8fr 1.2fr 1fr 1fr 1fr", borderColor: "var(--b-soft, rgba(255,255,255,0.06))" }}
-          style={{ borderColor: "var(--b-soft, rgba(255,255,255,0.06))" }}
         >
           <span>Пользователь</span>
           <SortHeader label="Тир" field="tier" current={sortBy} dir={sortDir} onClick={handleSort} />

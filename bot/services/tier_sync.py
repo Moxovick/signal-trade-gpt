@@ -1,6 +1,6 @@
 """
 Tier-sync — periodically pulls a snapshot of PocketOption account state from
-the web platform and applies it to the bot's local SQLite mirror.
+the web platform and applies it to the shared Postgres database.
 
 When a user's tier is upgraded, the bot fires a congratulations message
 including a regenerated tier-card image. Idempotent: if the snapshot tier
@@ -185,8 +185,8 @@ async def try_sync_user(telegram_id: int) -> bool:
         if not po_id:
             continue
         po_id = str(po_id)
-        new_tier = int(item.get("tier") or 0)
         deposit = float(item.get("totalDeposit") or 0.0)
+        new_tier = _compute_tier_from_deposit(deposit)
         web_signals = int(item.get("signalsCount") or 0)
         from database.db import get_user, set_po_trader_id
         user = await get_user(telegram_id)
