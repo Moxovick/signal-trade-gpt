@@ -43,8 +43,8 @@ class Settings(BaseSettings):
     def _check_required(self) -> "Settings":
         if not self.bot_token or not isinstance(self.bot_token, str):
             raise ValueError("BOT_TOKEN must be a non-empty string")
-        if not str(self.channel_id):
-            raise ValueError("CHANNEL_ID must be set")
+        if self.channel_id == 0:
+            raise ValueError("CHANNEL_ID must be set to a non-zero value")
         return self
 
     class Config:

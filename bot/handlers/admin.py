@@ -319,12 +319,12 @@ async def cmd_demo_signal(message: Message, command: CommandObject) -> None:
     from services.formatter import format_signal
     from services.imagegen import make_signal_chart
     from services.signal_generator import (
+        ALL_OTC_PAIRS,
         CURRENCY_PAIRS,
         DIRECTIONS,
-        OTC_PAIRS,
     )
 
-    pair = parts[0] if len(parts) >= 1 else choice(OTC_PAIRS + CURRENCY_PAIRS)
+    pair = parts[0] if len(parts) >= 1 else choice(ALL_OTC_PAIRS + CURRENCY_PAIRS)
     direction = (
         parts[1].upper() if len(parts) >= 2 and parts[1].upper() in DIRECTIONS else choice(DIRECTIONS)
     )
@@ -393,6 +393,7 @@ async def cmd_seed_data(message: Message) -> None:
         (9_000_004, "olgaprofit", "Ольга", 2, 31950.0, 128, 36),
         (9_000_005, "nik_winner", "Николай", 2, 29219.0, 270, 74),
     ]
+    from decimal import Decimal as D
     inserted = 0
     pool = _get_pool()
     for tg_id, uname, fname, tier, deposit, w, _l in fakes:
@@ -401,15 +402,16 @@ async def cmd_seed_data(message: Message) -> None:
             result = await pool.execute(
                 'INSERT INTO "users" '
                 '("id", "telegramId", "username", "firstName", "tier", "depositTotal", '
-                '"wins", "losses", "referralCode", "signalsReceived") '
-                'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) '
+                '"wins", "losses", "referralCode", "signalsReceived", '
+                '"createdAt", "role", "status") '
+                'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), \'user\', \'active\') '
                 'ON CONFLICT ("telegramId") DO NOTHING',
                 _generate_cuid(),
                 telegram_id_to_bigint(tg_id),
                 uname,
                 fname,
                 tier,
-                deposit,
+                D(str(deposit)),
                 w,
                 _l,
                 ref_code,
