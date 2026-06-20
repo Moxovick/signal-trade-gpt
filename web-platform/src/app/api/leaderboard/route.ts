@@ -32,9 +32,16 @@ export async function GET() {
     where: { key: "leaderboard_top10" },
   });
 
-  const raw: LeaderboardEntry[] = setting
-    ? (setting.value as LeaderboardEntry[])
-    : generateDefaults();
+  let raw: LeaderboardEntry[];
+  if (setting) {
+    raw = setting.value as LeaderboardEntry[];
+  } else {
+    // Generate once and persist so numbers stay consistent across loads
+    raw = generateDefaults();
+    await prisma.siteSettings.create({
+      data: { key: "leaderboard_top10", value: raw as never },
+    }).catch(() => { /* race condition — another request may have created it */ });
+  }
 
   const entries = raw.slice(0, 10).map((e, i) => ({
     rank: i + 1,

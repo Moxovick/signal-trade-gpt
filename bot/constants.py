@@ -152,7 +152,7 @@ SIGNAL_TIER_LABELS: dict[str, str] = {
 
 # Expirations per signal tier
 EXPIRATIONS: dict[str, list[tuple[str, str]]] = {
-    "otc": [("30 сек", "30s"), ("1 мин", "1m"), ("5 мин", "5m")],
+    "otc": [("30 сек", "30s"), ("1 мин", "60s"), ("2 мин", "2m")],
     "exchange": [("1 мин", "1m"), ("5 мин", "5m"), ("15 мин", "15m"), ("1 час", "1h")],
     "elite": [("30 сек", "30s"), ("1 мин", "1m"), ("5 мин", "5m"), ("15 мин", "15m")],
 }
@@ -160,7 +160,9 @@ EXPIRATIONS: dict[str, list[tuple[str, str]]] = {
 # Expiration code → display label (for signal messages)
 EXPIRATION_LABELS: dict[str, str] = {
     "30s": "30 сек",
+    "60s": "1 мин",
     "1m": "1 мин",
+    "2m": "2 мин",
     "5m": "5 мин",
     "15m": "15 мин",
     "1h": "1 час",

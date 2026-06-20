@@ -907,26 +907,25 @@ def make_leaderboard_table(
     d.text((60, 50), "ЛИДЕРБОРД", font=f_sub, fill=GOLD_SOFT)
     d.text((60, 80), "ТОП ТРЕЙДЕРОВ", font=f_title, fill=GOLD)
 
-    # Header — tier + signals ranking (mirrors web leaderboard)
+    # Header — earnings + signals ranking (mirrors web leaderboard)
     cols = [
         ("#", 60, 70),
         ("ТРЕЙДЕР", 130, 500),
         ("СИГНАЛОВ", 640, 200),
-        ("УРОВЕНЬ", 850, 200),
+        ("ЗАРАБОТОК", 850, 200),
     ]
     head_y = 200
     for label, x, _w in cols:
         d.text((x, head_y), label, font=f_head, fill=TEXT_2)
     d.line([(60, head_y + 30), (w - 60, head_y + 30)], fill=_hex(GOLD_SOFT), width=1)
 
-    tier_labels = TIER_NAMES
     rank_marks = {1: "Ⅰ", 2: "Ⅱ", 3: "Ⅲ"}  # roman numerals as medal stand-in
     row_y = head_y + 50
     row_h = 44
     # alpha-capable layer for highlight
     hl = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     hd = ImageDraw.Draw(hl)
-    for rank, name, _wr, signals, _losses, tier in rows[:10]:
+    for rank, name, earnings, signals, _losses, _tier in rows[:10]:
         is_me = highlight_rank is not None and rank == highlight_rank
         if is_me:
             hd.rounded_rectangle(
@@ -942,8 +941,8 @@ def make_leaderboard_table(
             name = name[:27] + "…"
         d.text((cols[1][1], row_y + 4), name, font=f_row, fill=TEXT_1)
         d.text((cols[2][1], row_y + 4), str(signals), font=f_row, fill=GOLD)
-        tier_lbl = tier_labels.get(tier, "Free")
-        d.text((cols[3][1], row_y + 4), tier_lbl, font=f_row, fill=GOLD if tier >= 1 else TEXT_2)
+        earnings_lbl = f"${int(earnings):,}" if earnings > 0 else "—"
+        d.text((cols[3][1], row_y + 4), earnings_lbl, font=f_row, fill=GOLD if earnings > 0 else TEXT_2)
         row_y += row_h
 
     img = Image.alpha_composite(img.convert("RGBA"), hl).convert("RGB")
