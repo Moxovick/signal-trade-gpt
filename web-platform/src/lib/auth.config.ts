@@ -17,7 +17,6 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.id = user.id ?? "";
         token.role = user.role ?? "user";
-        token.subscriptionPlan = user.subscriptionPlan;
         token.tier = user.tier;
         token.tierRefreshedAt = Date.now();
       }
@@ -47,11 +46,6 @@ export const authConfig: NextAuthConfig = {
     session({ session, token }) {
       session.user.id = String(token.id ?? "");
       session.user.role = (token.role as "user" | "admin") ?? "user";
-      session.user.subscriptionPlan = token.subscriptionPlan as
-        | "free"
-        | "premium"
-        | "vip"
-        | undefined;
       session.user.tier = (token.tier as number | undefined) ?? 0;
       return session;
     },

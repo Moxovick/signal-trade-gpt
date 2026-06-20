@@ -71,19 +71,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           })
           .catch(() => undefined);
 
-        const legacyPlan =
-          user.subscriptionPlan === "free" ||
-          user.subscriptionPlan === "premium" ||
-          user.subscriptionPlan === "vip"
-            ? user.subscriptionPlan
-            : undefined;
-
         return {
           id: user.id,
           email: user.email ?? "",
           name: user.firstName ?? user.username ?? user.email ?? "user",
           role: user.role,
-          subscriptionPlan: legacyPlan,
           tier: user.tier,
         };
       },

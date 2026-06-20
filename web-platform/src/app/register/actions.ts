@@ -147,7 +147,6 @@ export async function registerAction(
         passwordHash,
         referralCode: code,
         referredById,
-        subscriptionPlan: "free",
         ...(telegramUsername ? { firstName: telegramUsername } : {}),
       },
       select: { id: true, username: true },

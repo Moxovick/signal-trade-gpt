@@ -124,21 +124,12 @@ model User {
   avatar                String?
   role                  Role             @default(user)
   status                UserStatus       @default(active)
-  /// DEPRECATED v2: monetization moved to PocketOption RevShare; see User.tier.
-  subscriptionPlan      SubscriptionPlan @default(free)
-  /// DEPRECATED v2.
-  subscriptionExpiresAt DateTime?
-  /// DEPRECATED v2.
-  trialExpiresAt        DateTime?
   /// Current tier 0..4, recomputed on every PocketOption postback.
   tier                  Int              @default(0)
   referralCode          String           @unique
   referredById          String?
   referredBy            User?            @relation("Referrals", fields: [referredById], references: [id])
   referrals             User[]           @relation("Referrals")
-  /// DEPRECATED v2.
-  promoCodeUsedId       String?
-  promoCodeUsed         PromoCode?       @relation("PromoUsedBy", fields: [promoCodeUsedId], references: [id])
   notificationSettings  Json             @default("{}")
   /// Free-form user preferences: theme, language, timezone, favorite pairs,
   /// mutedPairs, notification channel toggles. Reading/writing through
@@ -184,7 +175,6 @@ model User {
   achievements       UserAchievement[]
 
   @@index([tier])
-  @@index([subscriptionPlan])
   @@index([createdAt])
   @@index([referralCode])
   @@map("users")

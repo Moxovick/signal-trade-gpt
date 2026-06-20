@@ -92,8 +92,6 @@ export async function POST(req: NextRequest) {
         passwordHash,
         referralCode: code,
         referredById,
-        promoCodeUsedId: promoCodeId,
-        subscriptionPlan: "free",
       },
       select: { id: true, username: true, referralCode: true, tier: true },
     });
