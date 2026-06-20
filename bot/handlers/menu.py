@@ -274,30 +274,48 @@ async def cmd_achievements(message: Message) -> None:
 
 @router.message(F.text.in_({"/leaderboard", "/top"}))
 async def cmd_leaderboard(message: Message) -> None:
-    from database.db import get_top_users  # local import to keep menu cohesive
+    import httpx
+    from config import settings
 
-    top = await get_top_users(limit=10)
-    if not top:
+    rows: list[tuple[int, str, float, int, int, int]] = []
+
+    # Try fetching from web API (shared fake leaderboard)
+    if settings.platform_api_url:
+        try:
+            url = f"{settings.platform_api_url.rstrip('/')}/api/leaderboard"
+            async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
+                resp = await client.get(url)
+            if resp.is_success:
+                data = resp.json()
+                for entry in data.get("entries", []):
+                    rank = entry.get("rank", 0)
+                    name = entry.get("user", {}).get("firstName", "—")
+                    tier = entry.get("tier", 2)
+                    signals = entry.get("signalsReceived", 0)
+                    earnings = entry.get("earnings", 0)
+                    rows.append((rank, name, float(earnings), signals, 0, tier))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not fetch leaderboard from web: %s", exc)
+
+    # Fallback to local DB if web API unavailable
+    if not rows:
+        from database.db import get_top_users
+        top = await get_top_users(limit=10)
+        for i, u in enumerate(top, start=1):
+            name = u.username or u.first_name
+            rows.append((i, name, 0.0, u.signals_received, 0, u.tier))
+
+    if not rows:
         await message.answer(
             "Лидерборд пока пуст — нужно хотя бы 1 полученный сигнал, "
             "чтобы попасть в рейтинг.",
             parse_mode=ParseMode.HTML,
         )
         return
-    my_rank: int | None = None
-    rows = []
-    for i, u in enumerate(top, start=1):
-        name = u.username or u.first_name
-        # Pass signals_received as "wins" slot; losses/wr unused in new rendering.
-        rows.append((i, name, 0.0, u.signals_received, 0, u.tier))
-        if u.telegram_id == message.from_user.id:
-            my_rank = i
 
     caption = "<b>🏆 Лидерборд — топ по активности</b>"
-    if my_rank:
-        caption += f"\n\nТы на <b>{my_rank} месте</b>."
     try:
-        png = make_leaderboard_table(rows, highlight_rank=my_rank)
+        png = make_leaderboard_table(rows, highlight_rank=None)
         await message.answer_photo(
             BufferedInputFile(png, filename="leaderboard.png"),
             caption=caption,

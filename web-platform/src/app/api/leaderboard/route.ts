@@ -14,9 +14,9 @@ type LeaderboardEntry = {
 };
 
 const RUSSIAN_NICKNAMES = [
-  "Алексей_Трейдер", "МаксимPRO", "Виктория_FX", "Дмитрий_Gold",
-  "Анна_Сигнал", "Сергей_Мастер", "Елена_Топ", "Николай_Win",
-  "Ольга_Профит", "Андрей_Капитал",
+  "d1mkas", "kapital_andrey", "alex_t92", "olgaprofit",
+  "nik_winner", "ann_signals", "elena_top1", "sergmaster",
+  "vika_fx", "maxpro_trade",
 ];
 
 function generateDefaults(): LeaderboardEntry[] {
