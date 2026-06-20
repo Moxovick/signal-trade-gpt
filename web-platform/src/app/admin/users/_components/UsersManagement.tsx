@@ -105,7 +105,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const PO_STATUS_LABEL: Record<string, string> = {
-  verified: "Верифицирован",
+  verified: "Верифиц.",
   pending: "Ожидание",
   rejected: "Отклонён",
 };
@@ -656,18 +656,19 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
         }}
       >
         <div
-          className="hidden md:grid grid-cols-12 px-5 py-3 text-xs text-[var(--t-3)] border-b gap-2"
+          className="hidden md:grid px-5 py-3 text-xs text-[var(--t-3)] border-b gap-2"
+          style={{ gridTemplateColumns: "2.5fr 0.8fr 1.2fr 0.8fr 0.8fr 1.2fr 1fr 1fr 1fr", borderColor: "var(--b-soft, rgba(255,255,255,0.06))" }}
           style={{ borderColor: "var(--b-soft, rgba(255,255,255,0.06))" }}
         >
-          <span className="col-span-3">Пользователь</span>
-          <SortHeader label="Тир" field="tier" current={sortBy} dir={sortDir} onClick={handleSort} className="col-span-1" />
-          <SortHeader label="Депозит" field="depositTotal" current={sortBy} dir={sortDir} onClick={handleSort} className="col-span-2" />
-          <SortHeader label="Сигналы" field="signalsReceived" current={sortBy} dir={sortDir} onClick={handleSort} className="col-span-1" />
-          <span className="col-span-1">Win rate</span>
-          <span className="col-span-1">PO</span>
-          <span className="col-span-1">Статус</span>
-          <SortHeader label="Вход" field="lastLogin" current={sortBy} dir={sortDir} onClick={handleSort} className="col-span-1" />
-          <SortHeader label="Рег-ция" field="createdAt" current={sortBy} dir={sortDir} onClick={handleSort} className="col-span-1" />
+          <span>Пользователь</span>
+          <SortHeader label="Тир" field="tier" current={sortBy} dir={sortDir} onClick={handleSort} />
+          <SortHeader label="Депозит" field="depositTotal" current={sortBy} dir={sortDir} onClick={handleSort} />
+          <SortHeader label="Сигналы" field="signalsReceived" current={sortBy} dir={sortDir} onClick={handleSort} />
+          <span>Win rate</span>
+          <span>PO</span>
+          <span>Статус</span>
+          <SortHeader label="Вход" field="lastLogin" current={sortBy} dir={sortDir} onClick={handleSort} />
+          <SortHeader label="Рег-ция" field="createdAt" current={sortBy} dir={sortDir} onClick={handleSort} />
         </div>
 
         {/* Loading */}
@@ -690,11 +691,11 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
               <button
                 type="button"
                 onClick={() => toggleExpand(u.id)}
-                className="w-full text-left grid grid-cols-1 md:grid-cols-12 px-5 py-3 items-center border-b text-sm gap-2 hover:bg-white/[0.02] transition-colors cursor-pointer"
-                style={{ borderColor: "var(--b-soft, rgba(255,255,255,0.04))" }}
+                className="w-full text-left grid grid-cols-1 md:grid-cols-none px-5 py-3 items-center border-b text-sm gap-2 hover:bg-white/[0.02] transition-colors cursor-pointer"
+                style={{ borderColor: "var(--b-soft, rgba(255,255,255,0.04))", gridTemplateColumns: "2.5fr 0.8fr 1.2fr 0.8fr 0.8fr 1.2fr 1fr 1fr 1fr" }}
               >
                 {/* User */}
-                <div className="col-span-3 flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <UserInitials user={u} />
                   <div className="min-w-0">
                     <div className="font-medium text-[var(--t-1)] truncate text-sm">
@@ -707,13 +708,13 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
                 </div>
 
                 {/* Tier */}
-                <div className="col-span-1">
+                <div>
                   <TierBadge tier={u.tier} size="sm" />
                 </div>
 
                 {/* Deposit */}
                 <div
-                  className="col-span-2 tabular-nums text-[var(--t-1)]"
+                  className="tabular-nums text-[var(--t-1)]"
                   style={{ fontFamily: "var(--font-jetbrains)" }}
                 >
                   ${u.depositTotal.toLocaleString("en-US")}
@@ -721,14 +722,14 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
 
                 {/* Signals */}
                 <div
-                  className="col-span-1 tabular-nums text-[var(--t-2)]"
+                  className="tabular-nums text-[var(--t-2)]"
                   style={{ fontFamily: "var(--font-jetbrains)" }}
                 >
                   {u.signalsReceived}
                 </div>
 
                 {/* Win rate */}
-                <div className="col-span-1">
+                <div>
                   <span
                     className="text-xs font-semibold tabular-nums"
                     style={{
@@ -746,10 +747,10 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
                 </div>
 
                 {/* PO status */}
-                <div className="col-span-1">
+                <div>
                   {u.poAccount ? (
                     <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
                       style={{
                         background:
                           u.poAccount.status === "verified"
@@ -769,9 +770,9 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
                 </div>
 
                 {/* Status */}
-                <div className="col-span-1">
+                <div>
                   <span
-                    className="text-xs font-semibold"
+                    className="text-xs font-semibold whitespace-nowrap"
                     style={{ color: STATUS_COLOR[u.status] ?? "#888" }}
                   >
                     {STATUS_LABEL[u.status] ?? u.status}
@@ -779,12 +780,12 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
                 </div>
 
                 {/* Last login */}
-                <div className="col-span-1 text-xs text-[var(--t-3)]">
+                <div className="text-xs text-[var(--t-3)] whitespace-nowrap">
                   {timeAgo(u.lastLogin)}
                 </div>
 
                 {/* Created */}
-                <div className="col-span-1 text-xs text-[var(--t-3)]">
+                <div className="text-xs text-[var(--t-3)] whitespace-nowrap">
                   {formatDate(u.createdAt)}
                 </div>
               </button>
