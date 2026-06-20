@@ -59,15 +59,21 @@ const ALL_PAIRS: PairInfo[] = [
   { name: "CAD/JPY (OTC)", display: "CAD/JPY", category: "forex", band: "otc", payout: 65, minTier: 0 },
   { name: "GBP/AUD (OTC)", display: "GBP/AUD", category: "forex", band: "otc", payout: 92, minTier: 0 },
   { name: "EUR/NZD (OTC)", display: "EUR/NZD", category: "forex", band: "otc", payout: 47, minTier: 0 },
-  // OTC Crypto (8)
+  // OTC Crypto (14)
+  { name: "Bitcoin ETF (OTC)", display: "Bitcoin ETF", category: "crypto", band: "otc", payout: 92, minTier: 0 },
   { name: "Bitcoin (OTC)", display: "BTC", category: "crypto", band: "otc", payout: 92, minTier: 0 },
-  { name: "Ethereum (OTC)", display: "ETH", category: "crypto", band: "otc", payout: 92, minTier: 0 },
-  { name: "Solana (OTC)", display: "SOL", category: "crypto", band: "otc", payout: 80, minTier: 0 },
-  { name: "Dogecoin (OTC)", display: "DOGE", category: "crypto", band: "otc", payout: 92, minTier: 0 },
-  { name: "Cardano (OTC)", display: "ADA", category: "crypto", band: "otc", payout: 92, minTier: 0 },
-  { name: "Toncoin (OTC)", display: "TON", category: "crypto", band: "otc", payout: 66, minTier: 0 },
-  { name: "BNB (OTC)", display: "BNB", category: "crypto", band: "otc", payout: 71, minTier: 0 },
   { name: "Litecoin (OTC)", display: "LTC", category: "crypto", band: "otc", payout: 92, minTier: 0 },
+  { name: "Dogecoin (OTC)", display: "DOGE", category: "crypto", band: "otc", payout: 83, minTier: 0 },
+  { name: "Polygon (OTC)", display: "MATIC", category: "crypto", band: "otc", payout: 83, minTier: 0 },
+  { name: "Cardano (OTC)", display: "ADA", category: "crypto", band: "otc", payout: 74, minTier: 0 },
+  { name: "Polkadot (OTC)", display: "DOT", category: "crypto", band: "otc", payout: 74, minTier: 0 },
+  { name: "Chainlink (OTC)", display: "LINK", category: "crypto", band: "otc", payout: 71, minTier: 0 },
+  { name: "BNB (OTC)", display: "BNB", category: "crypto", band: "otc", payout: 69, minTier: 0 },
+  { name: "Avalanche (OTC)", display: "AVAX", category: "crypto", band: "otc", payout: 53, minTier: 0 },
+  { name: "Solana (OTC)", display: "SOL", category: "crypto", band: "otc", payout: 49, minTier: 0 },
+  { name: "TRON (OTC)", display: "TRX", category: "crypto", band: "otc", payout: 44, minTier: 0 },
+  { name: "Ethereum (OTC)", display: "ETH", category: "crypto", band: "otc", payout: 37, minTier: 0 },
+  { name: "Toncoin (OTC)", display: "TON", category: "crypto", band: "otc", payout: 20, minTier: 0 },
   // OTC Commodities (4)
   { name: "Gold (OTC)", display: "Gold", category: "commodities", band: "otc", payout: 80, minTier: 0 },
   { name: "Silver (OTC)", display: "Silver", category: "commodities", band: "otc", payout: 80, minTier: 0 },
@@ -162,14 +168,20 @@ const CURRENCY_FLAG: Record<string, string> = {
 };
 
 const CRYPTO_IMG: Record<string, string> = {
+  "Bitcoin ETF": "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
   BTC: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
   ETH: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
   SOL: "https://assets.coingecko.com/coins/images/4128/small/solana.png",
   DOGE: "https://assets.coingecko.com/coins/images/5/small/dogecoin.png",
+  MATIC: "https://assets.coingecko.com/coins/images/4713/small/polygon.png",
   ADA: "https://assets.coingecko.com/coins/images/975/small/cardano.png",
+  DOT: "https://assets.coingecko.com/coins/images/12171/small/polkadot.png",
+  LINK: "https://assets.coingecko.com/coins/images/877/small/chainlink-new-logo.png",
   TON: "https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png",
   BNB: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
   LTC: "https://assets.coingecko.com/coins/images/2/small/litecoin.png",
+  AVAX: "https://assets.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png",
+  TRX: "https://assets.coingecko.com/coins/images/1094/small/tron-logo.png",
 };
 
 const STOCK_ICON: Record<string, string> = {
