@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 export default async function AdminPromoPage() {
   const promoCodes = await prisma.promoCode.findMany({
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { usedBy: true } } },
   });
 
   return (
@@ -29,7 +28,7 @@ export default async function AdminPromoPage() {
 
       <div className="space-y-3">
         {promoCodes.map((promo) => {
-          const used = promo._count.usedBy;
+          const used = promo.currentUses;
           const maxUses = promo.maxUses;
           const expired = promo.expiresAt ? promo.expiresAt < new Date() : false;
           const exhausted = maxUses ? used >= maxUses : false;
