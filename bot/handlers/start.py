@@ -7,6 +7,7 @@ main-menu keyboard. Deep-link payload formats supported:
   /start po_<click_id>      # PocketOption click_id attribution
   /start link_<token>       # web -> bot account-link handshake
 """
+import asyncio
 import logging
 import secrets
 
@@ -22,6 +23,7 @@ from database.db import (
     create_user,
     get_user,
     get_user_by_referral_code,
+    log_activity,
     set_click_id,
 )
 from database.models import User
@@ -214,9 +216,12 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         )
         await create_user(new_user)
         logger.info("New user registered: %d (@%s) ref=%s", user_id, username, referred_by)
+        asyncio.create_task(log_activity(user_id, "bot_register", {"referred_by": referred_by}))
         user = new_user
     else:
         user = existing
+
+    asyncio.create_task(log_activity(user_id, "bot_start"))
 
     if click_id:
         await set_click_id(user_id, click_id)

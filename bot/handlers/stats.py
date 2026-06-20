@@ -1,10 +1,12 @@
+import asyncio
+
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 
 from constants import TIER_NAMES, TIER_DEPOSIT_THRESHOLDS, TIER_DAILY_LIMITS
-from database.db import get_user
+from database.db import get_user, log_activity
 
 router = Router()
 
@@ -22,6 +24,7 @@ def _distance_to_next_tier(tier: int, deposit_total: float) -> str:
 
 @router.message(Command("profile", "stats", "tier"))
 async def cmd_profile(message: Message) -> None:
+    asyncio.create_task(log_activity(message.from_user.id, "stats_view"))
     user = await get_user(message.from_user.id)
     if user is None:
         await message.answer("Напиши /start чтобы начать.")

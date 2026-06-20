@@ -5,6 +5,7 @@ The bot stores the ID locally (SQLite); the web platform Postback service is
 the source of truth for tier, but storing the ID locally lets us prefill the
 website form and answer /tier with at least the linked-status hint.
 """
+import asyncio
 import logging
 import re
 
@@ -15,7 +16,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
-from database.db import get_user, set_po_trader_id  # noqa: F401
+from database.db import get_user, log_activity, set_po_trader_id  # noqa: F401
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -131,6 +132,11 @@ async def receive_id(message: Message, state: FSMContext) -> None:
 
 async def _send_success(message: Message, state: FSMContext, trader_id: str, verified: bool, deposit: float) -> None:
     """Send success message after PO ID is saved."""
+    asyncio.create_task(log_activity(message.from_user.id, "po_link", {
+        "trader_id": trader_id,
+        "verified": verified,
+        "deposit": deposit,
+    }))
     data = await state.get_data()
     is_onboarding = bool(data.get("onboarding"))
     await state.clear()

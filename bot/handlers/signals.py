@@ -33,6 +33,7 @@ from database.db import (
     get_user,
     increment_daily_signal,
     increment_signals_received,
+    log_activity,
     record_signal_result,
     reset_daily_signals_if_expired,
     save_signal,
@@ -537,6 +538,13 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
             # Increment counters
             await increment_daily_signal(user.telegram_id)
             await increment_signals_received(user.telegram_id)
+
+            # Activity log (fire-and-forget)
+            asyncio.create_task(log_activity(user_id, "signal_request", {
+                "pair": pair_symbol,
+                "tier": sig_tier,
+                "expiration": exp_code,
+            }))
 
             # Send signal photo
             await bot.send_photo(

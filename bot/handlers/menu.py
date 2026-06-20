@@ -6,6 +6,7 @@ Order matters: this router must be registered AFTER specific handlers
 (start, signals, link, stats) so that, e.g., "/signal" takes precedence
 over a stray text "📊 Сигнал" being misrouted.
 """
+import asyncio
 import logging
 
 from aiogram import F, Router
@@ -13,7 +14,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 
-from database.db import get_referral_count, get_user, toggle_notifications
+from database.db import get_referral_count, get_user, log_activity, toggle_notifications
 from services.imagegen import (
     make_achievements_grid,
     make_leaderboard_table,
@@ -120,12 +121,14 @@ async def btn_ref(message: Message, state: FSMContext) -> None:
 @router.message(F.text == BTN_LEADERBOARD)
 async def btn_leaderboard(message: Message) -> None:
     """Shortcut for /leaderboard from menu button."""
+    asyncio.create_task(log_activity(message.from_user.id, "leaderboard_view"))
     await cmd_leaderboard(message)
 
 
 @router.message(F.text == BTN_PROFILE)
 async def btn_profile(message: Message) -> None:
     """Show user profile with tier, stats, PO ID."""
+    asyncio.create_task(log_activity(message.from_user.id, "profile_view"))
     user = await get_user(message.from_user.id)
     if user is None:
         await message.answer("Сначала нажми /start.")
@@ -186,6 +189,7 @@ HELP_COMMANDS: list[tuple[str, str]] = [
 
 @router.message(F.text == BTN_HELP)
 async def btn_help(message: Message) -> None:
+    asyncio.create_task(log_activity(message.from_user.id, "help_view"))
     text = (
         "<b>❔ Справка по командам</b>\n\n"
         + "\n".join(f"{c} — {d}" for c, d in HELP_COMMANDS)

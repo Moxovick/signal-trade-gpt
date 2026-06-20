@@ -1,8 +1,9 @@
+import json
 import logging
 import secrets
 import ssl
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 import asyncpg
 
@@ -373,6 +374,34 @@ async def get_daily_signal_count(
     if daily_limit is None:
         return used, None, True
     return used, daily_limit, used < daily_limit
+
+
+async def log_activity(
+    telegram_id: int, action: str, details: dict[str, Any] | None = None
+) -> None:
+    """Insert a row into activity_logs. Never raises — logs warning on failure."""
+    try:
+        pool = _get_pool()
+        row = await pool.fetchrow(
+            'SELECT id FROM "users" WHERE "telegramId" = $1',
+            telegram_id_to_bigint(telegram_id),
+        )
+        if not row:
+            logger.warning("log_activity: user not found for telegramId=%s", telegram_id)
+            return
+        user_id: str = row["id"]
+        await pool.execute(
+            """
+            INSERT INTO "activity_logs" (id, "userId", action, details, "createdAt")
+            VALUES ($1, $2, $3, $4, NOW())
+            """,
+            _generate_cuid(),
+            user_id,
+            action,
+            json.dumps(details) if details else None,
+        )
+    except Exception:
+        logger.warning("log_activity failed for telegramId=%s action=%s", telegram_id, action, exc_info=True)
 
 
 async def increment_daily_signal(telegram_id: int) -> None:
