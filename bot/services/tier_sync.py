@@ -44,7 +44,7 @@ async def _local_state(po_trader_id: str) -> tuple[int, float, int | None] | Non
         """,
         po_trader_id,
     )
-    if row is None:
+    if row is None or row["telegramId"] is None:
         return None
     return int(row["tier"] or 0), float(row["depositTotal"] or 0.0), int(row["telegramId"])
 
