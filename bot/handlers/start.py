@@ -221,14 +221,15 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     if click_id:
         await set_click_id(user_id, click_id)
 
-    # For existing users, try to sync PO ID from web if missing locally
-    if existing is not None and not user.po_trader_id:
+    # Always try to sync PO data from web platform if missing locally
+    if not user.po_trader_id:
         from services.tier_sync import try_sync_user
         if await try_sync_user(user_id):
             user = await get_user(user_id)
 
-    # Existing user — short welcome, no full onboarding
-    if existing is not None:
+    # Returning user (was in bot DB) OR synced from web (has PO data) — short welcome
+    is_returning = existing is not None or (user and user.po_trader_id)
+    if is_returning:
         from constants import TIER_NAMES
         tier_name = TIER_NAMES.get(user.tier, "Free")
         if user.po_trader_id:
