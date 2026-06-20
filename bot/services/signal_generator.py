@@ -58,17 +58,69 @@ def _calc_entry_time() -> str:
     entry = datetime.now(_MSK) + timedelta(minutes=offset)
     return entry.strftime("%H:%M")
 
+def _gen_otc_analysis(direction: str) -> str:
+    """Generate dynamic OTC analysis with random indicator values."""
+    rsi_val = round(random.uniform(18, 82), 1)
+    stoch_k = round(random.uniform(10, 90), 1)
+    stoch_d = round(stoch_k + random.uniform(-8, 8), 1)
+    bb_pos = random.choice(["у нижней границы", "у верхней границы", "в середине канала", "пробой верхней границы", "пробой нижней границы"])
+    ma_fast = random.choice(["EMA(9)", "EMA(12)", "SMA(10)"])
+    ma_slow = random.choice(["EMA(21)", "SMA(20)", "EMA(26)"])
+    volume_pct = random.randint(5, 45)
+    fib_level = random.choice(["23.6%", "38.2%", "50.0%", "61.8%", "78.6%"])
+
+    if rsi_val > 70:
+        rsi_zone = "перекупленность"
+    elif rsi_val < 30:
+        rsi_zone = "перепроданность"
+    else:
+        rsi_zone = "нейтральная зона"
+
+    is_call = direction == "CALL"
+
+    templates = [
+        (
+            f"RSI(14): {rsi_val} — {rsi_zone}\n"
+            f"Stochastic: %K={stoch_k}, %D={stoch_d}\n"
+            f"Bollinger: цена {bb_pos}\n"
+            f"Объём: {'выше' if is_call else 'ниже'} среднего на {volume_pct}%"
+        ),
+        (
+            f"RSI(14): {rsi_val} — {rsi_zone}\n"
+            f"{ma_fast} {'выше' if is_call else 'ниже'} {ma_slow} — {'бычий' if is_call else 'медвежий'} тренд\n"
+            f"MACD: {'бычье' if is_call else 'медвежье'} пересечение на M1\n"
+            f"Fibonacci: отработка уровня {fib_level}"
+        ),
+        (
+            f"RSI(14): {rsi_val} ({rsi_zone})\n"
+            f"Stochastic: %K={stoch_k} {'↑' if is_call else '↓'} %D={stoch_d}\n"
+            f"Паттерн: {'двойное дно' if is_call else 'двойная вершина'} подтверждён\n"
+            f"Объём: всплеск +{volume_pct}% при формировании свечи"
+        ),
+        (
+            f"Bollinger Bands: цена {bb_pos}\n"
+            f"RSI(14): {rsi_val} — {'разворот от зоны ' + rsi_zone if rsi_val > 65 or rsi_val < 35 else rsi_zone}\n"
+            f"{ma_fast}/{ma_slow}: {'золотой крест' if is_call else 'мёртвый крест'}\n"
+            f"ATR: волатильность {'повышенная' if volume_pct > 25 else 'умеренная'}"
+        ),
+        (
+            f"RSI(14): {rsi_val} → {'отскок от перепроданности' if rsi_val < 40 else 'подтверждение импульса'}\n"
+            f"MACD гистограмма: {'растёт' if is_call else 'снижается'}\n"
+            f"Fibonacci {fib_level}: {'удержание поддержки' if is_call else 'отбой от сопротивления'}\n"
+            f"Объём: +{volume_pct}% от среднего"
+        ),
+        (
+            f"Stochastic(%K={stoch_k}, %D={stoch_d}): {'выход из перепроданности' if stoch_k < 30 else 'зона импульса'}\n"
+            f"RSI(14): {rsi_val}\n"
+            f"Bollinger: {'сужение канала → пробой' if volume_pct > 20 else 'цена ' + bb_pos}\n"
+            f"Паттерн: {'пин-бар' if is_call else 'поглощение'} на ключевом уровне"
+        ),
+    ]
+    return random.choice(templates)
+
+
 ANALYSES = {
-    "otc": [
-        "Тренд: боковое движение с формированием пробоя\nRSI(14): зона перекупленности — 72.3\nОбъём: выше среднего на 15%",
-        "Паттерн: двойное дно подтверждено\nПоддержка: сильный уровень удержан трижды\nRSI(14): выход из перепроданности — 28.7 → 34.1",
-        "Тренд: восходящий импульс с коррекцией\nСопротивление: пробой ключевого уровня\nМАCD: бычье пересечение на M1",
-        "Паттерн: пин-бар на уровне поддержки\nRSI(14): нейтральная зона — 48.5\nОбъём: всплеск при формировании свечи",
-        "Тренд: нисходящий канал, отскок от нижней границы\nFibonacci 38.2%: ключевая зона разворота\nRSI(14): перепроданность — 26.1",
-        "Паттерн: поглощение (бычье) на M1\nСопротивление пробито: уровень стал поддержкой\nОбъём: подтверждает направление движения",
-        "Тренд: импульсное движение после консолидации\nRSI(14): выход из нейтральной зоны — 55.8\nFibonacci 61.8%: удержание уровня коррекции",
-        "Паттерн: утренняя звезда на уровне поддержки\nОбъём: аномальный рост при формировании\nRSI(14): разворот от зоны перепроданности — 31.4",
-    ],
+    "otc": [],  # generated dynamically via _gen_otc_analysis()
     "exchange": [
         "Биржевой тренд: восходящий канал подтверждён",
         "RSI выход из перепроданности",
@@ -98,7 +150,10 @@ def generate_signal(tier: str = "otc") -> Signal:
     expiration = random.choice(LEGACY_EXPIRATIONS.get(tier, LEGACY_EXPIRATIONS["otc"]))
     conf_min, conf_max = CONFIDENCE_RANGES.get(tier, (73, 88))
     confidence = random.randint(conf_min, conf_max)
-    analysis = random.choice(ANALYSES.get(tier, ANALYSES["otc"]))
+    if tier == "otc":
+        analysis = _gen_otc_analysis(direction)
+    else:
+        analysis = random.choice(ANALYSES.get(tier, ANALYSES["exchange"]))
 
     return Signal(
         pair=pair,
@@ -122,8 +177,11 @@ def generate_signal_for_pair(
     direction = random.choice(DIRECTIONS)
     conf_min, conf_max = CONFIDENCE_RANGES.get(tier, (73, 88))
     confidence = random.randint(conf_min, conf_max)
-    analysis = random.choice(ANALYSES.get(tier, ANALYSES["otc"]))
     expiration_label = EXPIRATION_LABELS.get(expiration_code, expiration_code)
+    if tier == "otc":
+        analysis = _gen_otc_analysis(direction)
+    else:
+        analysis = random.choice(ANALYSES.get(tier, ANALYSES["exchange"]))
 
     return Signal(
         pair=pair_symbol,

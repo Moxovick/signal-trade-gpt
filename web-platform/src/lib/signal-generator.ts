@@ -225,28 +225,29 @@ function buildAnalysis(
 
 // ─── OTC signal (with synthetic chart data) ───
 
-/** Random OTC analysis phrases — gives users a "why" behind the direction. */
-const OTC_ANALYSES_CALL = [
-  "OTC-тренд: боковое движение с пробоем вверх. Объёмы указывают на рост активности покупателей.",
-  "Формируется паттерн «двойное дно» — ожидается разворот в восходящем направлении.",
-  "Уровень поддержки удержан, отскок подтверждён свечной формацией. RSI выходит из зоны перепроданности.",
-  "Бычья дивергенция на RSI. Импульс ослаб, ожидается коррекция вверх.",
-  "Объёмы выше среднего на текущих уровнях. Smart Money накопление подтверждено — вход на покупку.",
-  "Тест ключевой поддержки пройден, сформирован бычий пин-бар. Цена готова к росту.",
-  "EMA(9) пересекает EMA(21) снизу вверх — краткосрочный бычий сигнал на OTC-рынке.",
-  "Ордер-блок на покупку подтверждён. Ликвидность собрана ниже — цена уходит вверх.",
-];
+/** Generate dynamic OTC analysis with random indicator values. */
+function generateOtcAnalysis(direction: "CALL" | "PUT"): string {
+  const rsiVal = +(Math.random() * 64 + 18).toFixed(1);
+  const stochK = +(Math.random() * 80 + 10).toFixed(1);
+  const stochD = +(stochK + (Math.random() * 16 - 8)).toFixed(1);
+  const bbPos = randomItem(["у нижней границы", "у верхней границы", "в середине канала", "пробой верхней границы", "пробой нижней границы"]);
+  const maFast = randomItem(["EMA(9)", "EMA(12)", "SMA(10)"]);
+  const maSlow = randomItem(["EMA(21)", "SMA(20)", "EMA(26)"]);
+  const volumePct = randomInt(5, 45);
+  const fibLevel = randomItem(["23.6%", "38.2%", "50.0%", "61.8%", "78.6%"]);
+  const rsiZone = rsiVal > 70 ? "перекупленность" : rsiVal < 30 ? "перепроданность" : "нейтральная зона";
+  const isCall = direction === "CALL";
 
-const OTC_ANALYSES_PUT = [
-  "OTC-тренд: нисходящий канал подтверждён. Продавцы доминируют на текущих уровнях.",
-  "Паттерн «двойная вершина» — ожидается продолжение снижения.",
-  "Уровень сопротивления не пробит, формируется откат вниз. RSI в зоне перекупленности.",
-  "Медвежья дивергенция на осцилляторе. Импульс угасает, ожидается снижение.",
-  "Объём продаж превышает объём покупок. Давление продавцов нарастает — вход на продажу.",
-  "Ложный пробой сопротивления — цена отвергнута, формируется медвежий пин-бар.",
-  "EMA(9) пересекает EMA(21) сверху вниз — краткосрочный медвежий сигнал.",
-  "Ордер-блок на продажу подтверждён. Ликвидность собрана выше — цена уходит вниз.",
-];
+  const templates = [
+    `RSI(14): ${rsiVal} — ${rsiZone}\nStochastic: %K=${stochK}, %D=${stochD}\nBollinger: цена ${bbPos}\nОбъём: ${isCall ? "выше" : "ниже"} среднего на ${volumePct}%`,
+    `RSI(14): ${rsiVal} — ${rsiZone}\n${maFast} ${isCall ? "выше" : "ниже"} ${maSlow} — ${isCall ? "бычий" : "медвежий"} тренд\nMACD: ${isCall ? "бычье" : "медвежье"} пересечение на M1\nFibonacci: отработка уровня ${fibLevel}`,
+    `RSI(14): ${rsiVal} (${rsiZone})\nStochastic: %K=${stochK} ${isCall ? "↑" : "↓"} %D=${stochD}\nПаттерн: ${isCall ? "двойное дно" : "двойная вершина"} подтверждён\nОбъём: всплеск +${volumePct}% при формировании свечи`,
+    `Bollinger Bands: цена ${bbPos}\nRSI(14): ${rsiVal} — ${rsiZone}\n${maFast}/${maSlow}: ${isCall ? "золотой крест" : "мёртвый крест"}\nATR: волатильность ${volumePct > 25 ? "повышенная" : "умеренная"}`,
+    `RSI(14): ${rsiVal} → ${rsiVal < 40 ? "отскок от перепроданности" : "подтверждение импульса"}\nMACD гистограмма: ${isCall ? "растёт" : "снижается"}\nFibonacci ${fibLevel}: ${isCall ? "удержание поддержки" : "отбой от сопротивления"}\nОбъём: +${volumePct}% от среднего`,
+    `Stochastic(%K=${stochK}, %D=${stochD}): ${stochK < 30 ? "выход из перепроданности" : "зона импульса"}\nRSI(14): ${rsiVal}\nBollinger: ${volumePct > 20 ? "сужение канала → пробой" : "цена " + bbPos}\nПаттерн: ${isCall ? "пин-бар" : "поглощение"} на ключевом уровне`,
+  ];
+  return randomItem(templates);
+}
 
 function generateOtcSignal(overridePair?: string, overrideExpiration?: string) {
   const pair = overridePair ?? randomItem(PAIRS.otc);
@@ -254,8 +255,7 @@ function generateOtcSignal(overridePair?: string, overrideExpiration?: string) {
   const expiration = overrideExpiration ?? randomItem(EXPIRATIONS.otc);
   const confidence = randomInt(73, 88);
 
-  const analyses = direction === "CALL" ? OTC_ANALYSES_CALL : OTC_ANALYSES_PUT;
-  const analysis = randomItem(analyses);
+  const analysis = generateOtcAnalysis(direction);
 
   return {
     pair,
