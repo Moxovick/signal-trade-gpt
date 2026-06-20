@@ -15,14 +15,13 @@ import asyncio
 import logging
 from typing import Any
 
-import aiosqlite
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.types import BufferedInputFile
 
 from config import settings
 from constants import TIER_DEPOSIT_THRESHOLDS, TIER_NAMES
-from database.db import DB_PATH, set_deposit_total, set_signals_received, set_tier
+from database.db import set_deposit_total, set_signals_received, set_tier, _get_pool, telegram_id_to_bigint
 from services import web_sync
 from services.imagegen import make_tier_card
 
@@ -35,15 +34,19 @@ USER_TIER_NAMES = TIER_NAMES
 
 async def _local_state(po_trader_id: str) -> tuple[int, float, int | None] | None:
     """Returns (tier, deposit_total, telegram_id) for a po_trader_id, or None."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT tier, deposit_total, telegram_id FROM users WHERE po_trader_id = ?",
-            (po_trader_id,),
-        ) as cur:
-            row = await cur.fetchone()
-            if row is None:
-                return None
-            return int(row[0] or 0), float(row[1] or 0.0), int(row[2])
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        """
+        SELECT u.tier, u."depositTotal", u."telegramId"
+        FROM "users" u
+        JOIN "PocketOptionAccount" pa ON pa."userId" = u.id
+        WHERE pa."poTraderId" = $1
+        """,
+        po_trader_id,
+    )
+    if row is None:
+        return None
+    return int(row["tier"] or 0), float(row["depositTotal"] or 0.0), int(row["telegramId"])
 
 
 async def _send_upgrade(bot: Bot, telegram_id: int, new_tier: int, deposit: float) -> None:

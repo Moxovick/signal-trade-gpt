@@ -17,11 +17,10 @@ import logging
 from dataclasses import dataclass
 from typing import Awaitable, Callable
 
-import aiosqlite
 from aiogram import Bot
 from aiogram.enums import ParseMode
 
-from database.db import DB_PATH, get_referral_count
+from database.db import _get_pool, telegram_id_to_bigint, get_referral_count
 from database.models import User
 
 logger = logging.getLogger(__name__)
@@ -137,41 +136,71 @@ ACHIEVEMENTS: list[Achievement] = [
 ]
 
 
-# ── persistence ───────────────────────────────────────────────────────────────
+# ── persistence (Postgres via asyncpg) ────────────────────────────────────────
+
+
+async def _get_user_id(telegram_id: int) -> str | None:
+    """Resolve telegram_id → User.id (CUID) in Postgres."""
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        'SELECT id FROM "users" WHERE "telegramId" = $1',
+        telegram_id_to_bigint(telegram_id),
+    )
+    return row["id"] if row else None
+
+
+async def _get_achievement_id(code: str) -> str | None:
+    """Resolve achievement code → Achievement.id (CUID) in Postgres."""
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        'SELECT id FROM "achievements" WHERE code = $1',
+        code,
+    )
+    return row["id"] if row else None
 
 
 async def _ensure_table() -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """
-            CREATE TABLE IF NOT EXISTS achievements (
-                telegram_id INTEGER NOT NULL,
-                code        TEXT    NOT NULL,
-                awarded_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (telegram_id, code)
-            )
-            """
-        )
-        await db.commit()
+    """No-op: tables are managed by Prisma migrations."""
 
 
 async def _unlocked_codes(telegram_id: int) -> set[str]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT code FROM achievements WHERE telegram_id = ?",
-            (telegram_id,),
-        ) as cur:
-            rows = await cur.fetchall()
-            return {r[0] for r in rows}
+    pool = _get_pool()
+    user_id = await _get_user_id(telegram_id)
+    if not user_id:
+        return set()
+    rows = await pool.fetch(
+        """
+        SELECT a.code
+        FROM "user_achievements" ua
+        JOIN "achievements" a ON a.id = ua."achievementId"
+        WHERE ua."userId" = $1
+        """,
+        user_id,
+    )
+    return {r["code"] for r in rows}
 
 
 async def _record(telegram_id: int, code: str) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "INSERT OR IGNORE INTO achievements (telegram_id, code) VALUES (?, ?)",
-            (telegram_id, code),
-        )
-        await db.commit()
+    pool = _get_pool()
+    user_id = await _get_user_id(telegram_id)
+    if not user_id:
+        logger.warning("Cannot record achievement %s: user %s not found", code, telegram_id)
+        return
+    ach_id = await _get_achievement_id(code)
+    if not ach_id:
+        logger.warning("Cannot record achievement: code %s not in achievements table", code)
+        return
+    from database.db import _generate_cuid
+    await pool.execute(
+        """
+        INSERT INTO "user_achievements" (id, "userId", "achievementId", "unlockedAt")
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT ("userId", "achievementId") DO NOTHING
+        """,
+        _generate_cuid(),
+        user_id,
+        ach_id,
+    )
 
 
 # ── public API ────────────────────────────────────────────────────────────────

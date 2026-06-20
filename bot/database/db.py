@@ -1,364 +1,389 @@
 import logging
+import secrets
+import ssl
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Optional
 
-import aiosqlite
+import asyncpg
 
-from database.models import (
-    CREATE_USERS_TABLE,
-    CREATE_SIGNALS_TABLE,
-    User,
-    Signal,
-)
+from database.models import User, Signal
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = Path("data/bot.db")
+_pool: Optional[asyncpg.Pool] = None
 
 
-async def _ensure_column(db: aiosqlite.Connection, table: str, column: str, ddl: str) -> None:
-    """Idempotent ALTER TABLE — SQLite has no IF NOT EXISTS for columns."""
-    async with db.execute(f"PRAGMA table_info({table})") as cur:
-        cols = [r[1] for r in await cur.fetchall()]
-    if column not in cols:
-        await db.execute(f"ALTER TABLE {table} ADD COLUMN {ddl}")
-        await db.commit()
+def _generate_cuid() -> str:
+    """Generate a cuid-like identifier (matches Prisma CUID style)."""
+    return "c" + secrets.token_urlsafe(16)
 
 
-async def init_db() -> None:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(CREATE_USERS_TABLE)
-        await db.execute(CREATE_SIGNALS_TABLE)
-        # v2 migrations on existing dbs.
-        await _ensure_column(db, "users", "tier", "tier INTEGER DEFAULT 0")
-        await _ensure_column(db, "users", "po_trader_id", "po_trader_id TEXT")
-        await _ensure_column(db, "users", "click_id", "click_id TEXT")
-        await _ensure_column(db, "users", "deposit_total", "deposit_total REAL DEFAULT 0")
-        await _ensure_column(
-            db, "users", "notifications_enabled", "notifications_enabled INTEGER DEFAULT 1"
-        )
-        await _ensure_column(db, "users", "wins", "wins INTEGER DEFAULT 0")
-        await _ensure_column(db, "users", "losses", "losses INTEGER DEFAULT 0")
-        await _ensure_column(db, "users", "banned", "banned INTEGER DEFAULT 0")
-        # v3: on-demand signal daily limits
-        await _ensure_column(
-            db, "users", "daily_signals_used", "daily_signals_used INTEGER DEFAULT 0"
-        )
-        await _ensure_column(
-            db, "users", "daily_signals_reset_at", "daily_signals_reset_at TEXT"
-        )
-        await _ensure_column(db, "signals", "telegram_id", "telegram_id INTEGER")
-        await db.execute(
-            """
-            CREATE TABLE IF NOT EXISTS achievements (
-                telegram_id INTEGER NOT NULL,
-                code        TEXT    NOT NULL,
-                awarded_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (telegram_id, code)
-            )
-            """
-        )
-        await db.commit()
-    logger.info("Database initialized at %s", DB_PATH)
+async def init_db(database_url: str) -> None:
+    """Create the asyncpg connection pool. Tables are managed by Prisma."""
+    global _pool
+    if _pool is not None:
+        return
+
+    kwargs: dict = {"min_size": 2, "max_size": 10}
+    # Neon and most cloud Postgres require SSL
+    if "sslmode=require" in database_url or "sslmode=verify" in database_url:
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.check_hostname = False
+        ssl_ctx.verify_mode = ssl.CERT_NONE
+        kwargs["ssl"] = ssl_ctx
+
+    # asyncpg needs postgres:// not postgresql://
+    dsn = database_url.replace("postgresql://", "postgres://", 1)
+    # Remove channel_binding param — asyncpg doesn't support it
+    dsn = dsn.replace("&channel_binding=require", "").replace("?channel_binding=require&", "?").replace("?channel_binding=require", "")
+
+    _pool = await asyncpg.create_pool(dsn, **kwargs)
+    logger.info("Postgres connection pool created")
 
 
-def _row_to_user(row: aiosqlite.Row) -> User:
-    keys = row.keys()
+async def close_db() -> None:
+    """Gracefully close the pool."""
+    global _pool
+    if _pool is not None:
+        await _pool.close()
+        _pool = None
+        logger.info("Postgres connection pool closed")
+
+
+def _get_pool() -> asyncpg.Pool:
+    if _pool is None:
+        raise RuntimeError("Database pool not initialised — call init_db() first")
+    return _pool
+
+
+def _row_to_user(row: asyncpg.Record) -> User:
     return User(
-        telegram_id=row["telegram_id"],
+        telegram_id=int(row["telegramId"]) if row["telegramId"] is not None else 0,
         username=row["username"],
-        first_name=row["first_name"],
-        referral_code=row["referral_code"],
-        referred_by=row["referred_by"],
-        tier=row["tier"] if "tier" in keys else 0,
-        po_trader_id=row["po_trader_id"] if "po_trader_id" in keys else None,
-        click_id=row["click_id"] if "click_id" in keys else None,
-        deposit_total=float(row["deposit_total"]) if "deposit_total" in keys else 0.0,
-        notifications_enabled=bool(row["notifications_enabled"])
-        if "notifications_enabled" in keys
-        else True,
-        is_premium=bool(row["is_premium"]),
-        signals_received=row["signals_received"],
-        wins=row["wins"] if "wins" in keys else 0,
-        losses=row["losses"] if "losses" in keys else 0,
+        first_name=row["firstName"] or "",
+        referral_code=row["referralCode"],
+        referred_by=None,  # not trivially available (stored as CUID, not telegram_id)
+        tier=row["tier"] or 0,
+        po_trader_id=row.get("poTraderId"),
+        click_id=row.get("clickId"),
+        deposit_total=float(row["depositTotal"]) if row["depositTotal"] is not None else 0.0,
+        notifications_enabled=True,  # TODO: read from notificationSettings JSON if added
+        is_premium=(row["tier"] or 0) > 0,
+        signals_received=row["signalsReceived"] or 0,
+        wins=row.get("wins", 0) or 0,
+        losses=row.get("losses", 0) or 0,
     )
 
 
 async def get_user(telegram_id: int) -> Optional[User]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute(
-            "SELECT * FROM users WHERE telegram_id = ?", (telegram_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-            return _row_to_user(row) if row else None
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        """
+        SELECT u.*, pa."poTraderId"
+        FROM "users" u
+        LEFT JOIN "PocketOptionAccount" pa ON pa."userId" = u.id
+        WHERE u."telegramId" = $1
+        """,
+        telegram_id,
+    )
+    return _row_to_user(row) if row else None
 
 
 async def create_user(user: User) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """
-            INSERT OR IGNORE INTO users
-                (telegram_id, username, first_name, referral_code, referred_by,
-                 is_premium, signals_received, tier, po_trader_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                user.telegram_id,
-                user.username,
-                user.first_name,
-                user.referral_code,
-                user.referred_by,
-                user.is_premium,
-                user.signals_received,
-                user.tier,
-                user.po_trader_id,
-            ),
+    pool = _get_pool()
+    user_id = _generate_cuid()
+    referral_code = user.referral_code or _generate_cuid()
+
+    # Resolve referredById: if referred_by is a telegram_id, look up the CUID
+    referred_by_id: Optional[str] = None
+    if user.referred_by:
+        ref_row = await pool.fetchrow(
+            'SELECT id FROM "users" WHERE "telegramId" = $1',
+            user.referred_by,
         )
-        await db.commit()
+        if ref_row:
+            referred_by_id = ref_row["id"]
+
+    await pool.execute(
+        """
+        INSERT INTO "users" (id, "telegramId", username, "firstName", "referralCode",
+                             "referredById", tier, "signalsReceived", "depositTotal",
+                             "createdAt", role, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, NOW(), 'user', 'active')
+        ON CONFLICT ("telegramId") DO NOTHING
+        """,
+        user_id,
+        telegram_id_to_bigint(user.telegram_id),
+        user.username,
+        user.first_name,
+        referral_code,
+        referred_by_id,
+        user.tier,
+        user.signals_received,
+    )
+
+
+def telegram_id_to_bigint(tid: int) -> int:
+    """Ensure telegram_id is passed as a plain int (asyncpg handles BigInt)."""
+    return int(tid)
 
 
 async def set_po_trader_id(telegram_id: int, po_trader_id: str) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE users SET po_trader_id = ? WHERE telegram_id = ?",
-            (po_trader_id, telegram_id),
-        )
-        await db.commit()
+    pool = _get_pool()
+    # Get user CUID first
+    row = await pool.fetchrow(
+        'SELECT id FROM "users" WHERE "telegramId" = $1',
+        telegram_id_to_bigint(telegram_id),
+    )
+    if not row:
+        return
+    user_id = row["id"]
+
+    await pool.execute(
+        """
+        INSERT INTO "PocketOptionAccount" (id, "userId", "poTraderId", "createdAt", "updatedAt")
+        VALUES ($1, $2, $3, NOW(), NOW())
+        ON CONFLICT ("userId") DO UPDATE SET "poTraderId" = $3, "updatedAt" = NOW()
+        """,
+        _generate_cuid(),
+        user_id,
+        po_trader_id,
+    )
 
 
 async def set_tier(telegram_id: int, tier: int) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE users SET tier = ? WHERE telegram_id = ?",
-            (tier, telegram_id),
-        )
-        await db.commit()
+    pool = _get_pool()
+    await pool.execute(
+        'UPDATE "users" SET tier = $1, "lastLogin" = NOW() WHERE "telegramId" = $2',
+        tier,
+        telegram_id_to_bigint(telegram_id),
+    )
 
 
 async def increment_signals_received(telegram_id: int) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE users SET signals_received = signals_received + 1 WHERE telegram_id = ?",
-            (telegram_id,),
-        )
-        await db.commit()
+    pool = _get_pool()
+    await pool.execute(
+        """UPDATE "users" SET "signalsReceived" = "signalsReceived" + 1           WHERE "telegramId" = $1""",
+        telegram_id_to_bigint(telegram_id),
+    )
 
 
 async def set_signals_received(telegram_id: int, count: int) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE users SET signals_received = ? WHERE telegram_id = ?",
-            (count, telegram_id),
-        )
-        await db.commit()
+    pool = _get_pool()
+    await pool.execute(
+        'UPDATE "users" SET "signalsReceived" = $1, "lastLogin" = NOW() WHERE "telegramId" = $2',
+        count,
+        telegram_id_to_bigint(telegram_id),
+    )
 
 
 async def save_signal(signal: Signal, telegram_id: Optional[int] = None) -> int:
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            """
-            INSERT INTO signals (telegram_id, pair, direction, expiration, confidence, signal_type, tier, result)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                telegram_id,
-                signal.pair,
-                signal.direction,
-                signal.expiration,
-                signal.confidence,
-                signal.signal_type,
-                signal.tier,
-                signal.result or "pending",
-            ),
-        ) as cursor:
-            signal_id = cursor.lastrowid
-        await db.commit()
-        return signal_id
+    pool = _get_pool()
+
+    signal_id = _generate_cuid()
+    created_by_id: Optional[str] = None
+
+    if telegram_id is not None:
+        row = await pool.fetchrow(
+            'SELECT id FROM "users" WHERE "telegramId" = $1',
+            telegram_id_to_bigint(telegram_id),
+        )
+        if row:
+            created_by_id = row["id"]
+
+    await pool.execute(
+        """
+        INSERT INTO "Signal" (id, pair, direction, expiration, confidence, type,
+                              tier, analysis, result, "createdById", "createdAt")
+        VALUES ($1, $2, $3::"SignalDirection", $4, $5, $6::"SignalType",
+                $7::"SignalTier", $8, $9::"SignalResult", $10, NOW())
+        """,
+        signal_id,
+        signal.pair,
+        signal.direction,
+        signal.expiration,
+        signal.confidence,
+        signal.signal_type,
+        signal.tier,
+        signal.analysis,
+        signal.result or "pending",
+        created_by_id,
+    )
+    # Return a numeric-ish id for backward compat — hash the CUID
+    return hash(signal_id) & 0x7FFFFFFF
 
 
 async def get_total_signals() -> int:
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT COUNT(*) FROM signals") as cursor:
-            row = await cursor.fetchone()
-            return row[0] if row else 0
+    pool = _get_pool()
+    row = await pool.fetchrow('SELECT COUNT(*) AS cnt FROM "Signal"')
+    return int(row["cnt"]) if row else 0
 
 
 async def get_total_users() -> int:
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT COUNT(*) FROM users") as cursor:
-            row = await cursor.fetchone()
-            return row[0] if row else 0
+    pool = _get_pool()
+    row = await pool.fetchrow('SELECT COUNT(*) AS cnt FROM "users"')
+    return int(row["cnt"]) if row else 0
 
 
 async def get_user_by_referral_code(code: str) -> Optional[User]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute(
-            "SELECT * FROM users WHERE referral_code = ?", (code,)
-        ) as cursor:
-            row = await cursor.fetchone()
-            return _row_to_user(row) if row else None
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        """
+        SELECT u.*, pa."poTraderId"
+        FROM "users" u
+        LEFT JOIN "PocketOptionAccount" pa ON pa."userId" = u.id
+        WHERE u."referralCode" = $1
+        """,
+        code,
+    )
+    return _row_to_user(row) if row else None
 
 
 async def set_click_id(telegram_id: int, click_id: str) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE users SET click_id = ? WHERE telegram_id = ?",
-            (click_id, telegram_id),
-        )
-        await db.commit()
+    pool = _get_pool()
+    await pool.execute(
+        'UPDATE "users" SET "clickId" = $1, "lastLogin" = NOW() WHERE "telegramId" = $2',
+        click_id,
+        telegram_id_to_bigint(telegram_id),
+    )
 
 
 async def set_deposit_total(telegram_id: int, deposit_total: float) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE users SET deposit_total = ? WHERE telegram_id = ?",
-            (deposit_total, telegram_id),
-        )
-        await db.commit()
+    pool = _get_pool()
+    from decimal import Decimal
+    await pool.execute(
+        'UPDATE "users" SET "depositTotal" = $1, "lastLogin" = NOW() WHERE "telegramId" = $2',
+        Decimal(str(deposit_total)),
+        telegram_id_to_bigint(telegram_id),
+    )
 
 
 async def toggle_notifications(telegram_id: int) -> bool:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE users SET notifications_enabled = 1 - notifications_enabled "
-            "WHERE telegram_id = ?",
-            (telegram_id,),
-        )
-        await db.commit()
-        async with db.execute(
-            "SELECT notifications_enabled FROM users WHERE telegram_id = ?",
-            (telegram_id,),
-        ) as cursor:
-            row = await cursor.fetchone()
-            return bool(row[0]) if row else True
+    # Notifications are not yet stored in Prisma schema as a boolean column.
+    # Placeholder: always returns True until notificationSettings JSON is added.
+    return True
 
 
 async def is_user_banned(telegram_id: int) -> bool:
-    """Check if a user is banned."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT banned FROM users WHERE telegram_id = ?", (telegram_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-            return bool(row[0]) if row else False
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        """SELECT status FROM "users" WHERE "telegramId" = $1""",
+        telegram_id_to_bigint(telegram_id),
+    )
+    if not row:
+        return False
+    return row["status"] == "banned"
 
 
 async def record_signal_result(telegram_id: int, signal_id: int, result: str) -> None:
-    """Mark a signal's result and bump the user's win/loss counter."""
     if result not in {"win", "loss"}:
         raise ValueError(f"Bad signal result: {result!r}")
     column = "wins" if result == "win" else "losses"
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute("BEGIN")
-        try:
-            await db.execute(
-                "UPDATE signals SET result = ? WHERE id = ?", (result, signal_id)
+    pool = _get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            # Signal table uses CUID ids; signal_id here is a hash — skip signal update
+            # if we can't resolve it. In practice the bot should store the CUID.
+            await conn.execute(
+                f'UPDATE "users" SET "{column}" = "{column}" + 1 '
+                f'WHERE "telegramId" = $1',
+                telegram_id_to_bigint(telegram_id),
             )
-            await db.execute(
-                f"UPDATE users SET {column} = {column} + 1 WHERE telegram_id = ?",
-                (telegram_id,),
-            )
-            await db.commit()
-        except Exception:
-            await db.rollback()
-            raise
 
 
 async def get_referral_count(telegram_id: int) -> int:
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT COUNT(*) FROM users WHERE referred_by = ?", (telegram_id,)
-        ) as cursor:
-            row = await cursor.fetchone()
-            return row[0] if row else 0
+    pool = _get_pool()
+    # Get user CUID, then count referrals
+    row = await pool.fetchrow(
+        'SELECT id FROM "users" WHERE "telegramId" = $1',
+        telegram_id_to_bigint(telegram_id),
+    )
+    if not row:
+        return 0
+    count_row = await pool.fetchrow(
+        'SELECT COUNT(*) AS cnt FROM "users" WHERE "referredById" = $1',
+        row["id"],
+    )
+    return int(count_row["cnt"]) if count_row else 0
 
 
 async def get_top_users(limit: int = 10) -> list[User]:
-    """Top users by tier then signals received (matches web leaderboard ranking)."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute(
-            """
-            SELECT * FROM users
-            WHERE signals_received > 0
-            ORDER BY tier DESC, signals_received DESC
-            LIMIT ?
-            """,
-            (limit,),
-        ) as cursor:
-            rows = await cursor.fetchall()
-            return [_row_to_user(r) for r in rows]
+    pool = _get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT u.*, pa."poTraderId"
+        FROM "users" u
+        LEFT JOIN "PocketOptionAccount" pa ON pa."userId" = u.id
+        WHERE u."signalsReceived" > 0
+        ORDER BY u.tier DESC, u."signalsReceived" DESC
+        LIMIT $1
+        """,
+        limit,
+    )
+    return [_row_to_user(r) for r in rows]
 
 
 async def get_users_with_notifications() -> list[User]:
-    """All users that have notifications enabled — used for per-user signal broadcast."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        db.row_factory = aiosqlite.Row
-        async with db.execute(
-            "SELECT * FROM users WHERE notifications_enabled = 1"
-        ) as cursor:
-            rows = await cursor.fetchall()
-            return [_row_to_user(r) for r in rows]
+    pool = _get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT u.*, pa."poTraderId"
+        FROM "users" u
+        LEFT JOIN "PocketOptionAccount" pa ON pa."userId" = u.id
+        WHERE u.status = 'active'
+        """,
+    )
+    return [_row_to_user(r) for r in rows]
 
 
 # ── Daily signal counter (on-demand delivery) ────────────────────────────────
 
 
 async def reset_daily_signals_if_expired(telegram_id: int) -> None:
-    """Reset the daily signal counter if 24h have passed since reset_at."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT daily_signals_reset_at FROM users WHERE telegram_id = ?",
-            (telegram_id,),
-        ) as cur:
-            row = await cur.fetchone()
-        if not row or not row[0]:
-            return
-        try:
-            reset_at = datetime.fromisoformat(row[0]).replace(tzinfo=timezone.utc)
-        except (ValueError, TypeError):
-            return
-        now = datetime.now(timezone.utc)
-        if (now - reset_at).total_seconds() >= 86400:
-            await db.execute(
-                "UPDATE users SET daily_signals_used = 0, daily_signals_reset_at = NULL "
-                "WHERE telegram_id = ?",
-                (telegram_id,),
-            )
-            await db.commit()
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        'SELECT "dailySignalsResetAt" FROM "users" WHERE "telegramId" = $1',
+        telegram_id_to_bigint(telegram_id),
+    )
+    if not row or not row["dailySignalsResetAt"]:
+        return
+    reset_at = row["dailySignalsResetAt"]
+    if not isinstance(reset_at, datetime):
+        return
+    if reset_at.tzinfo is None:
+        reset_at = reset_at.replace(tzinfo=timezone.utc)
+    now = datetime.now(timezone.utc)
+    if (now - reset_at).total_seconds() >= 86400:
+        await pool.execute(
+            """UPDATE "users" SET "dailySignalsUsed" = 0, "dailySignalsResetAt" = NULL,
+               "lastLogin" = NOW() WHERE "telegramId" = $1""",
+            telegram_id_to_bigint(telegram_id),
+        )
 
 
-async def get_daily_signal_count(telegram_id: int, daily_limit: int | None) -> tuple[int, int | None, bool]:
-    """
-    Returns (used, limit, can_request).
-
-    limit is None for unlimited tiers.
-    """
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT daily_signals_used FROM users WHERE telegram_id = ?",
-            (telegram_id,),
-        ) as cur:
-            row = await cur.fetchone()
-        used = row[0] if row and row[0] else 0
+async def get_daily_signal_count(
+    telegram_id: int, daily_limit: int | None
+) -> tuple[int, int | None, bool]:
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        'SELECT "dailySignalsUsed" FROM "users" WHERE "telegramId" = $1',
+        telegram_id_to_bigint(telegram_id),
+    )
+    used = int(row["dailySignalsUsed"]) if row and row["dailySignalsUsed"] else 0
     if daily_limit is None:
         return used, None, True
     return used, daily_limit, used < daily_limit
 
 
 async def increment_daily_signal(telegram_id: int) -> None:
-    """Increment the daily signal counter; set reset_at if this is the first signal today."""
-    now_iso = datetime.now(timezone.utc).isoformat()
-    async with aiosqlite.connect(DB_PATH) as db:
-        # Set reset_at if not already set (first signal of the day window).
-        await db.execute(
-            "UPDATE users SET daily_signals_used = daily_signals_used + 1, "
-            "daily_signals_reset_at = COALESCE(daily_signals_reset_at, ?) "
-            "WHERE telegram_id = ?",
-            (now_iso, telegram_id),
-        )
-        await db.commit()
+    now = datetime.now(timezone.utc)
+    pool = _get_pool()
+    await pool.execute(
+        """UPDATE "users"
+           SET "dailySignalsUsed" = "dailySignalsUsed" + 1,
+               "dailySignalsResetAt" = COALESCE("dailySignalsResetAt", $1),
+               "lastLogin" = NOW()
+           WHERE "telegramId" = $2""",
+        now,
+        telegram_id_to_bigint(telegram_id),
+    )

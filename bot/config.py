@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     bot_token: str = Field(..., env="BOT_TOKEN")
     channel_id: int = Field(..., env="CHANNEL_ID")
 
-    database_url: str = Field("sqlite+aiosqlite:///data/bot.db", env="DATABASE_URL")
+    database_url: str = Field("", env="DATABASE_URL")
 
     pocket_option_url: str = Field(
         "https://po-ru4.click/register?utm_campaign=825519&utm_source=affiliate&utm_medium=sr&a=Be8CXM52oc4EOp&al=1769855&ac=signal&cid=960046&code=WELCOME50",

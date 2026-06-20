@@ -10,7 +10,7 @@ from aiogram.enums import ParseMode
 from aiogram.types import MenuButtonWebApp, WebAppInfo
 
 from config import settings
-from database.db import init_db
+from database.db import init_db, close_db
 from handlers import admin, link, menu, onboarding, signals, start, stats
 from middlewares import BannedUserMiddleware
 from services.scheduler import daily_brief_loop
@@ -51,7 +51,7 @@ def check_single_instance() -> None:
 
 async def main() -> None:
     check_single_instance()
-    await init_db()
+    await init_db(settings.database_url)
 
     bot = Bot(
         token=settings.bot_token,
@@ -112,6 +112,7 @@ async def main() -> None:
             return_exceptions=True,
         )
         await bot.session.close()
+        await close_db()
         if PID_FILE.exists():
             PID_FILE.unlink()
 

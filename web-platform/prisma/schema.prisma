@@ -151,6 +151,16 @@ model User {
   lastSignalAt          DateTime?
   streakDays            Int              @default(0)
   lastActivityDay       DateTime?
+  /// Bot: win count from signal feedback
+  wins              Int       @default(0)
+  /// Bot: loss count from signal feedback
+  losses            Int       @default(0)
+  /// Bot: daily signal counter (resets every 24h)
+  dailySignalsUsed  Int       @default(0)
+  /// Bot: when the daily counter was last reset
+  dailySignalsResetAt DateTime?
+  /// Bot: PocketOption click_id for postback attribution
+  clickId           String?
   createdAt             DateTime         @default(now())
   lastLogin             DateTime?
   utmSource             String?

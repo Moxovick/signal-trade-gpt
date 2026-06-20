@@ -5,19 +5,18 @@ Restricted to telegram_ids listed in env ADMIN_IDS (comma-separated). Commands:
   /admin                      — show admin panel summary
   /broadcast <message…>       — send a message to every registered user
   /set_tier <user_id> <T>     — manually override a user's tier
-  /ban <user_id>              — block a user from the bot (sets tier=-1 sentinel)
-  /unban <user_id>            — restore (sets tier=0)
+  /ban <user_id>              — block a user from the bot (sets status='banned')
+  /unban <user_id>            — restore (sets status='active')
   /stats_global               — full platform stats
 
 The implementation is intentionally simple: no separate admin DB tables.
-Bans are tracked via a `banned` flag column added by `_ensure_columns`.
+Bans are tracked via the `status` column on the users table.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
 
-import aiosqlite
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
@@ -26,7 +25,9 @@ from aiogram.enums import ParseMode
 
 from config import settings
 from database.db import (
-    DB_PATH,
+    _generate_cuid,
+    _get_pool,
+    telegram_id_to_bigint,
     get_total_signals,
     get_total_users,
     get_user,
@@ -53,37 +54,28 @@ def _is_admin(telegram_id: int) -> bool:
     return telegram_id in _admin_ids()
 
 
-async def _ensure_banned_column() -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("PRAGMA table_info(users)") as cur:
-            cols = [r[1] for r in await cur.fetchall()]
-        if "banned" not in cols:
-            await db.execute("ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0")
-            await db.commit()
-
-
 async def _set_banned(telegram_id: int, banned: bool) -> None:
-    await _ensure_banned_column()
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE users SET banned = ? WHERE telegram_id = ?",
-            (1 if banned else 0, telegram_id),
-        )
-        await db.commit()
+    pool = _get_pool()
+    new_status = "banned" if banned else "active"
+    await pool.execute(
+        'UPDATE "users" SET "status" = $1 WHERE "telegramId" = $2',
+        new_status,
+        telegram_id_to_bigint(telegram_id),
+    )
 
 
 async def _all_user_ids() -> list[int]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT telegram_id FROM users") as cur:
-            return [r[0] for r in await cur.fetchall()]
+    pool = _get_pool()
+    rows = await pool.fetch('SELECT "telegramId" FROM "users"')
+    return [int(r["telegramId"]) for r in rows]
 
 
 async def _tier_breakdown() -> dict[int, int]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT tier, COUNT(*) FROM users GROUP BY tier"
-        ) as cur:
-            return {int(r[0]): int(r[1]) for r in await cur.fetchall()}
+    pool = _get_pool()
+    rows = await pool.fetch(
+        'SELECT "tier", COUNT(*) AS cnt FROM "users" GROUP BY "tier"'
+    )
+    return {int(r["tier"]): int(r["cnt"]) for r in rows}
 
 
 # ── handlers ──────────────────────────────────────────────────────────────────
@@ -213,16 +205,20 @@ async def cmd_stats_global(message: Message) -> None:
     total_signals = await get_total_signals()
     total_users = await get_total_users()
     breakdown = await _tier_breakdown()
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT SUM(deposit_total), SUM(wins), SUM(losses), COUNT(po_trader_id) "
-            "FROM users WHERE po_trader_id IS NOT NULL"
-        ) as cur:
-            row = await cur.fetchone()
-            sum_dep = float(row[0] or 0.0)
-            sum_wins = int(row[1] or 0)
-            sum_losses = int(row[2] or 0)
-            linked = int(row[3] or 0)
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        'SELECT COALESCE(SUM(u."depositTotal"), 0) AS sum_dep, '
+        'COALESCE(SUM(u."wins"), 0) AS sum_wins, '
+        'COALESCE(SUM(u."losses"), 0) AS sum_losses, '
+        'COUNT(pa."poTraderId") AS linked '
+        'FROM "users" u '
+        'LEFT JOIN "po_accounts" pa ON pa."userId" = u."id" '
+        'WHERE pa."poTraderId" IS NOT NULL'
+    )
+    sum_dep = float(row["sum_dep"])
+    sum_wins = int(row["sum_wins"])
+    sum_losses = int(row["sum_losses"])
+    linked = int(row["linked"])
     total_results = sum_wins + sum_losses
     wr = (sum_wins / total_results * 100) if total_results else 0
     text = (
@@ -365,19 +361,19 @@ async def cmd_reset_my_state(message: Message) -> None:
     if not _is_admin(message.from_user.id):
         await message.answer("⛔ Доступ запрещён.")
         return
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """
-            UPDATE users SET wins = 0, losses = 0, signals_received = 0
-            WHERE telegram_id = ?
-            """,
-            (message.from_user.id,),
-        )
-        await db.execute(
-            "DELETE FROM achievements WHERE telegram_id = ?",
-            (message.from_user.id,),
-        )
-        await db.commit()
+    pool = _get_pool()
+    tg_big = telegram_id_to_bigint(message.from_user.id)
+    await pool.execute(
+        'UPDATE "users" SET "wins" = 0, "losses" = 0, "signalsReceived" = 0 '
+        'WHERE "telegramId" = $1',
+        tg_big,
+    )
+    # Delete user achievements via userId (CUID), need sub-select
+    await pool.execute(
+        'DELETE FROM "user_achievements" WHERE "userId" IN '
+        '(SELECT "id" FROM "users" WHERE "telegramId" = $1)',
+        tg_big,
+    )
     await message.answer(
         "<b>♻️ Сброшено.</b>\nWins/Losses/Signals/Achievements обнулены для тебя.",
         parse_mode=ParseMode.HTML,
@@ -398,24 +394,31 @@ async def cmd_seed_data(message: Message) -> None:
         (9_000_005, "guest_t0", "Guest", 0, 0.0, 1, 1),
     ]
     inserted = 0
-    async with aiosqlite.connect(DB_PATH) as db:
-        for tg_id, uname, fname, tier, deposit, w, _l in fakes:
-            ref_code = f"SEED{tg_id % 10000:04d}"
-            try:
-                await db.execute(
-                    """
-                    INSERT OR IGNORE INTO users
-                      (telegram_id, username, first_name, tier, deposit_total,
-                       wins, losses, referral_code, signals_received)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (tg_id, uname, fname, tier, deposit, w, _l, ref_code, w + _l),
-                )
-                if db.total_changes:
-                    inserted += 1
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("seed_data: %s", exc)
-        await db.commit()
+    pool = _get_pool()
+    for tg_id, uname, fname, tier, deposit, w, _l in fakes:
+        ref_code = f"SEED{tg_id % 10000:04d}"
+        try:
+            result = await pool.execute(
+                'INSERT INTO "users" '
+                '("id", "telegramId", "username", "firstName", "tier", "depositTotal", '
+                '"wins", "losses", "referralCode", "signalsReceived") '
+                'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) '
+                'ON CONFLICT ("telegramId") DO NOTHING',
+                _generate_cuid(),
+                telegram_id_to_bigint(tg_id),
+                uname,
+                fname,
+                tier,
+                deposit,
+                w,
+                _l,
+                ref_code,
+                w + _l,
+            )
+            if result and result.split()[-1] != "0":
+                inserted += 1
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("seed_data: %s", exc)
     await message.answer(
         f"<b>🌱 Seed готов.</b>\nДобавлено фейк-юзеров: {inserted} (из {len(fakes)})",
         parse_mode=ParseMode.HTML,
