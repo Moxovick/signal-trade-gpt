@@ -2,6 +2,7 @@
 
 import { Activity, ChevronRight, Flame, User2, Users } from "lucide-react";
 import { TmaShell, type TmaUser } from "../_components/TmaShell";
+import { DEFAULT_TIER_THRESHOLDS, TIER_LABELS } from "@/lib/tier-constants";
 
 const BOT_URL = process.env["NEXT_PUBLIC_BOT_URL"] ?? "";
 
@@ -17,6 +18,12 @@ function Profile({ user }: { user: TmaUser }) {
 
   const level = user.tier >= 2 ? "Про" : user.tier === 1 ? "Базовый" : "Бесплатный";
   const levelColor = user.tier >= 2 ? "var(--brand-gold)" : user.tier === 1 ? "var(--brand-gold-deep)" : "var(--t-2)";
+
+  const depositTotal = user.poAccount ? Math.round(Number(user.poAccount.totalDeposit)) : 0;
+  const nextTierKey = (user.tier + 1) as 1 | 2 | 3 | 4;
+  const nextThreshold = nextTierKey <= 4 ? DEFAULT_TIER_THRESHOLDS[nextTierKey] : null;
+  const hasNextTier = nextThreshold !== null && nextThreshold < Number.MAX_SAFE_INTEGER;
+  const neededForNext = hasNextTier ? Math.max(0, nextThreshold - depositTotal) : 0;
 
   return (
     <main className="max-w-md mx-auto p-4 space-y-4 pb-6">
@@ -43,6 +50,13 @@ function Profile({ user }: { user: TmaUser }) {
         <div className="rounded-xl border border-[var(--b-soft)] bg-[var(--bg-1)] px-3 py-2 text-right">
           <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">Уровень</div>
           <div className="text-sm font-bold" style={{ color: levelColor }}>{level}</div>
+          {hasNextTier ? (
+            <div className="text-[10px] text-[var(--brand-gold)] mt-0.5">
+              До {TIER_LABELS[nextTierKey] ?? `Tier ${nextTierKey}`}: ${neededForNext}
+            </div>
+          ) : user.tier >= 2 ? (
+            <div className="text-[10px] text-[var(--green)] mt-0.5">Макс. уровень</div>
+          ) : null}
         </div>
       </header>
 

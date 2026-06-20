@@ -35,6 +35,7 @@ type SignalResult = {
   expiration: string;
   payout: number;
   entryPrice: number;
+  entryTime: string | null;
   analysis: string | null;
 };
 
@@ -391,6 +392,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
         expiration: data.signal.expiration,
         payout: selectedPair.payout,
         entryPrice: data.signal.entryPrice ?? 0,
+        entryTime: (data.signal as Record<string, unknown>).entryTime as string | null ?? null,
         analysis: (data.signal as Record<string, unknown>).analysis as string | null ?? null,
       };
 
@@ -484,6 +486,13 @@ function SignalsPicker({ user }: { user: TmaUser }) {
             <div className="flex items-center gap-2 text-xs text-[var(--t-2)] px-3 py-2 rounded-lg bg-[rgba(212,160,23,0.06)]">
               <Target size={12} className="text-[var(--brand-gold)]" />
               Вход: <span className="text-[var(--brand-gold)] font-semibold">{result.entryPrice.toFixed(5)}</span>
+            </div>
+          )}
+
+          {result.entryTime && (
+            <div className="flex items-center gap-2 text-xs text-[var(--t-2)] px-3 py-2 rounded-lg bg-[rgba(212,160,23,0.06)]">
+              <Clock size={12} className="text-[var(--brand-gold)]" />
+              Время входа: <span className="text-[var(--brand-gold)] font-semibold">{result.entryTime}</span>
             </div>
           )}
 

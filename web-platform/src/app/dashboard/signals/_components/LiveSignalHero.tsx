@@ -11,6 +11,7 @@ export type LiveSignal = {
   confidence: number;
   tier: string;
   entryPrice: number | null;
+  entryTime: string | null;
   analysis: string | null;
   createdAtIso: string;
 };
@@ -128,6 +129,18 @@ export function LiveSignalHero({ signal }: { signal: LiveSignal | null }) {
                   style={{ color: "var(--t-1)" }}
                 >
                   {Number(signal.entryPrice).toFixed(5)}
+                </span>
+              </div>
+            )}
+            {signal.entryTime && (
+              <div className="flex items-center gap-2 text-[var(--t-2)]">
+                <Clock size={14} />
+                <span>Время входа</span>
+                <span
+                  className="font-mono font-semibold text-base"
+                  style={{ color: "var(--brand-gold)" }}
+                >
+                  {signal.entryTime}
                 </span>
               </div>
             )}

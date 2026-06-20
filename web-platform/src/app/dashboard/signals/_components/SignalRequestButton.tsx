@@ -39,6 +39,7 @@ type GeneratedSignal = {
   analysis: string | null;
   chartData: ChartData | null;
   entryPrice: number | null;
+  entryTime: string | null;
   createdAt: string;
 };
 
@@ -1012,6 +1013,15 @@ export function SignalRequestButton({
               confidence={lastSignal.confidence}
               expiration={lastSignal.expiration}
             />
+            {lastSignal.entryTime && (
+              <div
+                className="flex items-center gap-2 text-xs text-[var(--t-2)] px-3 py-2 rounded-lg"
+                style={{ background: "rgba(212,160,23,0.06)", fontFamily: "var(--font-jetbrains)" }}
+              >
+                <Clock size={12} className="text-[var(--brand-gold)]" />
+                Время входа: <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryTime}</span>
+              </div>
+            )}
             {lastSignal.analysis && (
               <div
                 className="rounded-xl px-4 py-3 text-[12px] leading-relaxed text-[var(--t-2)] whitespace-pre-line"
@@ -1113,6 +1123,17 @@ export function SignalRequestButton({
                 >
                   <Target size={12} className="text-[var(--brand-gold)]" />
                   Вход: <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryPrice.toFixed(5)}</span>
+                </div>
+              )}
+
+              {/* Entry time */}
+              {lastSignal.entryTime && (
+                <div
+                  className="flex items-center gap-2 text-xs text-[var(--t-2)] mb-3 px-3 py-2 rounded-lg"
+                  style={{ background: "rgba(212,160,23,0.06)", fontFamily: "var(--font-jetbrains)" }}
+                >
+                  <Clock size={12} className="text-[var(--brand-gold)]" />
+                  Время входа: <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryTime}</span>
                 </div>
               )}
 

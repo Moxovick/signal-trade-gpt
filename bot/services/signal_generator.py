@@ -1,13 +1,8 @@
 import random
+from datetime import datetime, timedelta, timezone
+
 from database.models import Signal
-from constants import (
-    EXPIRATION_LABELS,
-    EXPIRATIONS,
-    OTC_PAIRS,
-    EXCHANGE_PAIRS,
-    ELITE_PAIRS,
-    PairInfo,
-)
+from constants import EXPIRATION_LABELS
 
 # Flat lists for legacy random generation
 CURRENCY_PAIRS = [
@@ -52,6 +47,16 @@ CONFIDENCE_RANGES = {
 }
 
 DIRECTIONS = ["CALL", "PUT"]
+
+# Moscow timezone (UTC+3) for entry time display
+_MSK = timezone(timedelta(hours=3))
+
+
+def _calc_entry_time() -> str:
+    """Return entry time HH:MM — current Moscow time + random 1-4 minutes."""
+    offset = random.randint(1, 4)
+    entry = datetime.now(_MSK) + timedelta(minutes=offset)
+    return entry.strftime("%H:%M")
 
 ANALYSES = {
     "otc": [
@@ -104,6 +109,7 @@ def generate_signal(tier: str = "otc") -> Signal:
         tier=tier,
         analysis=analysis,
         result="pending",
+        entry_time=_calc_entry_time(),
     )
 
 
@@ -128,6 +134,7 @@ def generate_signal_for_pair(
         tier=tier,
         analysis=analysis,
         result="pending",
+        entry_time=_calc_entry_time(),
     )
 
 

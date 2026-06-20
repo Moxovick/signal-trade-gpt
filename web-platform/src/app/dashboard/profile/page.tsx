@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAccessReport } from "@/lib/access";
-import { TIER_ACCESS, TIER_LABELS } from "@/lib/tier";
+import { TIER_ACCESS, TIER_LABELS, distanceToNextTier } from "@/lib/tier";
 import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { ProfileEditForm } from "./_components/ProfileEditForm";
@@ -66,6 +66,8 @@ export default async function ProfilePage() {
     user.firstName ?? user.username ?? user.email?.split("@")[0] ?? "User";
   const totalDeposit = account?.totalDeposit ? Number(account.totalDeposit) : 0;
   const memberSince = formatDate(user.createdAt);
+
+  const nextTierInfo = distanceToNextTier(totalDeposit, tier);
 
   const avatarSrc = avatarUrl({ avatar: user.avatar, email: user.email });
 
@@ -139,6 +141,15 @@ export default async function ProfilePage() {
             <div className="text-[11px] text-[var(--t-3)] mt-0.5">
               {TIER_LABELS[tier]}
             </div>
+            {nextTierInfo ? (
+              <div className="text-[11px] text-[var(--brand-gold)] mt-1.5">
+                До {TIER_LABELS[nextTierInfo.nextTier]}: ещё ${nextTierInfo.needed}
+              </div>
+            ) : (
+              <div className="text-[11px] text-[var(--green)] mt-1.5">
+                Максимальный уровень
+              </div>
+            )}
           </div>
         </div>
 

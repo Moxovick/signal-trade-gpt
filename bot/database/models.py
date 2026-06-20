@@ -36,6 +36,7 @@ class Signal:
     tier: str = "otc"  # otc | exchange | elite | demo
     analysis: Optional[str] = None
     result: Optional[str] = None  # win | loss | pending
+    entry_time: Optional[str] = None  # HH:MM — recommended entry time
     created_at: datetime = field(default_factory=datetime.utcnow)
     id: Optional[int] = None
 

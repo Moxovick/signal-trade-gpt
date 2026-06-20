@@ -22,8 +22,10 @@ const PAIRS: Record<SignalBand, string[]> = {
     "EUR/GBP (OTC)", "USD/CHF (OTC)", "NZD/USD (OTC)", "EUR/JPY (OTC)",
     "AUD/CHF (OTC)", "AUD/NZD (OTC)", "EUR/CHF (OTC)", "GBP/JPY (OTC)",
     "USD/CAD (OTC)", "CAD/JPY (OTC)", "GBP/AUD (OTC)", "EUR/NZD (OTC)",
-    "Bitcoin (OTC)", "Ethereum (OTC)", "Solana (OTC)", "Dogecoin (OTC)",
-    "Cardano (OTC)", "Toncoin (OTC)", "BNB (OTC)", "Litecoin (OTC)",
+    "Bitcoin ETF (OTC)", "Bitcoin (OTC)", "Litecoin (OTC)", "Dogecoin (OTC)",
+    "Polygon (OTC)", "Cardano (OTC)", "Polkadot (OTC)", "Chainlink (OTC)",
+    "BNB (OTC)", "Avalanche (OTC)", "Solana (OTC)", "TRON (OTC)",
+    "Ethereum (OTC)", "Toncoin (OTC)",
     "Gold (OTC)", "Silver (OTC)", "Brent Oil (OTC)", "WTI Oil (OTC)",
     "Apple (OTC)", "Tesla (OTC)", "Amazon (OTC)", "Microsoft (OTC)",
     "Meta (OTC)", "Netflix (OTC)",
@@ -34,6 +36,7 @@ const PAIRS: Record<SignalBand, string[]> = {
     "EUR/GBP", "USD/CHF", "USD/CAD", "EUR/JPY",
     "GBP/JPY", "EUR/CHF", "AUD/CAD", "EUR/AUD",
     "GBP/AUD", "AUD/JPY", "CAD/JPY", "CHF/JPY",
+    "BTC/USD",
   ],
   elite: [
     "AAPL", "TSLA", "AMZN", "MSFT", "META", "NFLX", "NVDA",
@@ -60,6 +63,21 @@ function randomItem<T>(arr: readonly T[]): T {
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/**
+ * Calculate entry time: current time + random 1-4 minutes, formatted as HH:MM.
+ * Uses Moscow timezone (UTC+3).
+ */
+function calcEntryTime(): string {
+  const offsetMin = randomInt(1, 4);
+  const entry = new Date(Date.now() + offsetMin * 60_000);
+  // Format in Moscow timezone
+  return entry.toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Moscow",
+  });
 }
 
 /**
@@ -325,6 +343,7 @@ export type SignalResult = {
     analysis: string | null;
     chartData: unknown;
     entryPrice: number | null;
+    entryTime: string;
     createdAt: string;
   };
   access: {
@@ -478,6 +497,7 @@ export async function generateSignalForUser(
         analysis: signal.analysis,
         chartData: signal.chartData,
         entryPrice: signal.entryPrice ? Number(signal.entryPrice) : null,
+        entryTime: calcEntryTime(),
         createdAt: signal.createdAt.toISOString(),
       },
       access: {

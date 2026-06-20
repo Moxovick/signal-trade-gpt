@@ -49,14 +49,20 @@ OTC_PAIRS: list[PairInfo] = [
     {"name": "GBP/AUD", "symbol": "GBP/AUD (OTC)", "category": "forex", "payout": 92},
     {"name": "EUR/NZD", "symbol": "EUR/NZD (OTC)", "category": "forex", "payout": 47},
     # Crypto
+    {"name": "Bitcoin ETF", "symbol": "Bitcoin ETF (OTC)", "category": "crypto", "payout": 92},
     {"name": "Bitcoin", "symbol": "Bitcoin (OTC)", "category": "crypto", "payout": 92},
-    {"name": "Ethereum", "symbol": "Ethereum (OTC)", "category": "crypto", "payout": 92},
-    {"name": "Solana", "symbol": "Solana (OTC)", "category": "crypto", "payout": 80},
-    {"name": "Dogecoin", "symbol": "Dogecoin (OTC)", "category": "crypto", "payout": 92},
-    {"name": "Cardano", "symbol": "Cardano (OTC)", "category": "crypto", "payout": 92},
-    {"name": "Toncoin", "symbol": "Toncoin (OTC)", "category": "crypto", "payout": 66},
-    {"name": "BNB", "symbol": "BNB (OTC)", "category": "crypto", "payout": 71},
     {"name": "Litecoin", "symbol": "Litecoin (OTC)", "category": "crypto", "payout": 92},
+    {"name": "Dogecoin", "symbol": "Dogecoin (OTC)", "category": "crypto", "payout": 83},
+    {"name": "Polygon", "symbol": "Polygon (OTC)", "category": "crypto", "payout": 83},
+    {"name": "Cardano", "symbol": "Cardano (OTC)", "category": "crypto", "payout": 74},
+    {"name": "Polkadot", "symbol": "Polkadot (OTC)", "category": "crypto", "payout": 74},
+    {"name": "Chainlink", "symbol": "Chainlink (OTC)", "category": "crypto", "payout": 71},
+    {"name": "BNB", "symbol": "BNB (OTC)", "category": "crypto", "payout": 69},
+    {"name": "Avalanche", "symbol": "Avalanche (OTC)", "category": "crypto", "payout": 53},
+    {"name": "Solana", "symbol": "Solana (OTC)", "category": "crypto", "payout": 49},
+    {"name": "TRON", "symbol": "TRON (OTC)", "category": "crypto", "payout": 44},
+    {"name": "Ethereum", "symbol": "Ethereum (OTC)", "category": "crypto", "payout": 37},
+    {"name": "Toncoin", "symbol": "Toncoin (OTC)", "category": "crypto", "payout": 20},
     # Commodities
     {"name": "Gold", "symbol": "Gold (OTC)", "category": "commodities", "payout": 80},
     {"name": "Silver", "symbol": "Silver (OTC)", "category": "commodities", "payout": 80},
@@ -94,6 +100,8 @@ EXCHANGE_PAIRS: list[PairInfo] = [
     {"name": "AUD/JPY", "symbol": "AUD/JPY", "category": "forex", "payout": 45},
     {"name": "CAD/JPY", "symbol": "CAD/JPY", "category": "forex", "payout": 72},
     {"name": "CHF/JPY", "symbol": "CHF/JPY", "category": "forex", "payout": 76},
+    # Crypto
+    {"name": "Bitcoin", "symbol": "BTC/USD", "category": "crypto", "payout": 15},
 ]
 
 # ── Elite pairs (tier 2) ────────────────────────────────────────────────────

@@ -108,6 +108,7 @@ def _render_admin_template(template: str, signal: Signal, entry_price: float | N
         .replace("{payout}", payout_str)
         .replace("{payout_line}", payout_line)
         .replace("{tier}", (signal.tier or "otc").upper())
+        .replace("{entry_time}", signal.entry_time or "—")
     )
 
 TIER_HEADERS = {
@@ -155,6 +156,8 @@ def format_otc_minimal(signal: Signal) -> str:
     ]
     if payout:
         lines.append(payout.rstrip("\n"))
+    if signal.entry_time:
+        lines.append(f"Время входа: <b>{signal.entry_time}</b>")
     if signal.analysis:
         lines.extend(["", f"<b>Анализ:</b>\n<i>{signal.analysis}</i>"])
     lines.extend([
@@ -200,6 +203,8 @@ def format_pro_signal_caption(
         lines.append(f"Вход: <code>{entry_price:.5f}</code>")
     if payout:
         lines.append(payout.rstrip("\n"))
+    if signal.entry_time:
+        lines.append(f"Время входа: <b>{signal.entry_time}</b>")
     if signal.analysis:
         lines.extend(["", f"<i>{signal.analysis}</i>"])
     lines.extend([
@@ -249,6 +254,8 @@ def format_signal(signal: Signal, pocket_option_url: str) -> str:
     ]
     if payout:
         lines.append(payout.rstrip("\n"))
+    if signal.entry_time:
+        lines.append(f"<b>Время входа:</b> {signal.entry_time}")
     lines.append(f"<b>Тип:</b> {badge}")
 
     if signal.analysis:
