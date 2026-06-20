@@ -227,23 +227,33 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         if await try_sync_user(user_id):
             user = await get_user(user_id)
 
-    # Existing user with PO ID linked — short welcome, no onboarding
-    if existing is not None and user.po_trader_id:
+    # Existing user — short welcome, no full onboarding
+    if existing is not None:
         from constants import TIER_NAMES
         tier_name = TIER_NAMES.get(user.tier, "Free")
-        await message.answer(
-            f"С возвращением, <b>{first_name}</b>! 👋\n\n"
-            f"Уровень: <b>{tier_name}</b>\n"
-            f"PocketOption ID: <code>{user.po_trader_id}</code>\n\n"
-            "Нажми «🎯 Получить сигнал» в меню.",
-            parse_mode=ParseMode.HTML,
-            reply_markup=MAIN_MENU,
-        )
+        if user.po_trader_id:
+            await message.answer(
+                f"С возвращением, <b>{first_name}</b>! 👋\n\n"
+                f"Уровень: <b>{tier_name}</b>\n"
+                f"PocketOption ID: <code>{user.po_trader_id}</code>\n\n"
+                "Нажми «🎯 Получить сигнал» в меню.",
+                parse_mode=ParseMode.HTML,
+                reply_markup=MAIN_MENU,
+            )
+        else:
+            await message.answer(
+                f"С возвращением, <b>{first_name}</b>! 👋\n\n"
+                f"Уровень: <b>{tier_name}</b>\n\n"
+                "Привяжи PocketOption ID командой /link чтобы открыть сигналы.\n"
+                "Нажми «🎯 Получить сигнал» в меню.",
+                parse_mode=ParseMode.HTML,
+                reply_markup=MAIN_MENU,
+            )
         return
 
+    # ── New user — full onboarding ──
     bot_info = await message.bot.get_me()
 
-    # Send brand card image (cached on disk after first generation)
     try:
         card_path = get_brand_card_path()
         await message.answer_photo(
@@ -260,13 +270,11 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
             reply_markup=start_inline(settings.pocket_option_url, settings.webapp_url),
         )
 
-    # Activate persistent reply keyboard separately so it shows under the photo
     await message.answer(
         "Меню активно — пользуйся кнопками снизу 👇",
         reply_markup=MAIN_MENU,
     )
 
-    # New user or PO ID not linked — trigger onboarding
     if not user.po_trader_id:
         from handlers.onboarding import trigger_for_new_user
         await trigger_for_new_user(message)
