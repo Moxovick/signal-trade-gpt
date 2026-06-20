@@ -299,7 +299,6 @@ model PromoCode {
   expiresAt       DateTime?
   createdAt       DateTime  @default(now())
 
-  usedBy User[] @relation("PromoUsedBy")
 
   @@map("promo_codes")
 }
