@@ -3,33 +3,34 @@
 import { useState, useTransition } from "react";
 import { Save, Check, Globe, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useI18n } from "@/lib/i18n/context";
 import type {
   Language,
   Theme,
   UserPreferences,
 } from "@/lib/user-preferences";
 
-const LANGUAGES: { value: Language; label: string; native: string }[] = [
-  { value: "ru", label: "Русский", native: "RU" },
-  { value: "en", label: "English", native: "EN" },
-  { value: "uk", label: "Українська", native: "UA" },
+const LANGUAGES: { value: Language; native: string }[] = [
+  { value: "ru", native: "RU" },
+  { value: "en", native: "EN" },
+  { value: "uk", native: "UA" },
 ];
 
-const TIMEZONES = [
-  { tz: "UTC",               label: "UTC +0",    city: "UTC"        },
-  { tz: "Europe/London",     label: "UTC +0/+1", city: "Лондон"     },
-  { tz: "Europe/Berlin",     label: "UTC +1/+2", city: "Берлин"     },
-  { tz: "Europe/Warsaw",     label: "UTC +1/+2", city: "Варшава"    },
-  { tz: "Europe/Kyiv",       label: "UTC +2/+3", city: "Киев"       },
-  { tz: "Europe/Minsk",      label: "UTC +3",    city: "Минск"      },
-  { tz: "Europe/Moscow",     label: "UTC +3",    city: "Москва"     },
-  { tz: "Asia/Dubai",        label: "UTC +4",    city: "Дубай"      },
-  { tz: "Asia/Tashkent",     label: "UTC +5",    city: "Ташкент"    },
-  { tz: "Asia/Almaty",       label: "UTC +6",    city: "Алматы"     },
-  { tz: "Asia/Bangkok",      label: "UTC +7",    city: "Бангкок"    },
-  { tz: "Asia/Tokyo",        label: "UTC +9",    city: "Токио"      },
-  { tz: "America/New_York",  label: "UTC -5/-4", city: "Нью-Йорк"   },
-  { tz: "America/Los_Angeles", label: "UTC -8/-7", city: "Лос-Анджелес" },
+const TIMEZONE_DATA = [
+  { tz: "UTC",                 label: "UTC +0"    },
+  { tz: "Europe/London",       label: "UTC +0/+1" },
+  { tz: "Europe/Berlin",       label: "UTC +1/+2" },
+  { tz: "Europe/Warsaw",       label: "UTC +1/+2" },
+  { tz: "Europe/Kyiv",         label: "UTC +2/+3" },
+  { tz: "Europe/Minsk",        label: "UTC +3"    },
+  { tz: "Europe/Moscow",       label: "UTC +3"    },
+  { tz: "Asia/Dubai",          label: "UTC +4"    },
+  { tz: "Asia/Tashkent",       label: "UTC +5"    },
+  { tz: "Asia/Almaty",         label: "UTC +6"    },
+  { tz: "Asia/Bangkok",        label: "UTC +7"    },
+  { tz: "Asia/Tokyo",          label: "UTC +9"    },
+  { tz: "America/New_York",    label: "UTC -5/-4" },
+  { tz: "America/Los_Angeles", label: "UTC -8/-7" },
 ];
 
 export function applyTheme(theme: Theme) {
@@ -53,6 +54,37 @@ export function AppearanceForm({
 }: {
   initialPrefs: UserPreferences;
 }) {
+  const { t } = useI18n();
+
+  const CITY_LABELS: Record<string, string> = {
+    UTC: "UTC",
+    "Europe/London": t.appearance.cityLondon,
+    "Europe/Berlin": t.appearance.cityBerlin,
+    "Europe/Warsaw": t.appearance.cityWarsaw,
+    "Europe/Kyiv": t.appearance.cityKyiv,
+    "Europe/Minsk": t.appearance.cityMinsk,
+    "Europe/Moscow": t.appearance.cityMoscow,
+    "Asia/Dubai": t.appearance.cityDubai,
+    "Asia/Tashkent": t.appearance.cityTashkent,
+    "Asia/Almaty": t.appearance.cityAlmaty,
+    "Asia/Bangkok": t.appearance.cityBangkok,
+    "Asia/Tokyo": t.appearance.cityTokyo,
+    "America/New_York": t.appearance.cityNewYork,
+    "America/Los_Angeles": t.appearance.cityLosAngeles,
+  };
+
+  const TIMEZONES = TIMEZONE_DATA.map(({ tz, label }) => ({
+    tz,
+    label,
+    city: CITY_LABELS[tz] ?? tz,
+  }));
+
+  const LANG_LABELS: Record<string, string> = {
+    ru: t.appearance.langRu,
+    en: t.appearance.langEn,
+    uk: t.appearance.langUk,
+  };
+
   const [language, setLanguage] = useState<Language>(initialPrefs.language);
   const [timezone, setTimezone] = useState(initialPrefs.timezone);
   const [saved, setSaved] = useState(false);
