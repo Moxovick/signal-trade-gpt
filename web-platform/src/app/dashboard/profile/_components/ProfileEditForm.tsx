@@ -135,6 +135,7 @@ export function ProfileEditForm({
               src={avatarPreview}
               alt="Аватар"
               className="w-14 h-14 rounded-full object-cover border border-[var(--b-soft)]"
+              onError={() => setAvatarPreview("")}
             />
           ) : (
             <div className="w-14 h-14 rounded-full bg-[var(--bg-2)] border border-[var(--b-soft)] flex items-center justify-center text-[var(--t-3)]">

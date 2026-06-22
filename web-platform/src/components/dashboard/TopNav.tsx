@@ -18,6 +18,37 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
+/** Avatar with onError fallback to initials */
+function UserAvatar({
+  src,
+  initial,
+  size = "w-7 h-7",
+}: {
+  src: string | null | undefined;
+  initial: string;
+  size?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt="Аватар"
+        className={`${size} rounded-full object-cover shrink-0`}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return (
+    <div
+      className={`${size} rounded-full flex items-center justify-center text-xs font-bold shrink-0 select-none`}
+      style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}
+    >
+      {initial}
+    </div>
+  );
+}
+
 type NavItem = {
   href: string;
   label: string;
@@ -133,16 +164,7 @@ export function DashboardTopNav({
                   : "hover:bg-[var(--bg-2)]"
               }`}
             >
-              {user.avatar ? (
-                <img src={user.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-              ) : (
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 select-none"
-                  style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}
-                >
-                  {initial}
-                </div>
-              )}
+              <UserAvatar src={user.avatar} initial={initial} />
               <span className="text-xs text-[var(--t-2)] max-w-28 truncate hidden md:block">
                 {displayName}
               </span>
@@ -261,16 +283,7 @@ export function DashboardTopNav({
                   : "text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)]"
               }`}
             >
-              {user.avatar ? (
-                <img src={user.avatar} alt="" className="w-7 h-7 rounded-full object-cover shrink-0" />
-              ) : (
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 select-none"
-                  style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}
-                >
-                  {initial}
-                </div>
-              )}
+              <UserAvatar src={user.avatar} initial={initial} />
               <span className="text-sm truncate">{displayName}</span>
               <span className="text-[10px] text-[var(--t-3)] ml-auto">Профиль</span>
             </Link>

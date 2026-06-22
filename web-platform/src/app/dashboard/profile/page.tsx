@@ -7,6 +7,7 @@ import { TIER_ACCESS, TIER_LABELS, distanceToNextTier } from "@/lib/tier";
 import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { ProfileEditForm } from "./_components/ProfileEditForm";
+import { ProfileAvatar } from "./_components/ProfileAvatar";
 import { ReferralCopy } from "./_components/ReferralCopy";
 import { avatarUrl, initialsFromName } from "@/lib/avatar";
 import { formatDate } from "@/lib/utils";
@@ -86,18 +87,7 @@ export default async function ProfilePage() {
       >
         <div className="flex flex-col sm:flex-row sm:items-center gap-5">
           {/* Avatar */}
-          {avatarSrc ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatarSrc}
-              alt=""
-              className="size-20 rounded-2xl object-cover border border-[var(--b-soft)] shrink-0"
-            />
-          ) : (
-            <div className="size-20 rounded-2xl bg-[var(--brand-gold)] text-[#1a1208] flex items-center justify-center text-3xl font-bold shrink-0 select-none">
-              {initialsFromName(user)}
-            </div>
-          )}
+          <ProfileAvatar src={avatarSrc} initials={initialsFromName(user)} />
 
           {/* Name + meta */}
           <div className="flex-1 min-w-0 space-y-2">

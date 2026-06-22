@@ -8,7 +8,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const MAX_NAME = 32;
-const MAX_AVATAR_BYTES = 500 * 1024; // 500 KB
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB (matches client-side limit)
 
 export async function PUT(req: Request) {
   const session = await auth();

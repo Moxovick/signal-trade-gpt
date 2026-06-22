@@ -7,6 +7,18 @@ import { ArrowRight, Menu, X } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { ButtonLink } from "@/components/ui/Button";
 
+function HeaderAvatar({ src, initial, size = "w-6 h-6" }: { src: string | null; initial: string; size?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (src && !failed) {
+    return <img src={src} alt="Аватар" className={`${size} rounded-full object-cover shrink-0`} onError={() => setFailed(true)} />;
+  }
+  return (
+    <div className={`${size} rounded-full flex items-center justify-center text-[10px] font-bold shrink-0`} style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}>
+      {initial}
+    </div>
+  );
+}
+
 const NAV = [
   { href: "/how-it-works", label: "Как это работает" },
   { href: "/about", label: "Про нас" },
@@ -42,16 +54,7 @@ export function SiteHeader() {
               href="/dashboard"
               className="inline-flex items-center gap-2 text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors font-medium px-3 py-1.5 rounded-lg hover:bg-[rgba(212,160,23,0.08)]"
             >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
-              ) : (
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                  style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}
-                >
-                  {initial}
-                </div>
-              )}
+              <HeaderAvatar src={avatarUrl} initial={initial} />
               {displayName}
             </Link>
           ) : (
@@ -96,16 +99,7 @@ export function SiteHeader() {
               onClick={() => setMobileOpen(false)}
               className="flex items-center gap-2.5 text-sm font-medium text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
             >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="w-6 h-6 rounded-full object-cover shrink-0" />
-              ) : (
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                  style={{ background: "var(--brand-gold)", color: "var(--bg-0)" }}
-                >
-                  {initial}
-                </div>
-              )}
+              <HeaderAvatar src={avatarUrl} initial={initial} />
               {displayName}
             </Link>
           ) : (
