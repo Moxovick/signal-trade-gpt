@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Copy, Check, ExternalLink, ShieldCheck, Sparkles } from "lucide-react";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { TIER_LABELS } from "@/lib/tier-constants";
+import { useI18n } from "@/lib/i18n/context";
 
 type Props = {
   tier: number;
@@ -35,6 +36,7 @@ export function TierHero({
   dailyLimit,
   signalsRemaining,
 }: Props) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState<"link" | "id" | null>(null);
 
   const isPro = tier >= 2;
@@ -43,7 +45,7 @@ export function TierHero({
   const progressPct = hasNextTier
     ? Math.min(100, Math.round((depositTotal / nextThreshold) * 100))
     : 100;
-  const nextTierLabel = tier === 0 ? "Базового" : tier === 1 ? "Про" : null;
+  const nextTierLabel = tier === 0 ? t.tierHero.tierBasic : tier === 1 ? t.tierHero.tierPro : null;
 
   async function copy(label: "link" | "id", value: string) {
     try {
@@ -73,14 +75,14 @@ export function TierHero({
             <TierBadge tier={tier} size="md" />
             {isPro ? (
               <span className="inline-flex items-center gap-1 text-xs text-[var(--brand-gold-bright)] font-semibold">
-                <Sparkles size={12} /> Полный доступ ко всем сигналам
+                <Sparkles size={12} /> {t.tierHero.fullAccess}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-xs text-[var(--t-2)]">
                 <ShieldCheck size={12} className="text-[var(--brand-gold)]" />
                 {dailyLimit != null
-                  ? `${signalsRemaining ?? dailyLimit}/${dailyLimit} сигналов сегодня`
-                  : "Безлимит сигналов"}
+                  ? `${signalsRemaining ?? dailyLimit}/${dailyLimit} ${t.tierHero.signalsToday}`
+                  : t.tierHero.unlimitedSignals}
               </span>
             )}
           </div>
@@ -96,7 +98,7 @@ export function TierHero({
                   onClick={() => copy("id", poTraderId)}
                   className="inline-flex items-center gap-2 text-lg font-bold text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
                   style={{ fontFamily: "var(--font-jetbrains)" }}
-                  title="Скопировать"
+                  title={t.tierHero.copyIdTitle}
                 >
                   #{poTraderId}
                   {copied === "id" ? <Check size={14} /> : <Copy size={14} />}
@@ -114,7 +116,7 @@ export function TierHero({
               </div>
             ) : (
               <div className="text-sm text-[var(--t-3)]">
-                PO-аккаунт ещё не привязан.
+                {t.tierHero.poNotLinked}
               </div>
             )}
           </div>
@@ -123,14 +125,14 @@ export function TierHero({
             <div className="space-y-2">
               <div className="flex items-baseline justify-between gap-3 flex-wrap">
                 <div className="text-sm text-[var(--t-2)]">
-                  До {nextTierLabel} осталось{" "}
+                  {t.tierHero.untilTier} {nextTierLabel} {t.tierHero.remaining}{" "}
                   <span
                     className="text-[var(--brand-gold-bright)] font-semibold"
                     style={{ fontFamily: "var(--font-jetbrains)" }}
                   >
                     {formatUsd(remaining)}
                   </span>{" "}
-                  депозита
+                  {t.tierHero.deposit}
                 </div>
                 <div
                   className="text-xs text-[var(--t-3)] tabular-nums"
@@ -154,7 +156,7 @@ export function TierHero({
 
           <div className="space-y-2">
             <div className="text-xs uppercase tracking-wider text-[var(--t-3)]">
-              Твоя персональная ссылка
+              {t.tierHero.yourPersonalLink}
             </div>
             <div className="flex items-center gap-2 rounded-xl bg-[var(--bg-2)] border border-[var(--b-soft)] px-3 py-2">
               <code
@@ -170,11 +172,11 @@ export function TierHero({
                 className="shrink-0 inline-flex items-center gap-1 text-xs text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
               >
                 {copied === "link" ? <Check size={14} /> : <Copy size={14} />}
-                {copied === "link" ? "Скопировано" : "Копировать"}
+                {copied === "link" ? t.tierHero.copied : t.tierHero.copy}
               </button>
             </div>
             <p className="text-[11px] text-[var(--t-3)]">
-              Каждый, кто зарегистрируется по этой ссылке, станет твоим рефералом.
+              {t.tierHero.referralHint}
             </p>
           </div>
         </div>
@@ -186,7 +188,7 @@ export function TierHero({
             rel="noopener noreferrer"
             className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-semibold bg-[var(--brand-gold)] text-[#1a1208] hover:bg-[var(--brand-gold-bright)] shadow-[0_0_24px_rgba(212,160,23,0.35)] transition-all"
           >
-            Открыть PocketOption
+            {t.tierHero.openPocketOption}
             <ExternalLink size={14} />
           </a>
           {hasNextTier && (
@@ -196,7 +198,7 @@ export function TierHero({
               rel="noopener noreferrer"
               className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm bg-transparent text-[var(--brand-gold)] border border-[var(--b-hard)] hover:border-[var(--b-glow)] hover:bg-[rgba(212,160,23,0.05)] transition-all"
             >
-              Пополнить → {TIER_LABELS[tier + 1] ?? "Про"}
+              {t.tierHero.depositToTier} {TIER_LABELS[tier + 1] ?? t.tierHero.tierPro}
             </a>
           )}
         </div>

@@ -9,6 +9,8 @@ import { prisma } from "@/lib/prisma";
 import type { Signal, SignalDirection } from "@/generated/prisma/client";
 import { SignalRowActions } from "./_components/SignalRowActions";
 import { TierSignalSettings } from "./_components/TierSignalSettings";
+import { auth } from "@/lib/auth";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +21,10 @@ const TIER_BADGE: Record<string, { label: string; color: string }> = {
 };
 
 export default async function AdminSignalsPage() {
+  const session = await auth();
+  const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
+  const ts = t?.admin?.signals ?? {};
+
   const startOfDay = new Date();
   startOfDay.setUTCHours(0, 0, 0, 0);
 
@@ -82,9 +88,9 @@ export default async function AdminSignalsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Сигналы</h1>
+          <h1 className="text-2xl font-bold">{ts.title ?? "Сигналы"}</h1>
           <p className="text-xs text-[#666] mt-0.5">
-            On-demand модель: пользователи запрашивают сигналы по кнопке.
+            {ts.subtitle ?? "On-demand модель: пользователи запрашивают сигналы по кнопке."}
           </p>
         </div>
         <span className="text-sm text-[#666]">Последние {signals.length}</span>
@@ -93,11 +99,11 @@ export default async function AdminSignalsPage() {
       {/* Statistics */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
-          { label: "Сегодня всего", value: todayTotal.toString() },
+          { label: ts.stats?.todayTotal ?? "Сегодня всего", value: todayTotal.toString() },
           { label: "OTC", value: todayByTier.otc.toString(), color: "#8888ff" },
           { label: "Биржа", value: todayByTier.exchange.toString(), color: "#00e5a0" },
           { label: "Elite", value: todayByTier.elite.toString(), color: "#f5c518" },
-          { label: "Уникальных юзеров", value: todayUniqueUsers.toString() },
+          { label: ts.stats?.uniqueUsers ?? "Уникальных юзеров", value: todayUniqueUsers.toString() },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -130,7 +136,7 @@ export default async function AdminSignalsPage() {
         }}
       >
         <div className="px-5 py-3 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-          <h2 className="text-sm font-semibold">История сигналов</h2>
+          <h2 className="text-sm font-semibold">{ts.history ?? "История сигналов"}</h2>
           <p className="text-xs text-[#555] mt-0.5">
             Все сигналы, сгенерированные по запросу пользователей.
           </p>
@@ -140,20 +146,20 @@ export default async function AdminSignalsPage() {
           className="grid grid-cols-12 px-5 py-3 text-xs text-[#555] border-b"
           style={{ borderColor: "rgba(255,255,255,0.06)" }}
         >
-          <span className="col-span-2">Пара</span>
-          <span className="col-span-1">Напр.</span>
-          <span className="col-span-1">Эксп.</span>
-          <span className="col-span-1">Тир</span>
-          <span className="col-span-1">Уверен.</span>
-          <span className="col-span-1">Результат</span>
-          <span className="col-span-2">Юзер</span>
-          <span className="col-span-2">Дата</span>
-          <span className="col-span-1 text-right">Действия</span>
+          <span className="col-span-2">{ts.table?.pair ?? "Пара"}</span>
+          <span className="col-span-1">{ts.table?.direction ?? "Напр."}</span>
+          <span className="col-span-1">{ts.table?.expiration ?? "Эксп."}</span>
+          <span className="col-span-1">{ts.table?.tier ?? "Тир"}</span>
+          <span className="col-span-1">{ts.table?.confidence ?? "Уверен."}</span>
+          <span className="col-span-1">{ts.table?.result ?? "Результат"}</span>
+          <span className="col-span-2">{ts.table?.user ?? "Юзер"}</span>
+          <span className="col-span-2">{ts.table?.date ?? "Дата"}</span>
+          <span className="col-span-1 text-right">{ts.table?.actions ?? "Действия"}</span>
         </div>
 
         {signals.length === 0 && (
           <div className="px-5 py-12 text-center text-sm text-[#555]">
-            Сигналов пока нет. Они появятся, когда пользователи начнут запрашивать.
+            {ts.empty ?? "Сигналов пока нет. Они появятся, когда пользователи начнут запрашивать."}
           </div>
         )}
 

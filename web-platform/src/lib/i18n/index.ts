@@ -1,23 +1,19 @@
 /**
  * i18n — lightweight dictionary-based translation system.
  *
- * Usage in Server Components:
- *   const t = await getDictionary(userId);
- *   <h1>{t.dashboard.title}</h1>
- *
- * Usage in Client Components:
- *   const t = useT();
- *   <h1>{t.dashboard.title}</h1>
+ * Server Components:  const t = await getDictionaryForUser(userId);
+ * Client Components:  const { t } = useI18n();  (via I18nProvider in layout)
  */
 
 import type { Locale } from "./types";
 
-const dictionaries = {
-  ru: () => import("./ru").then((m) => m.default),
-  uk: () => import("./uk").then((m) => m.default),
-};
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export type Dictionary = Record<string, any>;
 
-export type Dictionary = Awaited<ReturnType<(typeof dictionaries)["ru"]>>;
+const dictionaries: Record<string, () => Promise<Dictionary>> = {
+  ru: () => import("./ru").then((m) => m.default as Dictionary),
+  uk: () => import("./uk").then((m) => m.default as Dictionary),
+};
 
 export async function getDictionary(locale: Locale): Promise<Dictionary> {
   const loader = dictionaries[locale] ?? dictionaries.ru;
@@ -27,7 +23,7 @@ export async function getDictionary(locale: Locale): Promise<Dictionary> {
 export async function getDictionaryForUser(userId: string): Promise<Dictionary> {
   const { getPreferences } = await import("@/lib/user-preferences");
   const prefs = await getPreferences(userId);
-  const locale = (prefs.language === "uk" ? "uk" : "ru") as Locale;
+  const locale: Locale = prefs.language === "uk" ? "uk" : "ru";
   return getDictionary(locale);
 }
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { TierBadge } from "@/components/ui/TierBadge";
+import { useI18n } from "@/lib/i18n/context";
 
 type Props = {
   tier: number;
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export function TierStrip({ tier, depositTotal, nextThreshold, dailyLimit, signalsRemaining }: Props) {
+  const { t } = useI18n();
   const isPro = tier >= 2;
   const hasNextTier = nextThreshold !== null;
   const remaining = hasNextTier ? Math.max(0, nextThreshold - depositTotal) : 0;
@@ -36,7 +38,7 @@ export function TierStrip({ tier, depositTotal, nextThreshold, dailyLimit, signa
 
       {isPro ? (
         <span className="flex-1 text-xs text-[var(--t-2)]">
-          Полный доступ ко всем сигналам
+          {t.tierStrip.fullAccess}
         </span>
       ) : (
         <div className="flex flex-1 items-center gap-3 min-w-0">
@@ -74,7 +76,7 @@ export function TierStrip({ tier, depositTotal, nextThreshold, dailyLimit, signa
         href="/dashboard/pocket-option"
         className="inline-flex items-center gap-0.5 text-xs text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors whitespace-nowrap shrink-0"
       >
-        {isPro ? "Аккаунт" : "Подробнее"}
+        {isPro ? t.tierStrip.account : t.tierStrip.details}
         <ChevronRight size={14} />
       </Link>
     </div>

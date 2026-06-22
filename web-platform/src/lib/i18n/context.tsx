@@ -1,21 +1,10 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import type { Locale } from "./types";
+import type { Dictionary } from "./index";
 
-// The dictionary type will be inferred from the actual ru.ts module
-// For now we use a generic record; after dictionaries are built we can
-// tighten this.
-type AnyDict = Record<string, unknown>;
-
-const I18nContext = createContext<{
-  locale: Locale;
-  t: AnyDict;
-}>({
+const I18nContext = createContext<{ locale: Locale; t: Dictionary }>({
   locale: "ru",
   t: {},
 });
@@ -26,7 +15,7 @@ export function I18nProvider({
   children,
 }: {
   locale: Locale;
-  dictionary: AnyDict;
+  dictionary: Dictionary;
   children: ReactNode;
 }) {
   return (
@@ -36,13 +25,6 @@ export function I18nProvider({
   );
 }
 
-/**
- * Use in client components to access translations.
- *
- * Usage:
- *   const { t, locale } = useI18n();
- *   const nav = t.dashboardNav as typeof import("./ru").default["dashboardNav"];
- */
 export function useI18n() {
   return useContext(I18nContext);
 }

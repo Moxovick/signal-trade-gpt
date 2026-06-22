@@ -4,7 +4,22 @@ import { useSession } from "next-auth/react";
 import { ArrowRight, LayoutDashboard } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 
-export function HeroCTA() {
+export type HeroCTATranslations = {
+  register: string;
+  dashboard: string;
+};
+
+const DEFAULT_TRANSLATIONS: HeroCTATranslations = {
+  register: "Зарегистрироваться",
+  dashboard: "Личный кабинет",
+};
+
+export function HeroCTA({
+  translations,
+}: {
+  translations?: HeroCTATranslations;
+}) {
+  const t = translations ?? DEFAULT_TRANSLATIONS;
   const { status } = useSession();
   const isLoggedIn = status === "authenticated";
 
@@ -15,7 +30,7 @@ export function HeroCTA() {
         size="lg"
         iconRight={<LayoutDashboard size={18} />}
       >
-        Личный кабинет
+        {t.dashboard}
       </ButtonLink>
     );
   }
@@ -26,7 +41,7 @@ export function HeroCTA() {
       size="lg"
       iconRight={<ArrowRight size={18} />}
     >
-      Зарегистрироваться
+      {t.register}
     </ButtonLink>
   );
 }

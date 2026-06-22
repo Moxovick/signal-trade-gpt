@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { CheckCircle2, ImagePlus, Loader2, Save } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 const FIELD =
   "w-full h-11 px-4 rounded-xl text-sm outline-none transition-colors bg-[var(--bg-2)] border border-[var(--b-soft)] focus:border-[var(--brand-gold)]";
@@ -49,6 +50,7 @@ export function ProfileEditForm({
   username: initialUsername,
   avatar: initialAvatar,
 }: Props) {
+  const { t } = useI18n();
   const [firstName, setFirstName] = useState(initialFirstName);
   const [username, setUsername] = useState(initialUsername);
   const [avatar, setAvatar] = useState(initialAvatar);
@@ -62,11 +64,11 @@ export function ProfileEditForm({
     const file = e.target.files?.[0];
     if (!file) return;
     if (!ALLOWED_TYPES.has(file.type)) {
-      setError("Допустимые форматы: JPG, PNG, WebP");
+      setError(t.profileEdit.errorFormat);
       return;
     }
     if (file.size > MAX_IMAGE_SIZE) {
-      setError("Максимальный размер файла — 2 МБ");
+      setError(t.profileEdit.errorSize);
       return;
     }
     setError(null);
@@ -75,7 +77,7 @@ export function ProfileEditForm({
       setAvatar(dataUrl);
       setAvatarPreview(dataUrl);
     } catch {
-      setError("Не удалось обработать изображение");
+      setError(t.profileEdit.errorProcess);
     }
   }
 
@@ -94,7 +96,7 @@ export function ProfileEditForm({
     });
     setSaving(false);
     if (!r.ok) {
-      setError(`Не удалось сохранить (HTTP ${r.status})`);
+      setError(`${t.profileEdit.errorSave} ${r.status})`);
       return;
     }
     setSaved(true);
@@ -106,34 +108,34 @@ export function ProfileEditForm({
 
   return (
     <form onSubmit={handleSave} className="space-y-4">
-      <Field label="Имя / Никнейм">
+      <Field label={t.profileEdit.fieldName}>
         <input
           type="text"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
-          placeholder="Например: Anton"
+          placeholder={t.profileEdit.fieldNamePlaceholder}
           maxLength={32}
           className={FIELD}
         />
       </Field>
 
-      <Field label="Telegram username">
+      <Field label={t.profileEdit.fieldUsername}>
         <input
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          placeholder="без @, например: anton"
+          placeholder={t.profileEdit.fieldUsernamePlaceholder}
           maxLength={32}
           className={FIELD}
         />
       </Field>
 
-      <Field label="Аватар">
+      <Field label={t.profileEdit.fieldAvatar}>
         <div className="flex items-center gap-4">
           {avatarPreview ? (
             <img
               src={avatarPreview}
-              alt="Аватар"
+              alt={t.profileEdit.avatarAlt}
               className="w-14 h-14 rounded-full object-cover border border-[var(--b-soft)]"
               onError={() => setAvatarPreview("")}
             />
@@ -149,10 +151,10 @@ export function ProfileEditForm({
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium bg-[var(--bg-2)] border border-[var(--b-soft)] hover:border-[var(--brand-gold)] transition-colors"
             >
               <ImagePlus size={14} />
-              Загрузить аватар
+              {t.profileEdit.uploadAvatar}
             </button>
             <span className="text-[11px] text-[var(--t-3)]">
-              JPG, PNG или WebP, до 2 МБ
+              {t.profileEdit.avatarHint}
             </span>
           </div>
           <input
@@ -165,7 +167,7 @@ export function ProfileEditForm({
         </div>
       </Field>
 
-      <Field label="Email (нельзя изменить)">
+      <Field label={t.profileEdit.fieldEmail}>
         <input
           type="email"
           value={email}
@@ -185,11 +187,11 @@ export function ProfileEditForm({
           className="inline-flex items-center gap-2 h-11 px-6 rounded-full bg-[var(--brand-gold)] text-[#1a1208] font-semibold hover:bg-[var(--brand-gold-bright)] transition-colors disabled:opacity-50"
         >
           {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-          {saving ? "Сохраняем..." : "Сохранить"}
+          {saving ? t.profileEdit.saving : t.profileEdit.save}
         </button>
         {saved ? (
           <span className="inline-flex items-center gap-1.5 text-sm text-[var(--green)]">
-            <CheckCircle2 size={14} /> Сохранено
+            <CheckCircle2 size={14} /> {t.profileEdit.saved}
           </span>
         ) : null}
       </div>

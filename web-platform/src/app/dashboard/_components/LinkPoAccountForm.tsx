@@ -3,8 +3,10 @@
 import { useState, useTransition } from "react";
 import { Link2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/i18n/context";
 
 export function LinkPoAccountForm() {
+  const { t } = useI18n();
   const router = useRouter();
   const [traderId, setTraderId] = useState("");
   const [error, setError] = useState<string | null>(null);

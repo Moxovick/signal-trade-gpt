@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { ExternalLink, ShieldCheck } from "lucide-react";
 import { PoIdGateForm } from "./_components/PoIdGateForm";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Привязка PocketOption — SpaceSignal" };
@@ -25,6 +26,40 @@ export const metadata = { title: "Привязка PocketOption — SpaceSignal"
 export default async function OnboardingPoIdPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+
+  const t = await getDictionaryForUser(session.user.id);
+
+  const onboarding = t.onboarding as {
+    poId: {
+      pageTitle: string;
+      stepBadge: string;
+      title: string;
+      subtitle: string;
+      step1Title: string;
+      step1Desc: string;
+      step1Button: string;
+      step2Title: string;
+      step2Desc: string;
+      existingAccountNote: string;
+      existingAccountLink: string;
+    };
+    poIdForm: {
+      placeholder: string;
+      submitButton: string;
+      submittingButton: string;
+      existingAccountLink: string;
+      errors: {
+        invalid_trader_id: string;
+        trader_id_taken: string;
+        not_in_our_network: string;
+        po_unreachable: string;
+        unauthorized: string;
+        missing_trader_id: string;
+        fallback: string;
+        invalidFallback: string;
+      };
+    };
+  };
 
   // Используем персональную реф-ссылку с `click_id={user.id}`: при регистрации
   // на PO к нам прилетает postback с этим ID и автоматически создаётся/линкуется
@@ -46,14 +81,13 @@ export default async function OnboardingPoIdPage() {
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[var(--t-3)]">
             <ShieldCheck size={14} className="text-[var(--brand-gold)]" />
-            Шаг 2 из 2 — привязка аккаунта
+            {onboarding.poId.stepBadge}
           </div>
           <h1 className="text-3xl md:text-4xl font-bold">
-            Привяжи свой PocketOption
+            {onboarding.poId.title}
           </h1>
           <p className="text-[var(--t-2)] max-w-lg mx-auto">
-            Чтобы открыть доступ к сигналам, зарегистрируйся на PocketOption по
-            нашей ссылке и привяжи свой ID. Это занимает 1 минуту.
+            {onboarding.poId.subtitle}
           </p>
         </div>
 
@@ -66,11 +100,10 @@ export default async function OnboardingPoIdPage() {
               <div className="flex-1 space-y-3">
                 <div>
                   <div className="font-semibold">
-                    Зарегистрируйся на PocketOption
+                    {onboarding.poId.step1Title}
                   </div>
                   <p className="text-sm text-[var(--t-2)] mt-0.5">
-                    Используй именно нашу ссылку — без неё ID не пройдёт
-                    проверку.
+                    {onboarding.poId.step1Desc}
                   </p>
                 </div>
                 <ButtonLink
@@ -79,7 +112,7 @@ export default async function OnboardingPoIdPage() {
                   variant="primary"
                   iconRight={<ExternalLink size={16} />}
                 >
-                  Открыть PocketOption
+                  {onboarding.poId.step1Button}
                 </ButtonLink>
               </div>
             </li>
@@ -90,14 +123,14 @@ export default async function OnboardingPoIdPage() {
               </div>
               <div className="flex-1 space-y-3">
                 <div>
-                  <div className="font-semibold">Введи свой PO ID</div>
+                  <div className="font-semibold">{onboarding.poId.step2Title}</div>
                   <p className="text-sm text-[var(--t-2)] mt-0.5">
-                    ID — числовой, обычно 7-9 цифр. Найдёшь его в Профиль →
-                    мой ID на PocketOption.
+                    {onboarding.poId.step2Desc}
                   </p>
                 </div>
                 <PoIdGateForm
                   initialTraderId={account?.poTraderId ?? ""}
+                  translations={onboarding.poIdForm}
                 />
               </div>
             </li>
@@ -105,13 +138,12 @@ export default async function OnboardingPoIdPage() {
         </Card>
 
         <p className="text-center text-xs text-[var(--t-3)]">
-          Если у тебя уже есть PocketOption-аккаунт, не привязанный к нашей
-          партнёрке —{" "}
+          {onboarding.poId.existingAccountNote}{" "}
           <a
             href="/onboarding/po-id/existing"
             className="text-[var(--brand-gold)] hover:underline"
           >
-            что делать?
+            {onboarding.poId.existingAccountLink}
           </a>
         </p>
       </div>

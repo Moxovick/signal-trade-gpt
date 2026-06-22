@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { Gift, Trophy, Medal, Award } from "lucide-react";
 import { redirect } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 type GiveawayPrize = { place: number; title: string };
 
@@ -71,6 +72,8 @@ export default async function DashboardGiveawayPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
+  const t = await getDictionaryForUser(session.user.id);
+
   const setting = await prisma.siteSettings.findUnique({
     where: { key: "giveaway_prizes" },
   });
@@ -84,10 +87,10 @@ export default async function DashboardGiveawayPage() {
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
           <Gift size={20} style={{ color: "var(--brand-gold)" }} />
-          <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>Розыгрыш призов</h1>
+          <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>{t.dashboardGiveaway.title}</h1>
         </div>
         <p style={{ fontSize: "13px", color: "var(--t-2)", margin: "4px 0 0 0" }}>
-          Розыгрыш для всех участников! Чем больше успешных сделок на PocketOption — тем выше шанс выиграть.
+          {t.dashboardGiveaway.desc}
         </p>
       </div>
 
@@ -151,7 +154,7 @@ export default async function DashboardGiveawayPage() {
                     color: style.accentColor,
                   }}
                 >
-                  {prize.place}-е место
+                  {prize.place}{t.dashboardGiveaway.placeLabel}
                 </span>
               </div>
 
@@ -180,11 +183,10 @@ export default async function DashboardGiveawayPage() {
         }}
       >
         <div style={{ fontSize: "14px", fontWeight: 600, marginBottom: "10px", color: "var(--t-1)" }}>
-          Правила участия
+          {t.dashboardGiveaway.rulesTitle}
         </div>
         <p style={{ fontSize: "13px", color: "var(--t-2)", margin: 0, lineHeight: 1.6 }}>
-          Участвуют все пользователи с привязанным PocketOption аккаунтом.
-          Победители определяются по количеству успешных сделок за период розыгрыша.
+          {t.dashboardGiveaway.rulesText}
         </p>
       </div>
     </div>

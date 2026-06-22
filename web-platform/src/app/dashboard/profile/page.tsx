@@ -11,6 +11,7 @@ import { ProfileAvatar } from "./_components/ProfileAvatar";
 import { ReferralCopy } from "./_components/ReferralCopy";
 import { avatarUrl, initialsFromName } from "@/lib/avatar";
 import { formatDate } from "@/lib/utils";
+import { getDictionaryForUser } from "@/lib/i18n";
 import {
   Award,
   CalendarDays,
@@ -53,6 +54,8 @@ export default async function ProfilePage() {
     getAccessReport(userId),
   ]);
   if (!user || !report) redirect("/login");
+
+  const t = await getDictionaryForUser(userId);
 
   const tier = report.tier;
   const allowedBands = TIER_ACCESS[tier] ?? ["otc"];
@@ -107,7 +110,7 @@ export default async function ProfilePage() {
               </span>
               <span className="flex items-center gap-1.5">
                 <CalendarDays size={13} />
-                С нами с {memberSince}
+                {t.profile.memberSince} {memberSince}
               </span>
               {user.username && (
                 <span className="flex items-center gap-1.5">
@@ -120,7 +123,7 @@ export default async function ProfilePage() {
           {/* Deposit counter */}
           <div className="sm:text-right shrink-0">
             <div className="text-[11px] uppercase tracking-widest text-[var(--t-3)] mb-0.5">
-              Депозит на PO
+              {t.profile.depositOnPO}
             </div>
             <div
               className="text-3xl font-bold text-[var(--brand-gold)]"
@@ -133,11 +136,11 @@ export default async function ProfilePage() {
             </div>
             {nextTierInfo ? (
               <div className="text-[11px] text-[var(--brand-gold)] mt-1.5">
-                До {TIER_LABELS[nextTierInfo.nextTier]}: ещё ${nextTierInfo.needed}
+                {t.profile.untilNextTier} {TIER_LABELS[nextTierInfo.nextTier]}: {t.profile.moreNeeded}{nextTierInfo.needed}
               </div>
             ) : (
               <div className="text-[11px] text-[var(--green)] mt-1.5">
-                Максимальный уровень
+                {t.profile.maxLevel}
               </div>
             )}
           </div>
@@ -146,8 +149,8 @@ export default async function ProfilePage() {
         {/* Stats row */}
         <div className="mt-5 pt-5 border-t border-[var(--b-soft)] grid grid-cols-2 gap-4">
           {[
-            { icon: <TrendingUp size={14} />, label: "Сигналов", value: user.signalsReceived.toString() },
-            { icon: <Users size={14} />, label: "Рефералов", value: user._count.referrals.toString() },
+            { icon: <TrendingUp size={14} />, label: t.profile.statSignals, value: user.signalsReceived.toString() },
+            { icon: <Users size={14} />, label: t.profile.statReferrals, value: user._count.referrals.toString() },
           ].map(({ icon, label, value }) => (
             <div key={label}>
               <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-[var(--t-3)] mb-1">
@@ -169,7 +172,7 @@ export default async function ProfilePage() {
 
         {/* Left — edit form */}
         <Card padding="lg">
-          <h2 className="text-base font-semibold mb-4">Личные данные</h2>
+          <h2 className="text-base font-semibold mb-4">{t.profile.personalData}</h2>
           <ProfileEditForm
             email={user.email ?? ""}
             firstName={user.firstName ?? ""}
@@ -186,48 +189,48 @@ export default async function ProfilePage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <ShieldCheck size={15} className="text-[var(--brand-gold)]" />
-                <h2 className="text-sm font-semibold">PocketOption</h2>
+                <h2 className="text-sm font-semibold">{t.profile.pocketOption}</h2>
               </div>
               <Link
                 href="/onboarding/po-id"
                 className="text-[11px] text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
               >
-                {account ? "Перепривязать" : "Привязать →"}
+                {account ? t.profile.relink : t.profile.link}
               </Link>
             </div>
             {account ? (
               <div className="space-y-3">
-                <InfoRow label="Trader ID">
+                <InfoRow label={t.profile.labelTraderId}>
                   <span style={{ fontFamily: "var(--font-jetbrains)" }}>
                     #{account.poTraderId}
                   </span>
                 </InfoRow>
-                <InfoRow label="Депозит">
+                <InfoRow label={t.profile.labelDeposit}>
                   <span style={{ fontFamily: "var(--font-jetbrains)" }}>
                     ${totalDeposit.toLocaleString("en-US")}
                   </span>
                 </InfoRow>
-                <InfoRow label="Статус">
+                <InfoRow label={t.profile.labelStatus}>
                   {account.status === "verified" ? (
                     <span className="flex items-center gap-1 text-[var(--green)]">
-                      <CheckCircle2 size={12} /> Подтверждён
+                      <CheckCircle2 size={12} /> {t.profile.statusVerified}
                     </span>
                   ) : account.status === "pending" ? (
                     <span className="flex items-center gap-1 text-[var(--brand-gold)]">
-                      <Clock size={12} /> Ожидание
+                      <Clock size={12} /> {t.profile.statusPending}
                     </span>
                   ) : (
                     <span className="flex items-center gap-1 text-[var(--red)]">
-                      <XCircle size={12} /> Отклонён
+                      <XCircle size={12} /> {t.profile.statusRejected}
                     </span>
                   )}
                 </InfoRow>
               </div>
             ) : (
               <p className="text-xs text-[var(--t-3)] leading-relaxed">
-                Аккаунт не привязан.{" "}
+                {t.profile.accountNotLinked}{" "}
                 <Link href="/onboarding/po-id" className="text-[var(--brand-gold)]">
-                  Привязать →
+                  {t.profile.linkAccount}
                 </Link>
               </p>
             )}
@@ -239,20 +242,20 @@ export default async function ProfilePage() {
               {
                 href: "/dashboard/achievements",
                 icon: <Award size={15} className="text-[var(--brand-gold)]" />,
-                label: "Достижения",
-                sub: "Бейджи за активность",
+                label: t.profile.achievements,
+                sub: t.profile.achievementsSub,
               },
               {
                 href: "/dashboard/referrals",
                 icon: <Users size={15} className="text-[var(--brand-gold)]" />,
-                label: "Рефералы",
-                sub: `${user._count.referrals} приглашено`,
+                label: t.profile.referrals,
+                sub: `${user._count.referrals} ${t.profile.referralsSub}`,
               },
               {
                 href: "/dashboard/settings/pocketoption",
                 icon: <TrendingUp size={15} className="text-[var(--brand-gold)]" />,
-                label: "История депозитов",
-                sub: "PocketOption аккаунт",
+                label: t.profile.depositHistory,
+                sub: t.profile.depositHistorySub,
               },
             ].map((item, i, arr) => (
               <Link
@@ -277,7 +280,7 @@ export default async function ProfilePage() {
           {/* Referral link */}
           {user.referralCode && (
             <Card padding="lg">
-              <h2 className="text-sm font-semibold mb-3">Реферальная ссылка</h2>
+              <h2 className="text-sm font-semibold mb-3">{t.profile.referralLink}</h2>
               <ReferralCopy code={user.referralCode} baseUrl={SITE_URL} />
             </Card>
           )}

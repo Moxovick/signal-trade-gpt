@@ -1,6 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export default async function AdminAnalyticsPage() {
+  const session = await auth();
+  const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
+  const tan = t?.admin?.analytics ?? {};
+
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const weekStart = new Date(todayStart);
@@ -54,37 +60,37 @@ export default async function AdminAnalyticsPage() {
 
   const sections = [
     {
-      title: "ПОЛЬЗОВАТЕЛИ",
+      title: tan.sections?.users ?? "ПОЛЬЗОВАТЕЛИ",
       color: "#f5c518",
       items: [
-        { label: "Всего", value: totalUsers.toLocaleString(), sub: "" },
-        { label: "Сегодня", value: newToday.toLocaleString(), sub: "новых" },
-        { label: "За неделю", value: newWeek.toLocaleString(), sub: "" },
-        { label: "За месяц", value: newMonth.toLocaleString(), sub: "" },
+        { label: tan.items?.total ?? "Всего", value: totalUsers.toLocaleString(), sub: "" },
+        { label: tan.items?.today ?? "Сегодня", value: newToday.toLocaleString(), sub: tan.items?.new ?? "новых" },
+        { label: tan.items?.week ?? "За неделю", value: newWeek.toLocaleString(), sub: "" },
+        { label: tan.items?.month ?? "За месяц", value: newMonth.toLocaleString(), sub: "" },
       ],
     },
     {
-      title: "ТИРЫ",
+      title: tan.sections?.tiers ?? "ТИРЫ",
       color: "#00e5a0",
       items: [
         { label: "T0 Free", value: (userTiers[0] ?? 0).toLocaleString(), sub: "" },
         { label: "T1 Basic", value: (userTiers[1] ?? 0).toLocaleString(), sub: "" },
         { label: "T2 Pro", value: (userTiers[2] ?? 0).toLocaleString(), sub: "" },
-        { label: "PO аккаунтов", value: poAccounts.toLocaleString(), sub: `конверсия ${convRate}%` },
+        { label: tan.items?.poAccounts ?? "PO аккаунтов", value: poAccounts.toLocaleString(), sub: `${tan.items?.conversion ?? "конверсия"} ${convRate}%` },
       ],
     },
     {
-      title: "СИГНАЛЫ",
+      title: tan.sections?.signals ?? "СИГНАЛЫ",
       color: "#8888ff",
       items: [
-        { label: "Всего", value: totalSignals.toLocaleString(), sub: `сегодня: ${signalsToday}` },
+        { label: tan.items?.total ?? "Всего", value: totalSignals.toLocaleString(), sub: `${tan.items?.today ?? "сегодня"}: ${signalsToday}` },
         { label: "OTC", value: (tiers.otc ?? 0).toLocaleString(), sub: "" },
-        { label: "Биржевые", value: (tiers.exchange ?? 0).toLocaleString(), sub: "" },
+        { label: tan.items?.exchange ?? "Биржевые", value: (tiers.exchange ?? 0).toLocaleString(), sub: "" },
         { label: "Elite", value: (tiers.elite ?? 0).toLocaleString(), sub: "" },
       ],
     },
     {
-      title: "РЕЗУЛЬТАТЫ",
+      title: tan.sections?.results ?? "РЕЗУЛЬТАТЫ",
       color: "#00e5a0",
       items: [
         { label: "Win Rate", value: `${winRate}%`, sub: "" },
@@ -94,22 +100,22 @@ export default async function AdminAnalyticsPage() {
       ],
     },
     {
-      title: "ДЕПОЗИТЫ",
+      title: tan.sections?.deposits ?? "ДЕПОЗИТЫ",
       color: "#f5c518",
       items: [
-        { label: "Подтверждено", value: `$${Number(confirmedDeposits._sum.amount ?? 0).toLocaleString()}`, sub: `${confirmedDeposits._count} шт` },
-        { label: "Ожидают", value: pendingDeposits.toLocaleString(), sub: "на верификации" },
-        { label: "T1+ (Basic+)", value: paidUsers.toLocaleString(), sub: "депозит ≥ $20" },
-        { label: "PO аккаунтов", value: poAccounts.toLocaleString(), sub: "" },
+        { label: tan.items?.confirmed ?? "Подтверждено", value: `$${Number(confirmedDeposits._sum.amount ?? 0).toLocaleString()}`, sub: `${confirmedDeposits._count} шт` },
+        { label: tan.items?.pending ?? "Ожидают", value: pendingDeposits.toLocaleString(), sub: tan.items?.onVerification ?? "на верификации" },
+        { label: "T1+ (Basic+)", value: paidUsers.toLocaleString(), sub: tan.items?.depositMin20 ?? "депозит ≥ $20" },
+        { label: tan.items?.poAccounts ?? "PO аккаунтов", value: poAccounts.toLocaleString(), sub: "" },
       ],
     },
     {
-      title: "РЕФЕРАЛЫ",
+      title: tan.sections?.referrals ?? "РЕФЕРАЛЫ",
       color: "#00e5a0",
       items: [
-        { label: "Всего рефералов", value: totalReferrals.toLocaleString(), sub: "" },
-        { label: "T1+ (Basic+)", value: paidUsers.toLocaleString(), sub: "депозит ≥ $20" },
-        { label: "T2 (Pro)", value: (userTiers[2] ?? 0).toLocaleString(), sub: "депозит ≥ $100" },
+        { label: tan.items?.totalReferrals ?? "Всего рефералов", value: totalReferrals.toLocaleString(), sub: "" },
+        { label: "T1+ (Basic+)", value: paidUsers.toLocaleString(), sub: tan.items?.depositMin20 ?? "депозит ≥ $20" },
+        { label: "T2 (Pro)", value: (userTiers[2] ?? 0).toLocaleString(), sub: tan.items?.depositMin100 ?? "депозит ≥ $100" },
       ],
     },
   ];
@@ -118,9 +124,9 @@ export default async function AdminAnalyticsPage() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-black tracking-wider" style={{ fontFamily: "var(--font-bebas)" }}>
-          ПОЛНАЯ АНАЛИТИКА
+          {tan.title ?? "ПОЛНАЯ АНАЛИТИКА"}
         </h1>
-        <p className="text-sm text-[#888]">Все метрики платформы в одном месте</p>
+        <p className="text-sm text-[#888]">{tan.subtitle ?? "Все метрики платформы в одном месте"}</p>
       </div>
 
       <div className="space-y-6">

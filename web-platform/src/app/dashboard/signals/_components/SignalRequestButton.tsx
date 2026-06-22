@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { MiniChart, type ChartCandle } from "./MiniChart";
 import { OtcSignalVisual } from "./OtcSignalVisual";
+import { useI18n } from "@/lib/i18n/context";
 
 // ─── Types ───
 
@@ -378,42 +379,20 @@ function getPayoutColor(pct: number): string {
   return "#ff6b3d";
 }
 
-const EXPIRATIONS: Record<PairBand, { value: string; label: string }[]> = {
-  otc: [
-    { value: "30s", label: "30 сек" },
-    { value: "60s", label: "1 мин" },
-    { value: "2m", label: "2 мин" },
-  ],
-  exchange: [
-    { value: "60s", label: "1 мин" },
-    { value: "2m", label: "2 мин" },
-    { value: "5m", label: "5 мин" },
-  ],
-  elite: [
-    { value: "60s", label: "1 мин" },
-    { value: "2m", label: "2 мин" },
-    { value: "5m", label: "5 мин" },
-    { value: "15m", label: "15 мин" },
-  ],
+// EXPIRATIONS labels are computed inside component using t
+const EXPIRATION_VALUES: Record<PairBand, string[]> = {
+  otc: ["30s", "60s", "2m"],
+  exchange: ["60s", "2m", "5m"],
+  elite: ["60s", "2m", "5m", "15m"],
 };
 
-const BAND_META: Record<PairBand, { label: string; color: string; bg: string; desc: string }> = {
-  otc: { label: "OTC", color: "#8888ff", bg: "rgba(136,136,255,0.08)", desc: "Внебиржевые пары" },
-  exchange: { label: "Биржа", color: "#8ee06b", bg: "rgba(142,224,107,0.08)", desc: "Реальные котировки" },
-  elite: { label: "Elite", color: "#d4a017", bg: "rgba(212,160,23,0.08)", desc: "Акции, крипто, сырьё" },
+const BAND_META_BASE: Record<PairBand, { color: string; bg: string }> = {
+  otc: { color: "#8888ff", bg: "rgba(136,136,255,0.08)" },
+  exchange: { color: "#8ee06b", bg: "rgba(142,224,107,0.08)" },
+  elite: { color: "#d4a017", bg: "rgba(212,160,23,0.08)" },
 };
 
-// Sub-group labels for visual grouping
-const FLAG_LABELS: Record<string, string> = {
-  OTC: "Валюты",
-  Crypto: "Криптовалюты",
-  Commodity: "Сырьё",
-  Stock: "Акции",
-  Index: "Индексы",
-  "": "Валютные пары",
-};
-
-function groupByFlag(pairs: PairInfo[]): { flag: string; label: string; items: PairInfo[] }[] {
+function groupByFlag(pairs: PairInfo[], flagLabels: Record<string, string>): { flag: string; label: string; items: PairInfo[] }[] {
   const map = new Map<string, PairInfo[]>();
   for (const p of pairs) {
     const key = p.flag;
@@ -422,20 +401,14 @@ function groupByFlag(pairs: PairInfo[]): { flag: string; label: string; items: P
   }
   return Array.from(map.entries()).map(([flag, items]) => ({
     flag,
-    label: FLAG_LABELS[flag] ?? flag,
+    label: flagLabels[flag] ?? flag,
     items,
   }));
 }
 
-// ─── Analysis animation ───
+// ─── Analysis animation icons (labels computed inside component) ───
 
-const ANALYSIS_STEPS = [
-  { icon: Search, text: "Сканируем рынок" },
-  { icon: BarChart3, text: "Анализируем индикаторы" },
-  { icon: Target, text: "Определяем точку входа" },
-  { icon: Shield, text: "Оценка рисков" },
-  { icon: Activity, text: "Формируем сигнал" },
-];
+const ANALYSIS_STEP_ICONS = [Search, BarChart3, Target, Shield, Activity];
 
 type Step = "pair" | "expiration" | "analysis" | "result";
 
@@ -448,7 +421,45 @@ export function SignalRequestButton({
   referralUrl,
   tier,
 }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
+
+  const BAND_META: Record<PairBand, { label: string; color: string; bg: string; desc: string }> = {
+    otc: { label: t.signalRequest.bandOtcLabel, color: BAND_META_BASE.otc.color, bg: BAND_META_BASE.otc.bg, desc: t.signalRequest.bandOtcDesc },
+    exchange: { label: t.signalRequest.bandExchangeLabel, color: BAND_META_BASE.exchange.color, bg: BAND_META_BASE.exchange.bg, desc: t.signalRequest.bandExchangeDesc },
+    elite: { label: t.signalRequest.bandEliteLabel, color: BAND_META_BASE.elite.color, bg: BAND_META_BASE.elite.bg, desc: t.signalRequest.bandEliteDesc },
+  };
+
+  const FLAG_LABELS: Record<string, string> = {
+    OTC: t.signalRequest.groupCurrencies,
+    Crypto: t.signalRequest.groupCrypto,
+    Commodity: t.signalRequest.groupCommodity,
+    Stock: t.signalRequest.groupStocks,
+    Index: t.signalRequest.groupIndices,
+    "": t.signalRequest.groupForexPairs,
+  };
+
+  const ANALYSIS_STEPS = [
+    { icon: ANALYSIS_STEP_ICONS[0]!, text: t.signalRequest.analysisScanning },
+    { icon: ANALYSIS_STEP_ICONS[1]!, text: t.signalRequest.analysisIndicators },
+    { icon: ANALYSIS_STEP_ICONS[2]!, text: t.signalRequest.analysisEntry },
+    { icon: ANALYSIS_STEP_ICONS[3]!, text: t.signalRequest.analysisRisk },
+    { icon: ANALYSIS_STEP_ICONS[4]!, text: t.signalRequest.analysisForming },
+  ];
+
+  const EXP_LABEL: Record<string, string> = {
+    "30s": t.signalRequest.exp30s,
+    "60s": t.signalRequest.exp1m,
+    "2m": t.signalRequest.exp2m,
+    "5m": t.signalRequest.exp5m,
+    "15m": t.signalRequest.exp15m,
+  };
+
+  const EXPIRATIONS: Record<PairBand, { value: string; label: string }[]> = {
+    otc: EXPIRATION_VALUES.otc.map((v) => ({ value: v, label: EXP_LABEL[v] ?? v })),
+    exchange: EXPIRATION_VALUES.exchange.map((v) => ({ value: v, label: EXP_LABEL[v] ?? v })),
+    elite: EXPIRATION_VALUES.elite.map((v) => ({ value: v, label: EXP_LABEL[v] ?? v })),
+  };
 
   const [step, setStep] = useState<Step>("pair");
   const [selectedPair, setSelectedPair] = useState<PairInfo | null>(null);
@@ -557,7 +568,7 @@ export function SignalRequestButton({
     }).catch(() => {
       if (cancelled) return;
       clearInterval(progressInterval);
-      setError("Не удалось получить сигнал. Попробуйте позже.");
+      setError(t.signalRequest.errorFetch);
       setStep("pair");
     });
 
@@ -585,7 +596,7 @@ export function SignalRequestButton({
             className="w-full h-14 font-bold text-base flex items-center justify-center"
             style={{ background: "var(--bg-2)", color: "var(--t-3)" }}
           >
-            Лимит исчерпан на сегодня
+            {t.signalRequest.limitReachedToday}
           </div>
           <Link
             href={referralUrl}
@@ -593,7 +604,7 @@ export function SignalRequestButton({
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-1.5 text-sm text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
           >
-            Повысить уровень ({tierLabel})
+            {t.signalRequest.upgradeLevel} ({tierLabel})
             <ArrowUpRight size={14} />
           </Link>
         </div>
@@ -607,7 +618,7 @@ export function SignalRequestButton({
     const activePairs = ALL_PAIRS
       .filter((p) => p.band === activeTab)
       .sort((a, b) => (PAIR_PAYOUTS[b.name] ?? 0) - (PAIR_PAYOUTS[a.name] ?? 0));
-    const groups = groupByFlag(activePairs);
+    const groups = groupByFlag(activePairs, FLAG_LABELS);
 
     return (
       <div className="w-full" style={{ minWidth: 0 }}>
@@ -679,11 +690,11 @@ export function SignalRequestButton({
             borderBottom: "1px solid var(--b-soft)",
           }}
         >
-          <span style={{ flex: 1 }}>Актив</span>
-          <span style={{ width: 56, textAlign: "right" }}>Выплата</span>
+          <span style={{ flex: 1 }}>{t.signalRequest.colAsset}</span>
+          <span style={{ width: 56, textAlign: "right" }}>{t.signalRequest.colPayout}</span>
           {remaining != null && (
             <span style={{ marginLeft: 12, fontSize: 10, color: "var(--t-3)" }}>
-              {remaining} осталось
+              {remaining} {t.signalRequest.remaining}
             </span>
           )}
         </div>
@@ -853,7 +864,7 @@ export function SignalRequestButton({
         </div>
 
         {/* Expiration heading */}
-        <p style={{ fontSize: 14, color: "var(--t-2)", marginBottom: 12 }}>Выберите время экспирации</p>
+        <p style={{ fontSize: 14, color: "var(--t-2)", marginBottom: 12 }}>{t.signalRequest.selectExpiration}</p>
 
         {/* Expiration buttons — flat, terminal-style with left border accent */}
         <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
@@ -905,7 +916,7 @@ export function SignalRequestButton({
                   marginLeft: "auto",
                 }}
               >
-                экспирация
+                {t.signalRequest.expirationLabel}
               </span>
             </button>
           ))}
@@ -930,7 +941,7 @@ export function SignalRequestButton({
             {selectedExpiration}
           </div>
           <h3 className="text-lg font-semibold text-[var(--t-1)]">
-            Анализ в процессе
+            {t.signalRequest.analysisInProgress}
           </h3>
         </div>
 
@@ -1034,7 +1045,7 @@ export function SignalRequestButton({
                 style={{ background: "rgba(212,160,23,0.06)", fontFamily: "var(--font-jetbrains)" }}
               >
                 <Clock size={12} className="text-[var(--brand-gold)]" />
-                Время входа: <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryTime}</span>
+                {t.signalRequest.entryTime} <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryTime}</span>
               </div>
             )}
             {lastSignal.analysis && (
@@ -1043,7 +1054,7 @@ export function SignalRequestButton({
                 style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--b-soft)" }}
               >
                 <div className="text-[10px] uppercase tracking-wider text-[var(--brand-gold)] font-semibold mb-1.5">
-                  Аналитика
+                  {t.signalRequest.analytics}
                 </div>
                 {lastSignal.analysis}
               </div>
@@ -1108,7 +1119,7 @@ export function SignalRequestButton({
                     {lastSignal.confidence}%
                   </div>
                   <div className="text-[10px] text-[var(--t-3)] uppercase tracking-wider">
-                    Точность
+                    {t.signalRequest.accuracy}
                   </div>
                 </div>
               </div>
@@ -1137,7 +1148,7 @@ export function SignalRequestButton({
                   style={{ background: "rgba(212,160,23,0.06)", fontFamily: "var(--font-jetbrains)" }}
                 >
                   <Target size={12} className="text-[var(--brand-gold)]" />
-                  Вход: <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryPrice.toFixed(5)}</span>
+                  {t.signalRequest.entry} <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryPrice.toFixed(5)}</span>
                 </div>
               )}
 
@@ -1148,7 +1159,7 @@ export function SignalRequestButton({
                   style={{ background: "rgba(212,160,23,0.06)", fontFamily: "var(--font-jetbrains)" }}
                 >
                   <Clock size={12} className="text-[var(--brand-gold)]" />
-                  Время входа: <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryTime}</span>
+                  {t.signalRequest.entryTime} <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryTime}</span>
                 </div>
               )}
 
@@ -1159,7 +1170,7 @@ export function SignalRequestButton({
                   style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--b-soft)" }}
                 >
                   <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] font-semibold mb-1.5">
-                    Аналитика
+                    {t.signalRequest.analytics}
                   </div>
                   {lastSignal.analysis}
                 </div>
@@ -1178,7 +1189,7 @@ export function SignalRequestButton({
           }}
         >
           <RefreshCw size={15} />
-          Получить новый сигнал
+          {t.signalRequest.getNewSignal}
         </button>
       </div>
     );

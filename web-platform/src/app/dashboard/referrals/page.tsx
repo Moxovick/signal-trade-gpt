@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { ReferralWidget } from "../_components/ReferralWidget";
 import { formatDate } from "@/lib/utils";
+import { getDictionaryForUser } from "@/lib/i18n";
 import {
   Users,
   TrendingUp,
@@ -80,6 +81,8 @@ export default async function ReferralsPage() {
 
   if (!user) return null;
 
+  const t = await getDictionaryForUser(userId);
+
   // Compute aggregates
   const withDeposit = referrals.filter(
     (r) => Number(r.referred.poAccount?.totalDeposit ?? 0) > 0,
@@ -102,17 +105,13 @@ export default async function ReferralsPage() {
       {/* Header */}
       <div>
         <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--brand-gold)] mb-1">
-          Реферальная программа
+          {t.referrals.pageLabel}
         </p>
         <h1 className="text-3xl font-bold tracking-tight">
-          {REVSHARE_PCT}% с каждого депозита
+          {REVSHARE_PCT}{t.referrals.pageTitle}
         </h1>
         <p className="text-[var(--t-2)] mt-1.5 text-sm">
-          Приводи трейдеров на SpaceSignal — получай&nbsp;
-          <span className="text-[var(--brand-gold)] font-semibold">
-            {REVSHARE_PCT}%
-          </span>{" "}
-          от их депозитов на PocketOption навсегда.
+          {t.referrals.pageDesc}
         </p>
       </div>
 
@@ -127,22 +126,22 @@ export default async function ReferralsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat
           icon={<Users size={16} />}
-          label="Зарегистрировалось"
+          label={t.referrals.statRegistered}
           value={referrals.length.toString()}
         />
         <Stat
           icon={<UserCheck size={16} />}
-          label="Подключили PO"
+          label={t.referrals.statConnectedPo}
           value={withPo.length.toString()}
         />
         <Stat
           icon={<CircleDollarSign size={16} />}
-          label="Депозиты рефералов"
+          label={t.referrals.statReferralDeposits}
           value={`$${Math.round(totalDeposits).toLocaleString()}`}
         />
         <Stat
           icon={<TrendingUp size={16} />}
-          label="Заработано"
+          label={t.referrals.statEarned}
           value={`$${totalEarned.toFixed(2)}`}
           tone={totalEarned > 0 ? "positive" : "neutral"}
         />
@@ -178,12 +177,11 @@ export default async function ReferralsPage() {
           <div>
             <div className="text-sm font-semibold mb-0.5">
               {withdrawable > 0
-                ? `Доступно к выводу: $${withdrawable.toFixed(2)}`
-                : `Ожидает разблокировки: $${totalEarned.toFixed(2)}`}
+                ? `${t.referrals.availableWithdraw} $${withdrawable.toFixed(2)}`
+                : `${t.referrals.awaitingUnlock} $${totalEarned.toFixed(2)}`}
             </div>
             <div className="text-[12px] text-[var(--t-3)]">
-              Средства доступны через {WITHDRAWAL_DAYS} дней после первого
-              депозита реферала. Рассчитай дату в карточках рефералов ниже.
+              {t.referrals.withdrawInfo.replace("{n}", String(WITHDRAWAL_DAYS))}
             </div>
           </div>
         </div>
@@ -192,9 +190,9 @@ export default async function ReferralsPage() {
       {/* Referrals list */}
       <Card padding="none">
         <div className="px-5 py-4 border-b border-[var(--b-soft)] flex items-center justify-between">
-          <h2 className="text-base font-semibold">Твои рефералы</h2>
+          <h2 className="text-base font-semibold">{t.referrals.yourReferrals}</h2>
           <span className="text-xs text-[var(--t-3)]">
-            {referrals.length} человек
+            {referrals.length} {t.referrals.persons}
           </span>
         </div>
 
@@ -205,11 +203,10 @@ export default async function ReferralsPage() {
             </div>
             <div>
               <div className="text-sm font-semibold text-[var(--t-1)] mb-1">
-                Пока никого нет
+                {t.referrals.noReferralsTitle}
               </div>
               <div className="text-[12px] text-[var(--t-3)] leading-relaxed max-w-xs">
-                Поделись QR-кодом или ссылкой выше. Каждый новый трейдер с
-                депозитом даёт тебе {REVSHARE_PCT}% навсегда.
+                {t.referrals.noReferralsDesc}
               </div>
             </div>
           </div>
@@ -229,7 +226,7 @@ export default async function ReferralsPage() {
                 r.referred.username ??
                 (r.referred.email
                   ? r.referred.email.split("@")[0]
-                  : "Аноним");
+                  : t.referrals.anon);
 
               return (
                 <div
@@ -261,11 +258,11 @@ export default async function ReferralsPage() {
                       {/* PO status */}
                       {hasPo ? (
                         <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-[var(--green)]">
-                          <CheckCircle2 size={9} /> PO подключён
+                          <CheckCircle2 size={9} /> {t.referrals.poConnected}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-0.5 text-[10px] text-[var(--t-3)]">
-                          <AlertCircle size={9} /> PO не привязан
+                          <AlertCircle size={9} /> {t.referrals.poNotLinked}
                         </span>
                       )}
                     </div>
@@ -283,17 +280,17 @@ export default async function ReferralsPage() {
                         </div>
                         {unlocked ? (
                           <div className="text-[11px] text-[var(--green)] flex items-center gap-0.5 justify-end">
-                            <CheckCircle2 size={10} /> доступно
+                            <CheckCircle2 size={10} /> {t.referrals.available}
                           </div>
                         ) : (
                           <div className="text-[11px] text-[var(--t-3)] flex items-center gap-0.5 justify-end">
-                            <Clock size={10} /> ещё {daysLeft} дн.
+                            <Clock size={10} /> {t.referrals.daysLeft} {daysLeft} {t.referrals.daysLeftSuffix}
                           </div>
                         )}
                       </div>
                     ) : (
                       <div className="text-[11px] text-[var(--t-3)]">
-                        {hasPo ? "ждём депозит" : "нет PO"}
+                        {hasPo ? t.referrals.awaitDeposit : t.referrals.noPo}
                       </div>
                     )}
                   </div>
@@ -302,7 +299,7 @@ export default async function ReferralsPage() {
             })}
             {referrals.length > 30 && (
               <div className="px-5 py-3 text-xs text-[var(--t-3)] text-center">
-                + ещё {referrals.length - 30} рефералов
+                {t.referrals.moreReferrals} {referrals.length - 30} {t.referrals.moreReferralsSuffix}
               </div>
             )}
           </div>
@@ -311,28 +308,28 @@ export default async function ReferralsPage() {
 
       {/* How it works */}
       <Card padding="lg">
-        <h2 className="text-base font-semibold mb-5">Как это работает</h2>
+        <h2 className="text-base font-semibold mb-5">{t.referrals.howItWorks}</h2>
         <div className="space-y-4">
           {[
             {
               n: "01",
-              title: "Делишься ссылкой",
-              text: "Скопируй реферальную ссылку или QR-код и отправь другу.",
+              title: t.referrals.step01Title,
+              text: t.referrals.step01Text,
             },
             {
               n: "02",
-              title: "Друг регистрируется",
-              text: "Он создаёт аккаунт и становится твоим рефералом.",
+              title: t.referrals.step02Title,
+              text: t.referrals.step02Text,
             },
             {
               n: "03",
-              title: "Друг делает депозит на PocketOption",
-              text: "Привязывает PO-аккаунт и вносит депозит.",
+              title: t.referrals.step03Title,
+              text: t.referrals.step03Text,
             },
             {
               n: "04",
-              title: `Ты получаешь ${REVSHARE_PCT}%`,
-              text: `${REVSHARE_PCT}% от каждого его депозита начисляются тебе навсегда.`,
+              title: `${t.referrals.step04TitleTemplate.replace("%", String(REVSHARE_PCT))}`,
+              text: `${t.referrals.step04TextTemplate.replace(/%/g, String(REVSHARE_PCT))}`,
             },
           ].map(({ n, title, text }) => (
             <div key={n} className="flex gap-4">
@@ -364,10 +361,9 @@ export default async function ReferralsPage() {
         <Info size={15} className="text-[var(--brand-gold)] shrink-0 mt-0.5" />
         <div className="text-[12px] text-[var(--t-2)] leading-relaxed">
           <span className="font-semibold text-[var(--t-1)]">
-            Правило {WITHDRAWAL_DAYS} дней:
+            {t.referrals.ruleDays.replace("{n}", String(WITHDRAWAL_DAYS))}
           </span>{" "}
-          вознаграждение становится доступным к выводу через {WITHDRAWAL_DAYS} дней
-          после первого депозита реферала. Повторные депозиты зачисляются сразу.
+          {t.referrals.ruleText.replace(/{n}/g, String(WITHDRAWAL_DAYS))}
         </div>
       </div>
     </div>

@@ -7,6 +7,8 @@
  */
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import { getDictionary } from "@/lib/i18n";
+import { I18nProvider } from "@/lib/i18n/context";
 
 export const metadata: Metadata = {
   title: "SpaceSignal",
@@ -20,9 +22,10 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function TmaLayout({ children }: { children: React.ReactNode }) {
+export default async function TmaLayout({ children }: { children: React.ReactNode }) {
+  const dictionary = await getDictionary("ru");
   return (
-    <>
+    <I18nProvider locale="ru" dictionary={dictionary}>
       <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       <div
         className="min-h-screen text-[var(--t-1)]"
@@ -33,6 +36,6 @@ export default function TmaLayout({ children }: { children: React.ReactNode }) {
       >
         {children}
       </div>
-    </>
+    </I18nProvider>
   );
 }

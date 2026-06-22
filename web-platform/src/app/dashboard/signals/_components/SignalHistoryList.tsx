@@ -8,6 +8,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { MiniChart, type ChartCandle } from "./MiniChart";
+import { useI18n } from "@/lib/i18n/context";
 
 // ── Pair icon helpers ──
 
@@ -201,16 +202,23 @@ type Props = {
   signals: SignalRow[];
 };
 
-const TIER_BAND_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  otc:      { label: "OTC",   color: "#8888ff", bg: "rgba(136,136,255,0.10)" },
-  exchange: { label: "Биржа", color: "#8ee06b", bg: "rgba(142,224,107,0.10)" },
-  elite:    { label: "Elite", color: "#d4a017", bg: "rgba(212,160,23,0.10)"  },
+// TIER_BAND_LABELS computed inside component using t
+const TIER_BAND_COLORS: Record<string, { color: string; bg: string }> = {
+  otc:      { color: "#8888ff", bg: "rgba(136,136,255,0.10)" },
+  exchange: { color: "#8ee06b", bg: "rgba(142,224,107,0.10)" },
+  elite:    { color: "#d4a017", bg: "rgba(212,160,23,0.10)"  },
 };
 
 
 const PAGE_SIZE = 10;
 
 export function SignalHistoryList({ signals }: Props) {
+  const { t } = useI18n();
+  const TIER_BAND_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+    otc:      { label: "OTC",   ...TIER_BAND_COLORS.otc },
+    exchange: { label: t.liveSignalHero.tierExchange, ...TIER_BAND_COLORS.exchange },
+    elite:    { label: "Elite", ...TIER_BAND_COLORS.elite },
+  };
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -347,7 +355,7 @@ export function SignalHistoryList({ signals }: Props) {
               {/* Confidence */}
               <div className="hidden sm:flex flex-col gap-1 w-28 shrink-0">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-[var(--t-3)]">Точность</span>
+                  <span className="text-[10px] text-[var(--t-3)]">{t.signalHistory.accuracy}</span>
                   <span
                     className="text-[12px] font-bold tabular-nums"
                     style={{
@@ -461,7 +469,7 @@ export function SignalHistoryList({ signals }: Props) {
                     </span>
                   </span>
                   <span className="text-[var(--t-3)]">
-                    Вход:{" "}
+                    {t.signalHistory.entry}{" "}
                     <span className="text-[var(--brand-gold)] font-semibold">
                       {cd.entryPrice.toFixed(5)}
                     </span>
@@ -478,7 +486,7 @@ export function SignalHistoryList({ signals }: Props) {
                     }}
                   >
                     <div className="text-[10px] uppercase tracking-wider text-[var(--brand-gold)] font-semibold mb-1.5">
-                      Разбор сигнала
+                      {t.signalHistory.signalBreakdown}
                     </div>
                     {s.analysis}
                   </div>
@@ -494,14 +502,14 @@ export function SignalHistoryList({ signals }: Props) {
       {signals.length > PAGE_SIZE && (
         <div className="flex flex-col items-center gap-2 pt-3">
           <span className="text-[12px] text-[var(--t-3)]">
-            Показано {Math.min(visibleCount, signals.length)} из {signals.length}
+            {t.signalHistory.shown} {Math.min(visibleCount, signals.length)} {t.signalHistory.of} {signals.length}
           </span>
           {hasMore && (
             <button
               onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
               className="text-[13px] text-[var(--t-2)] hover:text-[var(--t-1)] border border-[var(--b-soft)] hover:border-[var(--b-hard)] rounded-lg px-5 py-2 transition-colors bg-transparent"
             >
-              Показать ещё
+              {t.signalHistory.showMore}
             </button>
           )}
         </div>

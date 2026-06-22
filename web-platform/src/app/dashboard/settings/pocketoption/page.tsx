@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { TIER_LABELS, getTierThresholds } from "@/lib/tier";
 import Link from "next/link";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export default async function PocketOptionSettingsPage() {
   const session = await auth();
@@ -56,6 +57,9 @@ export default async function PocketOptionSettingsPage() {
   });
 
   if (!user) redirect("/login");
+
+  const t = await getDictionaryForUser(session.user.id);
+
   const po = user.poAccount;
   const deposits =
     po?.postbacks.filter(
@@ -70,9 +74,9 @@ export default async function PocketOptionSettingsPage() {
   const nextLabel = user.tier === 0 ? "Базового" : user.tier === 1 ? "Про" : null;
 
   const statusConfig = {
-    verified: { icon: CheckCircle2, label: "Подтверждён", color: "var(--green)", bg: "rgba(142,224,107,0.10)" },
-    pending: { icon: Clock, label: "На проверке", color: "var(--brand-gold)", bg: "rgba(212,160,23,0.10)" },
-    rejected: { icon: XCircle, label: "Отклонён", color: "var(--red)", bg: "rgba(255,107,61,0.10)" },
+    verified: { icon: CheckCircle2, label: t.pocketoption.statusVerified, color: "var(--green)", bg: "rgba(142,224,107,0.10)" },
+    pending: { icon: Clock, label: t.pocketoption.statusReview, color: "var(--brand-gold)", bg: "rgba(212,160,23,0.10)" },
+    rejected: { icon: XCircle, label: t.pocketoption.statusRejected, color: "var(--red)", bg: "rgba(255,107,61,0.10)" },
   };
 
   return (
@@ -103,9 +107,9 @@ export default async function PocketOptionSettingsPage() {
             </div>
             <div className="text-[12px] text-[var(--t-3)] mt-0.5">
               {isPro
-                ? "Полный доступ: OTC, биржевые и Elite сигналы"
+                ? t.pocketoption.tierFullAccess
                 : nextLabel
-                  ? `До ${nextLabel}: депозит $${nextThreshold} на PocketOption`
+                  ? `${t.pocketoption.tierUntil} ${nextLabel}: ${t.pocketoption.tierDepositRequired}${nextThreshold} ${t.pocketoption.tierDepositOnPO}`
                   : ""}
             </div>
           </div>
@@ -114,7 +118,7 @@ export default async function PocketOptionSettingsPage() {
         {nextThreshold != null && (
           <>
             <div className="flex justify-between text-xs text-[var(--t-3)] mb-1.5">
-              <span>Депозит засчитан</span>
+              <span>{t.pocketoption.depositCredited}</span>
               <span style={{ fontFamily: "var(--font-jetbrains)" }}>
                 ${depositTotal.toFixed(2)} / ${nextThreshold}
               </span>
@@ -129,7 +133,7 @@ export default async function PocketOptionSettingsPage() {
               />
             </div>
             <p className="text-[11px] text-[var(--t-3)] mt-2">
-              Уровень повышается автоматически при достижении порога депозита.
+              {t.pocketoption.autoUpgrade}
             </p>
           </>
         )}
@@ -137,7 +141,7 @@ export default async function PocketOptionSettingsPage() {
 
       {/* Tier comparison */}
       <Card padding="lg">
-        <h2 className="text-base font-semibold mb-4">Уровни доступа</h2>
+        <h2 className="text-base font-semibold mb-4">{t.pocketoption.accessLevels}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {([
             {
@@ -146,48 +150,48 @@ export default async function PocketOptionSettingsPage() {
               deposit: "$0",
               active: user.tier === 0,
               perks: [
-                "3 OTC-сигнала в день",
-                "Рандомные сигналы по запросу",
-                "Доступ к боту и кабинету",
+                t.pocketoption.freePerks1,
+                t.pocketoption.freePerks2,
+                t.pocketoption.freePerks3,
               ],
             },
             {
               tier: 1,
               name: "Basic",
-              deposit: `от $${thresholds[1]}`,
+              deposit: `${t.pocketoption.tierDepositFrom} $${thresholds[1]}`,
               active: user.tier === 1,
               perks: [
-                "10 сигналов в день",
-                "OTC + биржевые сигналы",
-                "Расширенные графики",
-                "Приоритетная поддержка",
+                t.pocketoption.basicPerks1,
+                t.pocketoption.basicPerks2,
+                t.pocketoption.basicPerks3,
+                t.pocketoption.basicPerks4,
               ],
             },
             {
               tier: 2,
               name: "Pro",
-              deposit: `от $${thresholds[2]}`,
+              deposit: `${t.pocketoption.tierDepositFrom} $${thresholds[2]}`,
               active: user.tier >= 2,
               perks: [
-                "Безлимитные сигналы",
-                "Все типы: OTC + биржа + Elite",
-                "Аналитика и индикаторы",
-                "Ранний доступ к функциям",
-                "Полный разбор каждого сигнала",
+                t.pocketoption.proPerks1,
+                t.pocketoption.proPerks2,
+                t.pocketoption.proPerks3,
+                t.pocketoption.proPerks4,
+                t.pocketoption.proPerks5,
               ],
             },
-          ] as const).map((t) => (
+          ] as const).map((tierItem) => (
             <div
-              key={t.tier}
+              key={tierItem.tier}
               className="rounded-xl border p-4 relative"
               style={{
-                borderColor: t.active ? "var(--brand-gold)" : "var(--b-soft)",
-                background: t.active
+                borderColor: tierItem.active ? "var(--brand-gold)" : "var(--b-soft)",
+                background: tierItem.active
                   ? "linear-gradient(135deg,rgba(212,160,23,0.06) 0%,var(--bg-1) 100%)"
                   : "var(--bg-1)",
               }}
             >
-              {t.active && (
+              {tierItem.active && (
                 <div
                   className="absolute top-2.5 right-2.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md"
                   style={{
@@ -195,18 +199,18 @@ export default async function PocketOptionSettingsPage() {
                     color: "var(--brand-gold)",
                   }}
                 >
-                  Текущий
+                  {t.pocketoption.tierCurrentBadge}
                 </div>
               )}
-              <div className="font-bold text-sm mb-0.5">{t.name}</div>
+              <div className="font-bold text-sm mb-0.5">{tierItem.name}</div>
               <div
                 className="text-[11px] text-[var(--t-3)] mb-3"
                 style={{ fontFamily: "var(--font-jetbrains)" }}
               >
-                Депозит {t.deposit}
+                {tierItem.deposit}
               </div>
               <ul className="space-y-1.5">
-                {t.perks.map((p) => (
+                {tierItem.perks.map((p) => (
                   <li
                     key={p}
                     className="flex items-start gap-2 text-[12px] text-[var(--t-2)] leading-snug"
@@ -215,7 +219,7 @@ export default async function PocketOptionSettingsPage() {
                       size={12}
                       className="shrink-0 mt-0.5"
                       style={{
-                        color: t.active ? "var(--brand-gold)" : "var(--t-3)",
+                        color: tierItem.active ? "var(--brand-gold)" : "var(--t-3)",
                       }}
                     />
                     {p}
@@ -226,9 +230,7 @@ export default async function PocketOptionSettingsPage() {
           ))}
         </div>
         <p className="text-[11px] text-[var(--t-3)] mt-3 leading-relaxed">
-          Депозит считается по сумме пополнений на привязанном PocketOption аккаунте.
-          Уровень повышается автоматически через постбэки от PocketOption.
-          Чем выше депозит — тем больше типов сигналов и выше дневной лимит.
+          {t.pocketoption.tierNote}
         </p>
       </Card>
 
@@ -237,14 +239,14 @@ export default async function PocketOptionSettingsPage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Link2 size={16} className="text-[var(--brand-gold)]" />
-            <h2 className="text-base font-semibold">PocketOption аккаунт</h2>
+            <h2 className="text-base font-semibold">{t.pocketoption.poAccountTitle}</h2>
           </div>
           {!po && (
             <Link
               href="/onboarding/po-id"
               className="inline-flex items-center gap-1 text-xs text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
             >
-              Привязать <ChevronRight size={12} />
+              {t.pocketoption.poLink} <ChevronRight size={12} />
             </Link>
           )}
         </div>
@@ -255,7 +257,7 @@ export default async function PocketOptionSettingsPage() {
               {/* ID */}
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--b-soft)] p-3">
                 <div className="text-[11px] uppercase tracking-wider text-[var(--t-3)] mb-1">
-                  Trader ID
+                  {t.pocketoption.labelTraderId}
                 </div>
                 <div
                   className="text-lg font-bold text-[var(--t-1)]"
@@ -275,7 +277,7 @@ export default async function PocketOptionSettingsPage() {
                     style={{ background: cfg.bg, borderColor: "transparent" }}
                   >
                     <div className="text-[11px] uppercase tracking-wider text-[var(--t-3)] mb-1">
-                      Статус
+                      {t.pocketoption.labelStatus}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <StatusIcon size={14} style={{ color: cfg.color }} />
@@ -290,7 +292,7 @@ export default async function PocketOptionSettingsPage() {
               {/* Total deposit */}
               <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--b-soft)] p-3">
                 <div className="text-[11px] uppercase tracking-wider text-[var(--t-3)] mb-1">
-                  Депозитов всего
+                  {t.pocketoption.labelTotalDeposit}
                 </div>
                 <div
                   className="text-lg font-bold text-[var(--t-1)]"
@@ -303,7 +305,7 @@ export default async function PocketOptionSettingsPage() {
 
             {po.registeredAt && (
               <p className="text-[11px] text-[var(--t-3)]">
-                Зарегистрирован в PO:{" "}
+                {t.pocketoption.registeredAt}{" "}
                 {new Date(po.registeredAt).toLocaleDateString("ru-RU", {
                   day: "numeric",
                   month: "long",
@@ -318,16 +320,16 @@ export default async function PocketOptionSettingsPage() {
               <AlertCircle size={20} className="text-[var(--t-3)]" />
             </div>
             <div>
-              <div className="text-sm font-semibold mb-1">PO ID не привязан</div>
+              <div className="text-sm font-semibold mb-1">{t.pocketoption.poNotLinkedTitle}</div>
               <div className="text-[12px] text-[var(--t-3)] leading-relaxed">
-                Привяжи PocketOption аккаунт, чтобы получить доступ к торговым сигналам
+                {t.pocketoption.poNotLinkedDesc}
               </div>
             </div>
             <Link
               href="/onboarding/po-id"
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
             >
-              Привязать аккаунт <ChevronRight size={14} />
+              {t.pocketoption.linkAccountAction} <ChevronRight size={14} />
             </Link>
           </div>
         )}
@@ -337,10 +339,10 @@ export default async function PocketOptionSettingsPage() {
       <Card padding="none">
         <div className="px-5 py-4 border-b border-[var(--b-soft)] flex items-center gap-2">
           <TrendingUp size={15} className="text-[var(--brand-gold)]" />
-          <h2 className="text-base font-semibold">История депозитов</h2>
+          <h2 className="text-base font-semibold">{t.pocketoption.depositHistory}</h2>
           {deposits.length > 0 && (
             <span className="ml-auto text-xs text-[var(--t-3)]">
-              {deposits.length} операций
+              {deposits.length} {t.pocketoption.operations}
             </span>
           )}
         </div>
@@ -348,9 +350,9 @@ export default async function PocketOptionSettingsPage() {
         {deposits.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
             <Wallet size={28} className="text-[var(--t-3)]" />
-            <div className="text-sm text-[var(--t-2)] font-medium">Пока депозитов нет</div>
+            <div className="text-sm text-[var(--t-2)] font-medium">{t.pocketoption.noDepositsTitle}</div>
             <div className="text-[11px] text-[var(--t-3)]">
-              Они появятся здесь после пополнения счёта в PocketOption
+              {t.pocketoption.noDepositsDesc}
             </div>
           </div>
         ) : (
@@ -390,7 +392,7 @@ export default async function PocketOptionSettingsPage() {
                             : "var(--t-2)",
                       }}
                     >
-                      {d.eventType === "ftd" ? "Первый" : "Повтор"}
+                      {d.eventType === "ftd" ? t.pocketoption.depositTypeFirst : t.pocketoption.depositTypeRepeat}
                     </span>
                   </div>
                 </div>

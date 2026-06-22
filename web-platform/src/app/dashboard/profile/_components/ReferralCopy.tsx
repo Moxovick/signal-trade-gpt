@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Copy, Check } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 export function ReferralCopy({ code, baseUrl }: { code: string; baseUrl: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const shortLink = `${baseUrl.replace(/\/$/, "")}/r/${code}`;
 
@@ -31,13 +33,13 @@ export function ReferralCopy({ code, baseUrl }: { code: string; baseUrl: string 
         </span>
         <span className="shrink-0 flex items-center gap-1 text-[11px] text-[var(--brand-gold)] font-semibold">
           {copied
-            ? <><Check size={12} /> Скопировано</>
-            : <><Copy size={12} /> Копировать</>
+            ? <><Check size={12} /> {t.referralCopy.copied}</>
+            : <><Copy size={12} /> {t.referralCopy.copy}</>
           }
         </span>
       </div>
       <p className="text-[11px] text-[var(--t-3)] leading-relaxed">
-        Нажми, чтобы скопировать ссылку и поделиться с другом
+        {t.referralCopy.hint}
       </p>
     </button>
   );

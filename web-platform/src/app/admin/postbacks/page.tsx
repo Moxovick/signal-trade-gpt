@@ -7,6 +7,8 @@
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
 import { BindUnmatched } from "./_components/BindUnmatched";
+import { auth } from "@/lib/auth";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +22,10 @@ const EVENT_COLOR: Record<string, { bg: string; fg: string }> = {
 };
 
 export default async function PostbacksPage() {
+  const session = await auth();
+  const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
+  const tp = t?.admin?.postbacks ?? {};
+
   const rows = await prisma.postback.findMany({
     orderBy: { receivedAt: "desc" },
     take: 100,
@@ -30,21 +36,21 @@ export default async function PostbacksPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">PocketOption · postbacks</h1>
+      <h1 className="text-2xl font-bold">{tp.title ?? "PocketOption · postbacks"}</h1>
 
       <Card padding="none">
         <div className="px-5 py-3 border-b border-[var(--b-soft)] grid grid-cols-12 gap-4 text-xs uppercase tracking-wider text-[var(--t-3)]">
-          <div className="col-span-2">Время</div>
-          <div className="col-span-2">Событие</div>
-          <div className="col-span-2">PO ID</div>
-          <div className="col-span-3">Пользователь</div>
-          <div className="col-span-2 text-right">Сумма</div>
-          <div className="col-span-1 text-right">Click</div>
+          <div className="col-span-2">{tp.table?.time ?? "Время"}</div>
+          <div className="col-span-2">{tp.table?.event ?? "Событие"}</div>
+          <div className="col-span-2">{tp.table?.poId ?? "PO ID"}</div>
+          <div className="col-span-3">{tp.table?.user ?? "Пользователь"}</div>
+          <div className="col-span-2 text-right">{tp.table?.amount ?? "Сумма"}</div>
+          <div className="col-span-1 text-right">{tp.table?.click ?? "Click"}</div>
         </div>
         <div className="divide-y divide-[var(--b-soft)]">
           {rows.length === 0 && (
             <div className="px-5 py-10 text-center text-sm text-[var(--t-3)]">
-              Postback-ов ещё не было.
+              {tp.empty ?? "Postback-ов ещё не было."}
             </div>
           )}
           {rows.map((p) => {

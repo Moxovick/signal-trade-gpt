@@ -20,7 +20,42 @@ const FIELD =
 
 const INITIAL: RegisterActionResult = { ok: false };
 
-export function RegisterForm() {
+export type RegisterFormTranslations = {
+  loginLabel: string;
+  loginPlaceholder: string;
+  telegramLabel: string;
+  telegramPlaceholder: string;
+  passwordLabel: string;
+  passwordPlaceholder: string;
+  confirmLabel: string;
+  confirmPlaceholder: string;
+  submitButton: string;
+  submittingButton: string;
+  autoLoginButton: string;
+  autoLoginError: string;
+};
+
+const DEFAULT_TRANSLATIONS: RegisterFormTranslations = {
+  loginLabel: "Логин",
+  loginPlaceholder: "Придумай логин",
+  telegramLabel: "Telegram",
+  telegramPlaceholder: "@username в Telegram",
+  passwordLabel: "Пароль",
+  passwordPlaceholder: "Минимум 6 символов",
+  confirmLabel: "Повтори пароль",
+  confirmPlaceholder: "Ещё раз",
+  submitButton: "Создать аккаунт",
+  submittingButton: "Создаём аккаунт...",
+  autoLoginButton: "Входим в аккаунт...",
+  autoLoginError: "Аккаунт создан, но автологин не удался. Войди вручную.",
+};
+
+export function RegisterForm({
+  translations,
+}: {
+  translations?: RegisterFormTranslations;
+}) {
+  const t = translations ?? DEFAULT_TRANSLATIONS;
   const router = useRouter();
   const params = useSearchParams();
   const refFromUrl = params.get("ref") ?? "";
@@ -51,16 +86,14 @@ export function RegisterForm() {
         redirect: false,
       });
       if (res?.error) {
-        setAutoLoginError(
-          "Аккаунт создан, но автологин не удался. Войди вручную.",
-        );
+        setAutoLoginError(t.autoLoginError);
         return;
       }
       router.push(
         state.needsPoOnboarding ? "/onboarding/po-id" : "/dashboard/signals",
       );
     })();
-  }, [state.ok, state.username, state.password, state.needsPoOnboarding, router]);
+  }, [state.ok, state.username, state.password, state.needsPoOnboarding, router, t.autoLoginError]);
 
   const errorToShow = autoLoginError ?? state.error ?? errFromUrl ?? null;
   const fv = state.formValues;
@@ -76,13 +109,13 @@ export function RegisterForm() {
 
       {/* Username (login) */}
       <label className="block">
-        <span className="text-xs font-medium text-[var(--t-2)] mb-1 block">Логин</span>
+        <span className="text-xs font-medium text-[var(--t-2)] mb-1 block">{t.loginLabel}</span>
         <input
           type="text"
           name="username"
           required
           autoComplete="username"
-          placeholder="Придумай логин"
+          placeholder={t.loginPlaceholder}
           className={FIELD}
           maxLength={32}
           defaultValue={fv?.username ?? ""}
@@ -91,13 +124,13 @@ export function RegisterForm() {
 
       {/* Telegram */}
       <label className="block">
-        <span className="text-xs font-medium text-[var(--t-2)] mb-1 block">Telegram</span>
+        <span className="text-xs font-medium text-[var(--t-2)] mb-1 block">{t.telegramLabel}</span>
         <input
           type="text"
           name="telegramUsername"
           required
           autoComplete="off"
-          placeholder="@username в Telegram"
+          placeholder={t.telegramPlaceholder}
           className={FIELD}
           maxLength={32}
           defaultValue={fv?.telegramUsername ?? ""}
@@ -106,24 +139,24 @@ export function RegisterForm() {
 
       {/* Password */}
       <label className="block">
-        <span className="text-xs font-medium text-[var(--t-2)] mb-1 block">Пароль</span>
+        <span className="text-xs font-medium text-[var(--t-2)] mb-1 block">{t.passwordLabel}</span>
         <input
           type="password"
           name="password"
           required
           autoComplete="new-password"
-          placeholder="Минимум 6 символов"
+          placeholder={t.passwordPlaceholder}
           className={FIELD}
         />
       </label>
       <label className="block">
-        <span className="text-xs font-medium text-[var(--t-2)] mb-1 block">Повтори пароль</span>
+        <span className="text-xs font-medium text-[var(--t-2)] mb-1 block">{t.confirmLabel}</span>
         <input
           type="password"
           name="confirm"
           required
           autoComplete="new-password"
-          placeholder="Ещё раз"
+          placeholder={t.confirmPlaceholder}
           className={FIELD}
         />
       </label>
@@ -138,7 +171,7 @@ export function RegisterForm() {
         disabled={isPending || isAutoLogging}
         className="w-full h-12 rounded-full bg-[var(--brand-gold)] text-[#1a1208] font-semibold text-sm hover:bg-[var(--brand-gold-bright)] transition-colors disabled:opacity-50 mt-2"
       >
-        {isAutoLogging ? "Входим в аккаунт..." : isPending ? "Создаём аккаунт..." : "Создать аккаунт"}
+        {isAutoLogging ? t.autoLoginButton : isPending ? t.submittingButton : t.submitButton}
       </button>
     </form>
   );

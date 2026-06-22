@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { TrendingUp, TrendingDown, Clock, Sparkles } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 export type LiveSignal = {
   id: string;
@@ -16,11 +17,7 @@ export type LiveSignal = {
   createdAtIso: string;
 };
 
-const TIER_LABEL: Record<string, string> = {
-  otc: "OTC",
-  exchange: "Биржа",
-  elite: "Elite",
-};
+// TIER_LABEL computed inside component using t
 
 function parseExpirationSeconds(s: string): number {
   const m = /^(\d+)([sm])$/.exec(s);
@@ -30,6 +27,12 @@ function parseExpirationSeconds(s: string): number {
 }
 
 export function LiveSignalHero({ signal }: { signal: LiveSignal | null }) {
+  const { t } = useI18n();
+  const TIER_LABEL: Record<string, string> = {
+    otc: "OTC",
+    exchange: t.liveSignalHero.tierExchange,
+    elite: "Elite",
+  };
   const [now, setNow] = useState<number>(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -47,9 +50,9 @@ export function LiveSignalHero({ signal }: { signal: LiveSignal | null }) {
           className="mx-auto mb-3"
           style={{ color: "var(--brand-gold)" }}
         />
-        <h3 className="text-lg font-semibold mb-1">Активных сигналов нет</h3>
+        <h3 className="text-lg font-semibold mb-1">{t.liveSignalHero.noActiveSignals}</h3>
         <p className="text-sm text-[var(--t-2)]">
-          Как только появится новый сигнал — он отобразится здесь мгновенно.
+          {t.liveSignalHero.noActiveDesc}
         </p>
       </div>
     );
@@ -81,11 +84,11 @@ export function LiveSignalHero({ signal }: { signal: LiveSignal | null }) {
             className="w-2 h-2 rounded-full animate-pulse"
             style={{ background: isExpired ? "#666" : accent }}
           />
-          {isExpired ? "Сигнал истёк" : "Live сигнал"}
+          {isExpired ? t.liveSignalHero.signalExpired : t.liveSignalHero.liveSignal}
         </div>
         <div className="text-xs text-[var(--t-3)]">
           {TIER_LABEL[signal.tier] ?? signal.tier} ·{" "}
-          {signal.expiration} экспирация
+          {signal.expiration} {t.liveSignalHero.expiration}
         </div>
       </div>
 
@@ -100,7 +103,7 @@ export function LiveSignalHero({ signal }: { signal: LiveSignal | null }) {
         >
           {isCall ? <TrendingUp size={36} /> : <TrendingDown size={36} />}
           <span className="text-[10px] font-bold mt-1">
-            {isCall ? "ВВЕРХ" : "ВНИЗ"}
+            {isCall ? t.liveSignalHero.directionUp : t.liveSignalHero.directionDown}
           </span>
         </div>
 
@@ -113,7 +116,7 @@ export function LiveSignalHero({ signal }: { signal: LiveSignal | null }) {
           </div>
           <div className="flex items-center gap-3 text-sm">
             <div className="flex items-center gap-2 text-[var(--t-2)]">
-              <span>Уверенность</span>
+              <span>{t.liveSignalHero.confidence}</span>
               <span
                 className="font-bold text-base"
                 style={{ color: "var(--brand-gold)" }}
@@ -123,7 +126,7 @@ export function LiveSignalHero({ signal }: { signal: LiveSignal | null }) {
             </div>
             {signal.entryPrice != null && (
               <div className="flex items-center gap-2 text-[var(--t-2)]">
-                <span>Вход</span>
+                <span>{t.liveSignalHero.entryPrice}</span>
                 <span
                   className="font-mono font-semibold text-base"
                   style={{ color: "var(--t-1)" }}
@@ -135,7 +138,7 @@ export function LiveSignalHero({ signal }: { signal: LiveSignal | null }) {
             {signal.entryTime && (
               <div className="flex items-center gap-2 text-[var(--t-2)]">
                 <Clock size={14} />
-                <span>Время входа</span>
+                <span>{t.liveSignalHero.entryTime}</span>
                 <span
                   className="font-mono font-semibold text-base"
                   style={{ color: "var(--brand-gold)" }}
@@ -155,7 +158,7 @@ export function LiveSignalHero({ signal }: { signal: LiveSignal | null }) {
         <div className="md:text-right shrink-0">
           <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[var(--t-3)] md:justify-end">
             <Clock size={14} />
-            {isExpired ? "Истёк" : "Истекает через"}
+            {isExpired ? t.liveSignalHero.expired : t.liveSignalHero.expiresIn}
           </div>
           <div
             className="text-4xl md:text-5xl font-bold tabular-nums"

@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { Trophy, Crown, Medal, Award } from "lucide-react";
 import { redirect } from "next/navigation";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 type LeaderboardEntry = {
   nickname: string;
@@ -47,6 +48,8 @@ export default async function LeaderboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
+  const t = await getDictionaryForUser(session.user.id);
+
   const setting = await prisma.siteSettings.findUnique({
     where: { key: "leaderboard_top10" },
   });
@@ -63,10 +66,10 @@ export default async function LeaderboardPage() {
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
           <Trophy size={20} style={{ color: "var(--brand-gold)" }} />
-          <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>Рейтинг трейдеров</h1>
+          <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0 }}>{t.leaderboard.title}</h1>
         </div>
         <p style={{ fontSize: "13px", color: "var(--t-2)", margin: "4px 0 0 0" }}>
-          Топ-10 лучших трейдеров платформы. Обновляется регулярно.
+          {t.leaderboard.desc}
         </p>
       </div>
 
@@ -96,15 +99,15 @@ export default async function LeaderboardPage() {
           }}
         >
           <span>#</span>
-          <span>Трейдер</span>
-          <span>Тир</span>
-          <span style={{ textAlign: "right" }}>Заработали ($)</span>
-          <span style={{ textAlign: "right" }}>Сигналы</span>
+          <span>{t.leaderboard.colTrader}</span>
+          <span>{t.leaderboard.colTier}</span>
+          <span style={{ textAlign: "right" }}>{t.leaderboard.colEarnings}</span>
+          <span style={{ textAlign: "right" }}>{t.leaderboard.colSignals}</span>
         </div>
 
         {top10.length === 0 ? (
           <div style={{ padding: "40px 16px", textAlign: "center", color: "var(--t-2)", fontSize: "14px" }}>
-            Пока нет трейдеров в рейтинге.
+            {t.leaderboard.empty}
           </div>
         ) : (
           top10.map((entry, i) => {

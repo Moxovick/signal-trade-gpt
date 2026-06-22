@@ -27,112 +27,49 @@ import { LiveChart } from "@/components/market/LiveChart";
 import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
 import { HeroCTA } from "@/components/shared/HeroCTA";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { getDictionary, getDictionaryForUser } from "@/lib/i18n";
 
-const TIERS = [
-  {
-    tier: 0,
-    deposit: "$0",
-    name: "Бесплатный",
-    perks: [
-      "Регистрация на PocketOption по нашей ссылке",
-      "3 OTC-сигнала в день",
-      "Доступ к личному кабинету и боту",
-    ],
-  },
-  {
-    tier: 1,
-    deposit: "от $20",
-    name: "Базовый",
-    perks: [
-      "10 сигналов в день",
-      "OTC + биржевые сигналы",
-      "Доступ к личному кабинету и боту",
-    ],
-  },
-  {
-    tier: 2,
-    deposit: "от $100",
-    name: "Про",
-    perks: [
-      "Безлимит сигналов 24/7",
-      "Все типы: OTC + биржа + Elite-пары",
-      "Аналитика + индикаторы + углублённый разбор",
-    ],
-  },
-];
-
-const STEPS = [
-  {
-    n: "01",
-    title: "Зарегистрируйся на сайте",
-    desc: "Email + пароль. 30 секунд. Без регистрации в Telegram.",
-    icon: UserPlus,
-  },
-  {
-    n: "02",
-    title: "Открой счёт PocketOption",
-    desc: "По нашей реферальной ссылке. Внеси депозит — открой свой тир.",
-    icon: CircleDollarSign,
-  },
-  {
-    n: "03",
-    title: "Получай сигналы",
-    desc: "Сигналы приходят в личный кабинет и в Telegram-бота, если привяжешь его.",
-    icon: TrendingUp,
-  },
-];
-
-const FEATURES = [
-  {
-    icon: Sparkles,
-    title: "AI Confidence на каждом сигнале",
-    desc: "Уверенность 73–96%. Чем выше — тем сильнее сигнал.",
-  },
-  {
-    icon: Layers,
-    title: "Доступ — через регистрацию, не через подписку",
-    desc: "Никаких ежемесячных платежей. Регистрируешься на PocketOption по нашей ссылке — получаешь доступ к сигналам.",
-  },
-  {
-    icon: BarChart3,
-    title: "Полный набор инструментов от $100",
-    desc: "С депозитом от $100 открывается Про: безлимит сигналов, все типы, графики с RSI/MACD и аналитика.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Прозрачно и автоматически",
-    desc: "PocketOption присылает нам Postback — мы видим депозит и сразу обновляем тир.",
-  },
-];
-
-const FALLBACK_FAQS = [
-  {
-    q: "Это бесплатно?",
-    a: "Да. SpaceSignal не берёт подписок. Доступ открывается регистрацией на PocketOption по нашей ссылке. Мы зарабатываем на партнёрке — поэтому заинтересованы в качестве сигналов.",
-  },
-  {
-    q: "Какие уровни доступа?",
-    a: "Free — 3 OTC-сигнала в день (после привязки PO). Basic (от $20) — 10 сигналов, OTC + биржевые. Pro (от $100) — безлимит, все типы + аналитика.",
-  },
-  {
-    q: "У меня уже есть аккаунт PocketOption",
-    a: "Если аккаунт создан не по нашей ссылке — постбэки не приходят. Зарегистрируй новый аккаунт по нашей реф-ссылке (можно на другую почту) и привяжи Trader ID.",
-  },
-  {
-    q: "Где приходят сигналы?",
-    a: "В Telegram-боте — каждый сигнал приходит в чат. На сайте в разделе «Сигналы» можно смотреть историю и ленту.",
-  },
-  {
-    q: "Как найти свой PocketOption ID?",
-    a: "На сайте PocketOption: правый верхний угол → аватарка → «Профиль». ID — это 6–9 цифр. Скопируй и привяжи в личном кабинете или в боте командой /link.",
-  },
-  {
-    q: "Это финансовый совет?",
-    a: "Нет. SpaceSignal не является финансовым советником. Все сигналы — информационные. Торговля бинарными опционами сопряжена с высоким риском.",
-  },
-];
+const STEP_ICONS = [UserPlus, CircleDollarSign, TrendingUp];
+const FEATURE_ICONS = [Sparkles, Layers, BarChart3, ShieldCheck];
 
 export default async function LandingPage() {
+  const session = await auth();
+  const t = session?.user?.id
+    ? await getDictionaryForUser(session.user.id)
+    : await getDictionary("ru");
+
+  const landing = t.landing as {
+    partnerBadge: string;
+    heroTitle: string;
+    heroSubtitle: string;
+    heroSecondary: string;
+    signalMockup: {
+      liveBadge: string;
+      otcLabel: string;
+      directionUp: string;
+      confidenceLabel: string;
+      expiresLabel: string;
+    };
+    stats: Array<{ value: string; label: string }>;
+    stepsLabel: string;
+    stepsTitle: string;
+    steps: Array<{ n: string; title: string; desc: string }>;
+    tiersLabel: string;
+    tiersTitle: string;
+    tiersSubtitle: string;
+    tiers: Array<{ tier: number; deposit: string; name: string; perks: string[] }>;
+    features: Array<{ title: string; desc: string }>;
+    reviewsLabel: string;
+    reviewsTitle: string;
+    faqLabel: string;
+    faqTitle: string;
+    faqAllLink: string;
+    fallbackFaqs: Array<{ q: string; a: string }>;
+    ctaTitle: string;
+    ctaSubtitle: string;
+  };
+
   const [featuredReviews, faqs] = await Promise.all([
     prisma.review
       .findMany({
@@ -151,11 +88,44 @@ export default async function LandingPage() {
   ]);
   const FAQS = faqs.length
     ? faqs.map((f) => ({ q: f.question, a: f.answer }))
-    : FALLBACK_FAQS;
+    : landing.fallbackFaqs;
+
+  const siteTranslations = {
+    nav: t.nav as {
+      howItWorks: string;
+      aboutUs: string;
+      login: string;
+      register: string;
+      closeMenu: string;
+      openMenu: string;
+      cabinetFallback: string;
+      avatarAlt: string;
+    },
+    footer: t.footer as {
+      disclaimer: string;
+      sectionPlatform: string;
+      sectionSupport: string;
+      links: {
+        howItWorks: string;
+        aboutUs: string;
+        register: string;
+        login: string;
+        faq: string;
+        terms: string;
+        privacy: string;
+        dashboard: string;
+      };
+    },
+  };
+
+  const heroCTATranslations = {
+    register: (t.heroCta as { register: string; dashboard: string }).register,
+    dashboard: (t.heroCta as { register: string; dashboard: string }).dashboard,
+  };
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader translations={siteTranslations} />
 
       <main className="relative">
         {/* Hero */}
@@ -165,21 +135,23 @@ export default async function LandingPage() {
             <div className="text-center md:text-left">
               <div className="inline-flex items-center gap-2 px-3 h-8 rounded-full text-xs uppercase tracking-widest border border-[var(--b-soft)] text-[var(--brand-gold)] bg-[var(--bg-1)]">
                 <Sparkles size={12} />
-                <span>RevShare partnership · PocketOption</span>
+                <span>{landing.partnerBadge}</span>
               </div>
               <h1 className="mt-8 text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] text-shimmer">
-                Сигналы, открытые
-                <br />
-                твоим депозитом
+                {landing.heroTitle.split("\n").map((line, i, arr) => (
+                  <span key={i}>
+                    {line}
+                    {i < arr.length - 1 && <br />}
+                  </span>
+                ))}
               </h1>
               <p className="mt-6 max-w-xl text-lg text-[var(--t-2)] md:mx-0 mx-auto">
-                Регистрируйся, открой счёт PocketOption по нашей ссылке — и получай
-                AI-сигналы безлимитом. Чем выше депозит — тем глубже анализ.
+                {landing.heroSubtitle}
               </p>
               <div className="mt-10 flex flex-col sm:flex-row gap-3 md:justify-start justify-center items-center">
-                <HeroCTA />
+                <HeroCTA translations={heroCTATranslations} />
                 <ButtonLink href="/how-it-works" variant="secondary" size="lg">
-                  Как это работает
+                  {landing.heroSecondary}
                 </ButtonLink>
               </div>
             </div>
@@ -198,9 +170,9 @@ export default async function LandingPage() {
                 <div className="px-5 py-3 flex items-center justify-between border-b border-white/[0.06]">
                   <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-[var(--brand-gold)]">
                     <span className="w-2 h-2 rounded-full bg-[var(--green)] animate-pulse" />
-                    Live сигнал
+                    {landing.signalMockup.liveBadge}
                   </div>
-                  <span className="text-[10px] text-[var(--t-3)]">OTC · 3m</span>
+                  <span className="text-[10px] text-[var(--t-3)]">{landing.signalMockup.otcLabel}</span>
                 </div>
                 {/* Body */}
                 <div className="px-5 py-5">
@@ -214,14 +186,14 @@ export default async function LandingPage() {
                       }}
                     >
                       <TrendingUp size={24} />
-                      <span className="text-[8px] font-bold mt-0.5">ВВЕРХ</span>
+                      <span className="text-[8px] font-bold mt-0.5">{landing.signalMockup.directionUp}</span>
                     </div>
                     <div>
                       <div className="text-2xl font-bold" style={{ fontFamily: "var(--font-jetbrains)" }}>
                         EUR/USD
                       </div>
                       <div className="flex items-center gap-2 text-xs text-[var(--t-2)] mt-0.5">
-                        Уверенность
+                        {landing.signalMockup.confidenceLabel}
                         <span className="font-bold text-sm" style={{ color: "var(--brand-gold)" }}>
                           91%
                         </span>
@@ -236,7 +208,7 @@ export default async function LandingPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[var(--t-3)]">
                       <Clock size={11} />
-                      Истекает через
+                      {landing.signalMockup.expiresLabel}
                     </div>
                     <div
                       className="text-xl font-bold tabular-nums"
@@ -256,12 +228,7 @@ export default async function LandingPage() {
 
           {/* Stats */}
           <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { value: "87.3%", label: "средняя точность" },
-              { value: "12 800+", label: "трейдеров в системе" },
-              { value: "24/7", label: "OTC-сигналы" },
-              { value: "5%", label: "реферальный доход" },
-            ].map((s) => (
+            {landing.stats.map((s) => (
               <div
                 key={s.label}
                 className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] px-4 py-4 transition-all duration-200 hover:border-[var(--b-hard)]"
@@ -284,24 +251,27 @@ export default async function LandingPage() {
         <section id="how" className="max-w-6xl mx-auto px-6 py-24 fade-up-section">
           <div className="text-center mb-16">
             <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
-              Процесс
+              {landing.stepsLabel}
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold">3 шага до первого сигнала</h2>
+            <h2 className="text-4xl md:text-5xl font-bold">{landing.stepsTitle}</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-5">
-            {STEPS.map((s) => (
-              <Card key={s.n} hover padding="md">
-                <div
-                  className="text-xs font-mono text-[var(--t-3)] mb-4"
-                  style={{ fontFamily: "var(--font-jetbrains)" }}
-                >
-                  {s.n}
-                </div>
-                <s.icon size={28} className="text-[var(--brand-gold)] mb-4" />
-                <h3 className="text-lg font-semibold mb-2">{s.title}</h3>
-                <p className="text-sm text-[var(--t-2)] leading-relaxed">{s.desc}</p>
-              </Card>
-            ))}
+            {landing.steps.map((s, i) => {
+              const Icon = STEP_ICONS[i] ?? UserPlus;
+              return (
+                <Card key={s.n} hover padding="md">
+                  <div
+                    className="text-xs font-mono text-[var(--t-3)] mb-4"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
+                    {s.n}
+                  </div>
+                  <Icon size={28} className="text-[var(--brand-gold)] mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">{s.title}</h3>
+                  <p className="text-sm text-[var(--t-2)] leading-relaxed">{s.desc}</p>
+                </Card>
+              );
+            })}
           </div>
         </section>
 
@@ -309,35 +279,34 @@ export default async function LandingPage() {
         <section id="tiers" className="max-w-6xl mx-auto px-6 py-24 fade-up-section">
           <div className="text-center mb-16">
             <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
-              Перки по депозиту
+              {landing.tiersLabel}
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold">3 уровня доступа</h2>
+            <h2 className="text-4xl md:text-5xl font-bold">{landing.tiersTitle}</h2>
             <p className="mt-4 text-[var(--t-2)] max-w-xl mx-auto">
-              Бесплатный — для всех, кто зарегистрировался на PocketOption
-              по нашей реф-ссылке. Базовый — от $20. Про — от $100.
+              {landing.tiersSubtitle}
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl mx-auto">
-            {TIERS.map((t) => (
+            {landing.tiers.map((tier) => (
               <Card
-                key={t.tier}
-                variant={t.tier === 2 ? "highlight" : "default"}
+                key={tier.tier}
+                variant={tier.tier === 2 ? "highlight" : "default"}
                 hover
                 padding="lg"
                 className="flex flex-col"
               >
-                <TierBadge tier={t.tier} size="sm" />
+                <TierBadge tier={tier.tier} size="sm" />
                 <div
                   className="mt-4 text-3xl font-bold"
                   style={{ fontFamily: "var(--font-jetbrains)" }}
                 >
-                  {t.deposit}
+                  {tier.deposit}
                 </div>
                 <div className="mt-1 text-xs uppercase tracking-wider text-[var(--t-3)]">
-                  {t.name}
+                  {tier.name}
                 </div>
                 <ul className="mt-5 space-y-2 text-sm flex-1">
-                  {t.perks.map((p) => (
+                  {tier.perks.map((p) => (
                     <li key={p} className="flex gap-2 text-[var(--t-2)]">
                       <span className="text-[var(--brand-gold)] mt-0.5">•</span>
                       {p}
@@ -352,25 +321,28 @@ export default async function LandingPage() {
         {/* Features */}
         <section className="max-w-6xl mx-auto px-6 py-20 fade-up-section">
           <div className="grid md:grid-cols-2 gap-5">
-            {FEATURES.map((f) => (
-              <Card key={f.title} padding="lg" hover>
-                <div className="flex items-start gap-4">
-                  <div
-                    className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0"
-                    style={{
-                      background: "rgba(212, 160, 23, 0.08)",
-                      border: "1px solid var(--b-soft)",
-                    }}
-                  >
-                    <f.icon size={22} className="text-[var(--brand-gold)]" />
+            {landing.features.map((f, i) => {
+              const Icon = FEATURE_ICONS[i] ?? Sparkles;
+              return (
+                <Card key={f.title} padding="lg" hover>
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0"
+                      style={{
+                        background: "rgba(212, 160, 23, 0.08)",
+                        border: "1px solid var(--b-soft)",
+                      }}
+                    >
+                      <Icon size={22} className="text-[var(--brand-gold)]" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold mb-1">{f.title}</h3>
+                      <p className="text-[var(--t-2)] leading-relaxed">{f.desc}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xl font-semibold mb-1">{f.title}</h3>
-                    <p className="text-[var(--t-2)] leading-relaxed">{f.desc}</p>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         </section>
 
@@ -379,9 +351,9 @@ export default async function LandingPage() {
           <section id="reviews" className="max-w-6xl mx-auto px-6 py-20">
             <div className="text-center mb-12">
               <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
-                Отзывы
+                {landing.reviewsLabel}
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold">Что говорят трейдеры</h2>
+              <h2 className="text-4xl md:text-5xl font-bold">{landing.reviewsTitle}</h2>
             </div>
             <div className="grid md:grid-cols-3 gap-5">
               {featuredReviews.map((r) => {
@@ -440,9 +412,9 @@ export default async function LandingPage() {
         <section id="faq" className="max-w-6xl mx-auto px-6 py-20">
           <div className="text-center mb-12">
             <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
-              FAQ
+              {landing.faqLabel}
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold">Частые вопросы</h2>
+            <h2 className="text-4xl md:text-5xl font-bold">{landing.faqTitle}</h2>
           </div>
           <div className="grid md:grid-cols-2 gap-3 items-start">
             {FAQS.map((f, idx) => (
@@ -466,7 +438,7 @@ export default async function LandingPage() {
               href="/faq"
               className="inline-flex items-center gap-1 text-sm text-[var(--brand-gold)] hover:text-[var(--t-1)] transition-colors"
             >
-              Все вопросы <ArrowRight size={14} />
+              {landing.faqAllLink} <ArrowRight size={14} />
             </Link>
           </div>
         </section>
@@ -474,18 +446,18 @@ export default async function LandingPage() {
         {/* CTA */}
         <section className="max-w-4xl mx-auto px-6 py-20 text-center">
           <Card variant="highlight" padding="lg">
-            <h2 className="text-3xl md:text-4xl font-bold">Готов начать?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold">{landing.ctaTitle}</h2>
             <p className="mt-4 text-[var(--t-2)]">
-              Регистрация занимает 30 секунд. Демо-сигналы доступны сразу.
+              {landing.ctaSubtitle}
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-              <HeroCTA />
+              <HeroCTA translations={heroCTATranslations} />
             </div>
           </Card>
         </section>
       </main>
 
-      <SiteFooter />
+      <SiteFooter translations={siteTranslations} />
     </>
   );
 }

@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export default async function SettingsHubPage() {
   const session = await auth();
@@ -36,18 +37,20 @@ export default async function SettingsHubPage() {
   });
   if (!user) redirect("/login");
 
+  const t = await getDictionaryForUser(session.user.id);
+
   const poStatus = user.poAccount?.status ?? null;
   const poConnected = !!user.poAccount;
   const tgConnected = !!user.telegramId;
 
   const sections = [
     {
-      group: "Аккаунт",
+      group: t.settings.groupAccount,
       items: [
         {
           href: "/dashboard/settings/appearance",
-          label: "Внешний вид",
-          description: "Язык и часовой пояс",
+          label: t.settings.appearance,
+          description: t.settings.appearanceDesc,
           icon: Palette,
           iconColor: "#a78bfa",
           iconBg: "rgba(167,139,250,0.15)",
@@ -55,8 +58,8 @@ export default async function SettingsHubPage() {
         },
         {
           href: "/dashboard/settings/notifications",
-          label: "Уведомления",
-          description: "Telegram, браузерные push",
+          label: t.settings.notifications,
+          description: t.settings.notificationsDesc,
           icon: Bell,
           iconColor: "#f59e0b",
           iconBg: "rgba(245,158,11,0.15)",
@@ -64,8 +67,8 @@ export default async function SettingsHubPage() {
         },
         {
           href: "/dashboard/settings/security",
-          label: "Безопасность",
-          description: "Пароль, журнал входов",
+          label: t.settings.security,
+          description: t.settings.securityDesc,
           icon: Shield,
           iconColor: "#34d399",
           iconBg: "rgba(52,211,153,0.15)",
@@ -74,29 +77,29 @@ export default async function SettingsHubPage() {
       ],
     },
     {
-      group: "Интеграции",
+      group: t.settings.groupIntegrations,
       items: [
         {
           href: "/dashboard/settings/telegram",
-          label: "Telegram",
-          description: "Привязка для бота и Mini App",
+          label: t.settings.telegram,
+          description: t.settings.telegramDesc,
           icon: Send,
           iconColor: "#38bdf8",
           iconBg: "rgba(56,189,248,0.15)",
           badge: tgConnected ? (
             <span className="inline-flex items-center gap-1 text-[11px] text-[var(--green)]">
-              <CheckCircle2 size={10} /> Привязан
+              <CheckCircle2 size={10} /> {t.settings.tgConnected}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-[11px] text-[var(--t-3)]">
-              <AlertCircle size={10} /> Не привязан
+              <AlertCircle size={10} /> {t.settings.tgNotConnected}
             </span>
           ),
         },
         {
           href: "/dashboard/settings/pocketoption",
-          label: "PocketOption",
-          description: "Аккаунт, депозиты, история пополнений",
+          label: t.settings.pocketOption,
+          description: t.settings.pocketOptionDesc,
           icon: Link2,
           iconColor: "#d4a017",
           iconBg: "rgba(212,160,23,0.15)",
@@ -114,32 +117,32 @@ export default async function SettingsHubPage() {
             >
               <CheckCircle2 size={10} />
               {poStatus === "verified"
-                ? "Подтверждён"
+                ? t.settings.poVerified
                 : poStatus === "pending"
-                ? "На проверке"
-                : "Отклонён"}
+                ? t.settings.poReview
+                : t.settings.poRejected}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-[11px] text-[var(--t-3)]">
-              <AlertCircle size={10} /> Не привязан
+              <AlertCircle size={10} /> {t.settings.poNotConnected}
             </span>
           ),
         },
       ],
     },
     {
-      group: "Активность",
+      group: t.settings.groupActivity,
       items: [
         {
           href: "/dashboard/achievements",
-          label: "Достижения",
-          description: "Бейджи, серии, прогресс",
+          label: t.settings.achievementsLabel,
+          description: t.settings.achievementsDesc,
           icon: Trophy,
           iconColor: "#fb923c",
           iconBg: "rgba(251,146,60,0.15)",
           badge: (
             <span className="text-[11px] text-[var(--t-3)]">
-              {user.signalsReceived} сигналов
+              {user.signalsReceived} {t.settings.signalsCount}
             </span>
           ),
         },
@@ -151,9 +154,9 @@ export default async function SettingsHubPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Настройки</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t.settings.title}</h1>
         <p className="text-sm text-[var(--t-3)] mt-1">
-          Управление профилем, уведомлениями и интеграциями
+          {t.settings.desc}
         </p>
       </div>
 

@@ -14,6 +14,7 @@ import { Activity } from "lucide-react";
 import { SignalRequestButton } from "./_components/SignalRequestButton";
 import { SignalHistoryList } from "./_components/SignalHistoryList";
 import { SpaceBackground } from "./_components/SpaceBackground";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export default async function SignalsPage() {
   const session = await auth();
@@ -25,6 +26,7 @@ export default async function SignalsPage() {
     buildReferralLink(userId),
   ]);
   if (!report) return null;
+  const t = await getDictionaryForUser(userId);
   const tier = report.tier;
   // Fetch user's own signals (on-demand model: each user sees their own)
   const signals = await prisma.signal.findMany({
@@ -51,9 +53,9 @@ export default async function SignalsPage() {
       {/* Page header */}
       <div>
         <p className="text-[11px] uppercase tracking-[0.28em] text-[var(--brand-gold)] mb-1">
-          Торговые сигналы
+          {t.signals.pageLabel}
         </p>
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Сигналы</h1>
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{t.signals.pageTitle}</h1>
       </div>
 
       {/* Signal request — daily usage bar + pair picker (no Card wrapper) */}
@@ -63,18 +65,18 @@ export default async function SignalsPage() {
             <div className="flex items-center gap-2 text-sm text-[var(--t-2)]">
               <Activity size={16} className="text-[var(--brand-gold)]" />
               <span>
-                Использовано{" "}
+                {t.signals.usedOf}{" "}
                 <span className="font-bold text-[var(--t-1)]">{used}</span>
-                {" "}из{" "}
+                {" "}{t.signals.of}{" "}
                 <span className="font-bold text-[var(--t-1)]">{dailyLimit}</span>
-                {" "}сигналов сегодня
+                {" "}{t.signals.signalsToday}
               </span>
             </div>
           ) : (
             <div className="flex items-center gap-2 text-sm text-[var(--t-2)]">
               <Activity size={16} className="text-[var(--brand-gold)]" />
               <span>
-                Получено сегодня:{" "}
+                {t.signals.receivedToday}{" "}
                 <span className="font-bold text-[var(--t-1)]">{used}</span>
               </span>
               <span
@@ -84,7 +86,7 @@ export default async function SignalsPage() {
                   color: "var(--brand-gold)",
                 }}
               >
-                Безлимит
+                {t.signals.unlimited}
               </span>
             </div>
           )}
@@ -117,12 +119,12 @@ export default async function SignalsPage() {
         {limitReached && (
           <div className="mt-3 space-y-1">
             <p className="text-sm text-[var(--red)]">
-              Лимит исчерпан
+              {t.signals.limitReached}
             </p>
             <p className="text-xs text-[var(--t-3)]">
-              Лимит обновится в 00:00 UTC.
+              {t.signals.limitResetAt}
               {tier < 2 && (
-                <>{" "}Или повысьте уровень для увеличения лимита.</>
+                <>{" "}{t.signals.upgradeHint}</>
               )}
             </p>
           </div>
@@ -133,10 +135,10 @@ export default async function SignalsPage() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-[var(--t-1)]">
-            Ваши сигналы
+            {t.signals.yourSignals}
           </h2>
           <span className="text-xs text-[var(--t-3)]">
-            {signals.length} записей
+            {signals.length} {t.signals.records}
           </span>
         </div>
 
@@ -149,9 +151,9 @@ export default async function SignalsPage() {
               >
                 <Activity size={28} className="text-[var(--brand-gold)] opacity-60" />
               </div>
-              <h3 className="text-lg font-semibold mb-1">Сигналов пока нет</h3>
+              <h3 className="text-lg font-semibold mb-1">{t.signals.noSignalsTitle}</h3>
               <p className="text-sm text-[var(--t-2)] max-w-xs">
-                Нажмите кнопку выше, чтобы получить ваш первый торговый сигнал.
+                {t.signals.noSignalsDesc}
               </p>
             </div>
           </Card>

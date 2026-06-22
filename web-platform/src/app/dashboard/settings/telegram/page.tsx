@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
 import { TelegramLinkSection } from "./_components/TelegramLinkSection";
 import { Send, CheckCircle2, ExternalLink } from "lucide-react";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export default async function TelegramSettingsPage() {
   const session = await auth();
@@ -17,6 +18,8 @@ export default async function TelegramSettingsPage() {
     select: { telegramId: true, username: true, firstName: true },
   });
   if (!user) redirect("/login");
+
+  const t = await getDictionaryForUser(session.user.id);
 
   const botUsername = (process.env["NEXT_PUBLIC_TELEGRAM_LOGIN_BOT"] ?? "").trim();
 
@@ -63,7 +66,7 @@ export default async function TelegramSettingsPage() {
               {initialLink && (
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--green)] bg-[rgba(142,224,107,0.12)] px-2 py-0.5 rounded-full">
                   <CheckCircle2 size={10} />
-                  Привязан
+                  {t.telegramSettings.linked}
                 </span>
               )}
             </div>
@@ -82,7 +85,7 @@ export default async function TelegramSettingsPage() {
               </div>
             ) : (
               <p className="text-sm text-[var(--t-3)] mt-1">
-                Аккаунт не привязан. Войди через кнопку ниже.
+                {t.telegramSettings.notLinked}
               </p>
             )}
           </div>
@@ -94,7 +97,7 @@ export default async function TelegramSettingsPage() {
               rel="noopener noreferrer"
               className="shrink-0 inline-flex items-center gap-1 text-xs text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
             >
-              Открыть бот <ExternalLink size={11} />
+              {t.telegramSettings.openBot} <ExternalLink size={11} />
             </a>
           )}
         </div>
@@ -103,16 +106,15 @@ export default async function TelegramSettingsPage() {
       {/* Link widget card */}
       <Card padding="lg">
         <h3 className="text-sm font-semibold mb-1 text-[var(--t-1)]">
-          {initialLink ? "Управление привязкой" : "Привязать аккаунт"}
+          {initialLink ? t.telegramSettings.manageLink : t.telegramSettings.linkAccount}
         </h3>
         <p className="text-[12px] text-[var(--t-3)] mb-5 leading-relaxed">
-          Привязка позволяет входить в бот и Mini App без пароля, получать
-          уведомления о сигналах и повышении тира напрямую в Telegram.
+          {t.telegramSettings.linkDesc}
         </p>
 
         {!botUsername ? (
           <div className="rounded-xl border border-[var(--b-soft)] bg-[var(--bg-2)] p-4 text-sm text-[var(--t-3)]">
-            Telegram-бот не настроен на сервере. Свяжись с администратором.
+            {t.telegramSettings.botNotConfigured}
           </div>
         ) : (
           <TelegramLinkSection initialLink={initialLink} />
@@ -122,8 +124,7 @@ export default async function TelegramSettingsPage() {
       {/* Info card */}
       <div className="rounded-xl border border-[var(--b-soft)] bg-[var(--bg-2)] px-4 py-3">
         <p className="text-[12px] text-[var(--t-3)] leading-relaxed">
-          Привязка не передаёт твой номер телефона. Мы получаем только ID,
-          имя и username из публичного профиля Telegram.
+          {t.telegramSettings.privacyNote}
         </p>
       </div>
     </div>

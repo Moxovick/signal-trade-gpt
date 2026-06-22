@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
  * CSS animation removes the splash via `animation-fill-mode: forwards` +
  * `pointer-events: none` after 1.6s, so the page is never visually frozen.
  */
-export function Preloader() {
+export function Preloader({ brandText = "SPACE · SIGNAL" }: { brandText?: string }) {
   const [unmounted, setUnmounted] = useState(false);
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export function Preloader() {
           textShadow: "0 0 32px rgba(212, 160, 23, 0.5)",
         }}
       >
-        SPACE · SIGNAL
+        {brandText}
       </div>
       <div
         className="mt-8 h-[2px] w-64 overflow-hidden rounded-full"

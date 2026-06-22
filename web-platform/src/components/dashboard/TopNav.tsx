@@ -17,15 +17,18 @@ import {
   X,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
+import { useI18n } from "@/lib/i18n/context";
 
 /** Avatar with onError fallback to initials */
 function UserAvatar({
   src,
   initial,
+  alt,
   size = "w-7 h-7",
 }: {
   src: string | null | undefined;
   initial: string;
+  alt: string;
   size?: string;
 }) {
   const [failed, setFailed] = useState(false);
@@ -33,7 +36,7 @@ function UserAvatar({
     return (
       <img
         src={src}
-        alt="Аватар"
+        alt={alt}
         className={`${size} rounded-full object-cover shrink-0`}
         onError={() => setFailed(true)}
       />
@@ -55,13 +58,6 @@ type NavItem = {
   icon: typeof Send;
 };
 
-const MAIN_NAV: NavItem[] = [
-  { href: "/dashboard/signals", label: "Сигналы", icon: Send },
-  { href: "/dashboard/referrals", label: "Рефералы", icon: Users },
-  { href: "/dashboard/giveaway", label: "Розыгрыш", icon: Gift },
-  { href: "/dashboard/leaderboard", label: "Лидерборд", icon: Trophy },
-];
-
 const BOT_URL = process.env["NEXT_PUBLIC_BOT_URL"] ?? "";
 
 export function DashboardTopNav({
@@ -69,11 +65,20 @@ export function DashboardTopNav({
 }: {
   user: { name: string | null; email: string | null; role?: string; avatar?: string | null };
 }) {
+  const { t } = useI18n();
   const pathname = usePathname();
+
+  const MAIN_NAV: NavItem[] = [
+    { href: "/dashboard/signals", label: t.dashboardNav.signals, icon: Send },
+    { href: "/dashboard/referrals", label: t.dashboardNav.referrals, icon: Users },
+    { href: "/dashboard/giveaway", label: t.dashboardNav.giveaway, icon: Gift },
+    { href: "/dashboard/leaderboard", label: t.dashboardNav.leaderboard, icon: Trophy },
+  ];
   const initial = (user.name ?? user.email ?? "?")[0]!.toUpperCase();
   const displayName = user.name ?? user.email?.split("@")[0] ?? "Trader";
 
   const [mobileOpen, setMobileOpen] = useState(false);
+
 
   // Close menus on navigation
   const [trackedPath, setTrackedPath] = useState(pathname);
@@ -164,7 +169,7 @@ export function DashboardTopNav({
                   : "hover:bg-[var(--bg-2)]"
               }`}
             >
-              <UserAvatar src={user.avatar} initial={initial} />
+              <UserAvatar src={user.avatar} initial={initial} alt={t.dashboardNav.avatar} />
               <span className="text-xs text-[var(--t-2)] max-w-28 truncate hidden md:block">
                 {displayName}
               </span>
@@ -178,7 +183,7 @@ export function DashboardTopNav({
                   ? "text-[var(--brand-gold)] bg-[rgba(212,160,23,0.10)]"
                   : "text-[var(--t-3)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)]"
               }`}
-              aria-label="Настройки"
+              aria-label={t.dashboardNav.settings}
             >
               <SettingsIcon size={17} />
             </Link>
@@ -187,7 +192,7 @@ export function DashboardTopNav({
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
               className="hidden sm:inline-flex p-2 rounded-lg text-[var(--t-3)] hover:text-[var(--red)] hover:bg-[rgba(255,107,61,0.08)] transition-all"
-              aria-label="Выйти"
+              aria-label={t.dashboardNav.logout}
             >
               <LogOut size={17} />
             </button>
@@ -196,7 +201,7 @@ export function DashboardTopNav({
             <button
               onClick={() => setMobileOpen((v) => !v)}
               className="lg:hidden p-2 rounded-lg text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)] transition-all"
-              aria-label="Меню"
+              aria-label={t.dashboardNav.menu}
             >
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -246,7 +251,7 @@ export function DashboardTopNav({
                 size={14}
                 className={pathname.startsWith("/dashboard/settings") ? "text-[var(--brand-gold)]" : "text-[var(--t-3)]"}
               />
-              Настройки
+              {t.dashboardNav.settings}
             </Link>
           </nav>
 
@@ -259,7 +264,7 @@ export function DashboardTopNav({
               className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-[#38bdf8] hover:bg-[rgba(56,189,248,0.08)] transition-colors"
             >
               <Send size={14} />
-              Telegram-бот
+              {t.dashboardNav.telegramBot}
               <ExternalLink size={10} className="opacity-60" />
             </a>
 
@@ -283,9 +288,9 @@ export function DashboardTopNav({
                   : "text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)]"
               }`}
             >
-              <UserAvatar src={user.avatar} initial={initial} />
+              <UserAvatar src={user.avatar} initial={initial} alt={t.dashboardNav.avatar} />
               <span className="text-sm truncate">{displayName}</span>
-              <span className="text-[10px] text-[var(--t-3)] ml-auto">Профиль</span>
+              <span className="text-[10px] text-[var(--t-3)] ml-auto">{t.dashboardNav.profile}</span>
             </Link>
 
             {/* Logout — mobile */}
@@ -294,7 +299,7 @@ export function DashboardTopNav({
               className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--red)] hover:bg-[rgba(255,107,61,0.08)] transition-colors w-full text-left"
             >
               <LogOut size={14} />
-              Выйти
+              {t.dashboardNav.logout}
             </button>
           </div>
         </div>

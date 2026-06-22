@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { DashboardTopNav } from "@/components/dashboard/TopNav";
 import { TelegramLinkBanner } from "@/components/dashboard/TelegramLinkBanner";
+import { getDictionaryForUser, getLocaleForUser } from "@/lib/i18n";
+import { I18nProvider } from "@/lib/i18n/context";
 
 export default async function DashboardLayout({
   children,
@@ -44,13 +46,20 @@ export default async function DashboardLayout({
     avatar: dbUser?.avatar ?? null,
   };
 
+  const [dictionary, locale] = await Promise.all([
+    getDictionaryForUser(session.user.id),
+    getLocaleForUser(session.user.id),
+  ]);
+
   return (
-    <div className="min-h-screen">
-      <DashboardTopNav user={userWithAvatar} />
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        {!hasTelegram && <TelegramLinkBanner />}
-        {children}
-      </main>
-    </div>
+    <I18nProvider locale={locale} dictionary={dictionary}>
+      <div className="min-h-screen">
+        <DashboardTopNav user={userWithAvatar} />
+        <main className="max-w-6xl mx-auto px-6 py-8">
+          {!hasTelegram && <TelegramLinkBanner />}
+          {children}
+        </main>
+      </div>
+    </I18nProvider>
   );
 }

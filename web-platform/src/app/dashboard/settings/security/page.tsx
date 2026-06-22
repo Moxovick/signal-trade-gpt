@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { ChangePasswordForm } from "./_components/ChangePasswordForm";
 import { LoginLog } from "./_components/LoginLog";
 import { KeyRound, ScrollText } from "lucide-react";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export default async function SecuritySettingsPage() {
   const session = await auth();
@@ -26,17 +27,19 @@ export default async function SecuritySettingsPage() {
   ]);
   if (!user) redirect("/login");
 
+  const t = await getDictionaryForUser(session.user.id);
+
   return (
     <div className="space-y-6">
       <Card padding="lg">
         <div className="flex items-center gap-2 mb-1">
           <KeyRound size={18} className="text-[var(--brand-gold)]" />
-          <h2 className="text-lg font-semibold">Пароль</h2>
+          <h2 className="text-lg font-semibold">{t.security.passwordTitle}</h2>
         </div>
         <p className="text-sm text-[var(--t-3)] mb-6">
           {user.passwordHash
-            ? "Смени пароль, если подозреваешь что им мог завладеть кто-то ещё."
-            : "У твоего аккаунта ещё нет пароля — ты входил через Telegram. Установи пароль, чтобы иметь запасной способ входа."}
+            ? t.security.passwordDescHas
+            : t.security.passwordDescNoPass}
         </p>
         <ChangePasswordForm hasPassword={!!user.passwordHash} />
       </Card>
@@ -44,10 +47,10 @@ export default async function SecuritySettingsPage() {
       <Card padding="lg">
         <div className="flex items-center gap-2 mb-1">
           <ScrollText size={18} className="text-[var(--brand-gold)]" />
-          <h2 className="text-lg font-semibold">Журнал безопасности</h2>
+          <h2 className="text-lg font-semibold">{t.security.logTitle}</h2>
         </div>
         <p className="text-sm text-[var(--t-3)] mb-6">
-          Последние 20 событий: входы, смены пароля, неудачные попытки.
+          {t.security.logDesc}
         </p>
         <LoginLog
           events={events.map((e) => ({
