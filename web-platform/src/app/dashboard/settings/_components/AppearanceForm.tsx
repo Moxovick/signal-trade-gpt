@@ -101,7 +101,7 @@ export function AppearanceForm({
         body: JSON.stringify({ theme: "dark", language, timezone }),
       });
       if (!r.ok) {
-        setError("Не удалось сохранить. Попробуй ещё раз.");
+        setError(t.appearance.errorSave);
         return;
       }
       setSaved(true);
@@ -123,10 +123,11 @@ export function AppearanceForm({
       <section>
         <label className="flex items-center gap-2 text-[13px] font-semibold text-[var(--t-1)] mb-3">
           <Globe size={14} className="text-[var(--brand-gold)]" />
-          Язык интерфейса
+          {t.appearance.langLabel}
         </label>
         <div className="grid grid-cols-3 gap-3">
-          {LANGUAGES.map(({ value, label, native }) => {
+          {LANGUAGES.map(({ value, native }) => {
+            const label = LANG_LABELS[value] ?? value;
             const active = language === value;
             return (
               <button
@@ -161,7 +162,7 @@ export function AppearanceForm({
         </div>
         {language !== "ru" && (
           <p className="text-[11px] text-[var(--t-3)] mt-2 pl-1">
-            Поддержка {language.toUpperCase()} в процессе — часть текстов пока на русском.
+            {t.appearance.langPartialHint.replace("{lang}", language.toUpperCase())}
           </p>
         )}
       </section>
@@ -173,7 +174,7 @@ export function AppearanceForm({
           className="flex items-center gap-2 text-[13px] font-semibold text-[var(--t-1)] mb-3"
         >
           <Clock size={14} className="text-[var(--brand-gold)]" />
-          Часовой пояс
+          {t.appearance.timezoneLabel}
         </label>
         <select
           id="tz"
@@ -207,11 +208,11 @@ export function AppearanceForm({
           disabled={pending}
           iconLeft={saved ? <Check size={14} /> : <Save size={14} />}
         >
-          {pending ? "Сохраняю..." : saved ? "Сохранено" : "Сохранить"}
+          {pending ? t.appearance.saving : saved ? t.appearance.saved : t.appearance.save}
         </Button>
         {error && <span className="text-xs text-[var(--red)]">{error}</span>}
         {saved && (
-          <span className="text-xs text-[var(--green)]">Настройки применены</span>
+          <span className="text-xs text-[var(--green)]">{t.appearance.settingsApplied}</span>
         )}
       </div>
     </div>

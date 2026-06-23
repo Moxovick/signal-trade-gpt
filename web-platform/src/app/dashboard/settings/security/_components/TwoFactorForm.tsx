@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Check, ShieldCheck, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useI18n } from "@/lib/i18n/context";
 
 export function TwoFactorForm({
   email,

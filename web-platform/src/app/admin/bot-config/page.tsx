@@ -7,10 +7,16 @@
 import { prisma } from "@/lib/prisma";
 import { parseBotConfig } from "@/lib/bot-config";
 import { BotConfigForm } from "./_components/BotConfigForm";
+import { auth } from "@/lib/auth";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function BotConfigPage() {
+  const session = await auth();
+  const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
+  const tbc = t?.admin?.botConfig ?? {};
+
   const rows = await prisma.siteSettings.findMany({
     where: { key: { startsWith: "bot_" } },
   });
@@ -22,11 +28,9 @@ export default async function BotConfigPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Конфиг бота</h1>
+        <h1 className="text-2xl font-bold">{(tbc as { pageTitle?: string }).pageTitle ?? "Конфиг бота"}</h1>
         <p className="text-xs text-[#666] mt-1 max-w-2xl">
-          Все настройки бота в одном месте. Бот синхронизируется с этими
-          значениями через <code>/api/bot/sync</code> каждые 60 секунд. Не
-          требует редеплоя — изменения подхватываются автоматически.
+          {(tbc as { pageDescription?: string }).pageDescription ?? "Все настройки бота в одном месте. Бот синхронизируется с этими значениями через /api/bot/sync каждые 60 секунд. Не требует редеплоя — изменения подхватываются автоматически."}
         </p>
       </div>
       <BotConfigForm initial={config} />

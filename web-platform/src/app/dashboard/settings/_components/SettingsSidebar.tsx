@@ -11,6 +11,7 @@ import {
   Share2,
   Send,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 type Group = {
   label: string;
@@ -24,68 +25,69 @@ type Item = {
   description: string;
 };
 
-const GROUPS: Group[] = [
-  {
-    label: "Аккаунт",
-    items: [
-      {
-        href: "/dashboard/settings",
-        label: "Внешний вид",
-        icon: Palette,
-        description: "Тема, язык, часовой пояс",
-      },
-      {
-        href: "/dashboard/settings/notifications",
-        label: "Уведомления",
-        icon: Bell,
-        description: "Email, Telegram, браузер",
-      },
-      {
-        href: "/dashboard/settings/security",
-        label: "Безопасность",
-        icon: Shield,
-        description: "Пароль, 2FA, сессии",
-      },
-    ],
-  },
-  {
-    label: "Интеграции",
-    items: [
-      {
-        href: "/dashboard/settings/telegram",
-        label: "Telegram",
-        icon: Send,
-        description: "Привязка аккаунта",
-      },
-      {
-        href: "/dashboard/settings/pocketoption",
-        label: "PocketOption",
-        icon: Link2,
-        description: "ID, депозиты, тир",
-      },
-    ],
-  },
-  {
-    label: "Прочее",
-    items: [
-      {
-        href: "/dashboard/settings/achievements",
-        label: "Достижения",
-        icon: Trophy,
-        description: "Бейджи и streak",
-      },
-      {
-        href: "/dashboard/referrals",
-        label: "Рефералы",
-        icon: Share2,
-        description: "Ссылка и статистика",
-      },
-    ],
-  },
-];
-
 export function SettingsSidebar() {
+  const { t } = useI18n();
   const pathname = usePathname();
+
+  const GROUPS: Group[] = [
+    {
+      label: t.settings.groupAccount,
+      items: [
+        {
+          href: "/dashboard/settings",
+          label: t.settings.appearance,
+          icon: Palette,
+          description: t.settings.appearanceDescSidebar,
+        },
+        {
+          href: "/dashboard/settings/notifications",
+          label: t.settings.notifications,
+          icon: Bell,
+          description: t.settings.notificationsDescSidebar,
+        },
+        {
+          href: "/dashboard/settings/security",
+          label: t.settings.security,
+          icon: Shield,
+          description: t.settings.securityDescSidebar,
+        },
+      ],
+    },
+    {
+      label: t.settings.groupIntegrations,
+      items: [
+        {
+          href: "/dashboard/settings/telegram",
+          label: t.settings.telegram,
+          icon: Send,
+          description: t.settings.telegramDescSidebar,
+        },
+        {
+          href: "/dashboard/settings/pocketoption",
+          label: t.settings.pocketOption,
+          icon: Link2,
+          description: t.settings.pocketOptionDescSidebar,
+        },
+      ],
+    },
+    {
+      label: t.settings.groupOther,
+      items: [
+        {
+          href: "/dashboard/settings/achievements",
+          label: t.settings.achievementsLabel,
+          icon: Trophy,
+          description: t.settings.achievementsDescSidebar,
+        },
+        {
+          href: "/dashboard/referrals",
+          label: t.settings.referralsLabel,
+          icon: Share2,
+          description: t.settings.referralsDesc,
+        },
+      ],
+    },
+  ];
 
   return (
     <nav className="flex flex-col gap-6 sticky top-24">

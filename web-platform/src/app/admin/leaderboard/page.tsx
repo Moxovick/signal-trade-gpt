@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Save, RefreshCw, Trophy } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useI18n } from "@/lib/i18n/context";
 
 type LeaderboardEntry = {
   nickname: string;
@@ -32,6 +33,9 @@ function generateRandom(): LeaderboardEntry[] {
 }
 
 export default function AdminLeaderboardPage() {
+  const { t } = useI18n();
+  const tl = t?.admin?.leaderboard ?? {};
+
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -103,7 +107,7 @@ export default function AdminLeaderboardPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Trophy size={20} className="text-[var(--brand-gold)]" />
-          <h1 className="text-xl font-bold">Лидерборд — Топ 10</h1>
+          <h1 className="text-xl font-bold">{tl.title ?? "Лидерборд — Топ 10"}</h1>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -111,7 +115,7 @@ export default function AdminLeaderboardPage() {
             className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--b-soft)] bg-[var(--bg-1)] text-sm font-medium hover:border-[var(--b-hard)] transition-colors"
           >
             <RefreshCw size={14} />
-            Сбросить (рандом)
+            {tl.reset ?? "Сбросить (рандом)"}
           </button>
           <button
             onClick={handleSave}
@@ -119,7 +123,7 @@ export default function AdminLeaderboardPage() {
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--brand-gold)] text-[#1a1208] text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <Save size={14} />
-            {saving ? "Сохранение..." : "Сохранить"}
+            {saving ? (tl.saving ?? "Сохранение...") : (tl.save ?? "Сохранить")}
           </button>
         </div>
       </div>
@@ -132,16 +136,16 @@ export default function AdminLeaderboardPage() {
 
       <Card>
         {loading ? (
-          <div className="p-8 text-center text-[var(--t-3)]">Загрузка...</div>
+          <div className="p-8 text-center text-[var(--t-3)]">{tl.loading ?? "Загрузка..."}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--b-soft)] text-left text-xs uppercase tracking-wider text-[var(--t-3)]">
                   <th className="px-4 py-3 w-12">#</th>
-                  <th className="px-4 py-3">Ник</th>
-                  <th className="px-4 py-3 w-40">Заработали ($)</th>
-                  <th className="px-4 py-3 w-32">Сигналы</th>
+                  <th className="px-4 py-3">{tl.columns?.nick ?? "Ник"}</th>
+                  <th className="px-4 py-3 w-40">{tl.columns?.earned ?? "Заработали ($)"}</th>
+                  <th className="px-4 py-3 w-32">{tl.columns?.signals ?? "Сигналы"}</th>
                 </tr>
               </thead>
               <tbody>
