@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Activity, ArrowDownRight, ArrowUpRight, ChevronRight, Target } from "lucide-react";
 import { TmaShell, type TmaUser } from "./_components/TmaShell";
 import { useTma } from "./_components/TmaProvider";
+import { useI18n } from "@/lib/i18n/context";
 
 type Asset = {
   symbol: string;
@@ -32,6 +33,7 @@ export default function TmaHomePage() {
 
 function Home({ user }: { user: TmaUser }) {
   const { tmaFetch } = useTma();
+  const { t } = useI18n();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [assets, setAssets] = useState<Record<string, Asset>>({});
   const [loading, setLoading] = useState(true);
@@ -68,19 +70,19 @@ function Home({ user }: { user: TmaUser }) {
     };
   }, [tmaFetch]);
 
-  const userName = user.firstName ?? user.username ?? "трейдер";
+  const userName = user.firstName ?? user.username ?? t.tma.profile.defaultName;
 
   return (
     <main className="max-w-md mx-auto p-4 space-y-4">
       <header className="flex items-center justify-between gap-3 pt-2">
         <div>
-          <div className="text-xs text-[var(--t-3)] uppercase tracking-[0.2em]">Привет</div>
+          <div className="text-xs text-[var(--t-3)] uppercase tracking-[0.2em]">{t.tma.home.greeting}</div>
           <h1 className="text-xl font-bold text-[var(--t-1)]">{userName}</h1>
         </div>
         <div className="rounded-xl border border-[var(--b-soft)] bg-[var(--bg-1)] px-3 py-2 text-right">
-          <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">Уровень</div>
+          <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">{t.tma.home.level}</div>
           <div className="text-sm font-bold text-[var(--brand-gold)]">
-            {user.tier >= 2 ? "Про" : user.tier === 1 ? "Базовый" : "Бесплатный"}
+            {user.tier >= 2 ? t.tma.home.tiers.pro : user.tier === 1 ? t.tma.home.tiers.basic : t.tma.home.tiers.free}
           </div>
         </div>
       </header>
@@ -91,7 +93,7 @@ function Home({ user }: { user: TmaUser }) {
         style={{ background: "linear-gradient(135deg, var(--brand-gold-deep), var(--brand-gold-bright))", color: "#1a1208" }}
       >
         <Activity size={16} />
-        Получить сигнал
+        {t.tma.home.getSignal}
       </Link>
 
       {/* CTA: Get signal */}
@@ -103,8 +105,8 @@ function Home({ user }: { user: TmaUser }) {
           <Target size={20} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold text-[var(--t-1)]">Получить сигнал</div>
-          <div className="text-xs text-[var(--t-3)]">Выбери пару и экспирацию</div>
+          <div className="text-sm font-bold text-[var(--t-1)]">{t.tma.home.getSignal}</div>
+          <div className="text-xs text-[var(--t-3)]">{t.tma.home.choosePairExpiration}</div>
         </div>
         <ChevronRight size={16} className="text-[var(--brand-gold)]" />
       </Link>
@@ -112,17 +114,17 @@ function Home({ user }: { user: TmaUser }) {
       <div className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-4">
         <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-[var(--brand-gold)] mb-3">
           <Activity size={12} className="animate-pulse" />
-          Live · сигналы
+          {t.tma.home.liveSignals}
         </div>
         {loading && signals.length === 0 ? (
           <div className="py-12 text-center text-[var(--t-3)] text-sm animate-pulse">
-            Загружаем…
+            {t.tma.home.loading}
           </div>
         ) : signals.length === 0 ? (
           <div className="py-10 text-center">
-            <div className="font-semibold mb-1">Сигналов пока нет</div>
+            <div className="font-semibold mb-1">{t.tma.home.noSignals}</div>
             <p className="text-xs text-[var(--t-3)] max-w-xs mx-auto">
-              Как только появятся новые сигналы — они отобразятся здесь и в боте.
+              {t.tma.home.noSignalsHint}
             </p>
           </div>
         ) : (

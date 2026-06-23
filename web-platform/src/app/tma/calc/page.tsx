@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { Calculator, TrendingDown, TrendingUp } from "lucide-react";
 import { TmaShell } from "../_components/TmaShell";
+import { useI18n } from "@/lib/i18n/context";
 
 export default function TmaCalcPage() {
   return <TmaShell withNav>{() => <Calc />}</TmaShell>;
 }
 
 function Calc() {
+  const { t } = useI18n();
   const [deposit, setDeposit] = useState(500);
   const [pct, setPct] = useState(2);
   const [payout, setPayout] = useState(82);
@@ -21,17 +23,17 @@ function Calc() {
   return (
     <main className="max-w-md mx-auto p-4 space-y-4 pb-6">
       <header className="pt-2">
-        <div className="text-xs text-[var(--t-3)] uppercase tracking-[0.2em]">Риск-менеджмент</div>
+        <div className="text-xs text-[var(--t-3)] uppercase tracking-[0.2em]">{t.tma.calc.title}</div>
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Calculator size={18} className="text-[var(--brand-gold)]" />
-          Калькулятор
+          {t.tma.calc.subtitle}
         </h1>
       </header>
 
       {/* Inputs */}
       <div className="space-y-3">
         <SliderField
-          label="Депозит"
+          label={t.tma.calc.deposit}
           value={deposit}
           min={50}
           max={10000}
@@ -40,7 +42,7 @@ function Calc() {
           onChange={setDeposit}
         />
         <SliderField
-          label="Размер сделки"
+          label={t.tma.calc.tradeSize}
           value={pct}
           min={1}
           max={10}
@@ -61,10 +63,10 @@ function Calc() {
 
       {/* Result card */}
       <div className="rounded-2xl border border-[var(--brand-gold)]/30 bg-[var(--brand-gold)]/5 p-5 space-y-4">
-        <div className="text-xs uppercase tracking-wider text-[var(--t-3)]">Результат</div>
+        <div className="text-xs uppercase tracking-wider text-[var(--t-3)]">{t.tma.calc.result}</div>
 
         <div className="text-center">
-          <div className="text-xs text-[var(--t-3)] mb-1">Размер сделки</div>
+          <div className="text-xs text-[var(--t-3)] mb-1">{t.tma.calc.tradeSize}</div>
           <div className="text-3xl font-bold text-[var(--brand-gold)]" style={{ fontFamily: "var(--font-jetbrains)" }}>
             ${bet.toFixed(2)}
           </div>
@@ -73,12 +75,12 @@ function Calc() {
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-[var(--green)]/10 border border-[var(--green)]/20 p-3 text-center">
             <TrendingUp size={14} className="text-[var(--green)] mx-auto mb-1" />
-            <div className="text-xs text-[var(--t-3)]">Прибыль (WIN)</div>
+            <div className="text-xs text-[var(--t-3)]">{t.tma.calc.profit}</div>
             <div className="text-lg font-bold text-[var(--green)]">+${profit.toFixed(2)}</div>
           </div>
           <div className="rounded-xl bg-[var(--red)]/10 border border-[var(--red)]/20 p-3 text-center">
             <TrendingDown size={14} className="text-[var(--red)] mx-auto mb-1" />
-            <div className="text-xs text-[var(--t-3)]">Убыток (LOSS)</div>
+            <div className="text-xs text-[var(--t-3)]">{t.tma.calc.loss}</div>
             <div className="text-lg font-bold text-[var(--red)]">-${loss.toFixed(2)}</div>
           </div>
         </div>
@@ -86,7 +88,7 @@ function Calc() {
         <div className="text-center text-xs text-[var(--t-3)]">
           R/R = <span className="font-bold text-[var(--t-1)]">{rr.toFixed(2)}</span>
           {" · "}
-          Безубыток при{" "}
+          {"Безубыток при "}
           <span className="font-bold text-[var(--t-1)]">
             {Math.ceil((1 / (1 + rr)) * 100)}% лосс-рейт
           </span>
@@ -95,8 +97,7 @@ function Calc() {
 
       {/* Tip */}
       <p className="text-xs text-[var(--t-3)] text-center leading-relaxed px-2">
-        Рекомендуемый размер сделки — <strong className="text-[var(--t-2)]">1–3%</strong> от депозита.
-        Не рискуй больше, чем готов потерять.
+        {t.tma.calc.hint}
       </p>
     </main>
   );

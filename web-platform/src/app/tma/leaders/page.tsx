@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Crown } from "lucide-react";
 import { TmaShell } from "../_components/TmaShell";
+import { useI18n } from "@/lib/i18n/context";
 
 type Entry = {
   rank: number;
@@ -12,13 +13,17 @@ type Entry = {
   earnings: number;
 };
 
-const LEVEL: Record<number, string> = { 0: "Бесплатный", 1: "Базовый", 2: "Про" };
-
 export default function TmaLeadersPage() {
   return <TmaShell>{() => <Leaders />}</TmaShell>;
 }
 
 function Leaders() {
+  const { t } = useI18n();
+  const LEVEL: Record<number, string> = {
+    0: t.tma.leaders.levelMap.free,
+    1: t.tma.leaders.levelMap.basic,
+    2: t.tma.leaders.levelMap.pro,
+  };
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,24 +48,24 @@ function Leaders() {
   return (
     <main className="max-w-md mx-auto p-4 space-y-4">
       <header className="pt-2">
-        <div className="text-xs text-[var(--t-3)] uppercase tracking-[0.2em]">Сообщество</div>
+        <div className="text-xs text-[var(--t-3)] uppercase tracking-[0.2em]">{t.tma.leaders.community}</div>
         <h1 className="text-xl font-bold flex items-center gap-2">
           <Crown size={18} className="text-[var(--brand-gold)]" />
-          Лидеры
+          {t.tma.leaders.title}
         </h1>
       </header>
 
       <div className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] divide-y divide-[var(--b-soft)]">
         {loading ? (
-          <div className="p-6 text-center text-sm text-[var(--t-3)] animate-pulse">Загружаем…</div>
+          <div className="p-6 text-center text-sm text-[var(--t-3)] animate-pulse">{t.tma.leaders.loading}</div>
         ) : entries.length === 0 ? (
-          <div className="p-6 text-center text-sm text-[var(--t-3)]">Пока пусто</div>
+          <div className="p-6 text-center text-sm text-[var(--t-3)]">{t.tma.leaders.empty}</div>
         ) : (
           entries.map((e) => {
             const name =
               e.user.firstName ||
-              (e.user.email ? e.user.email.split("@")[0] : `Игрок #${e.rank}`);
-            const level = LEVEL[e.tier] ?? "Про";
+              (e.user.email ? e.user.email.split("@")[0] : t.tma.leaders.playerHash.replace("{n}", String(e.rank)));
+            const level = LEVEL[e.tier] ?? t.tma.leaders.levelMap.pro;
             return (
               <div key={e.rank} className="flex items-center gap-3 p-3">
                 <div
@@ -77,7 +82,7 @@ function Leaders() {
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold truncate">{name}</div>
                   <div className="text-xs text-[var(--t-3)]">
-                    {level} · {e.signalsReceived} сигн. ·{" "}
+                    {level} · {e.signalsReceived} {t.tma.leaders.signals} ·{" "}
                     <span style={{ color: "#8ee06b", fontWeight: 600 }}>${e.earnings.toLocaleString("en-US")}</span>
                   </div>
                 </div>

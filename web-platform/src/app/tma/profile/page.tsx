@@ -3,6 +3,7 @@
 import { Activity, ChevronRight, Flame, User2, Users } from "lucide-react";
 import { TmaShell, type TmaUser } from "../_components/TmaShell";
 import { DEFAULT_TIER_THRESHOLDS, TIER_LABELS } from "@/lib/tier-constants";
+import { useI18n } from "@/lib/i18n/context";
 
 const BOT_URL = process.env["NEXT_PUBLIC_BOT_URL"] ?? "";
 
@@ -11,12 +12,13 @@ export default function TmaProfilePage() {
 }
 
 function Profile({ user }: { user: TmaUser }) {
+  const { t } = useI18n();
   const name =
     [user.firstName, user.lastName].filter(Boolean).join(" ") ||
     user.username ||
-    "Трейдер";
+    t.tma.profile.defaultName;
 
-  const level = user.tier >= 2 ? "Про" : user.tier === 1 ? "Базовый" : "Бесплатный";
+  const level = user.tier >= 2 ? t.tma.profile.levelLabels.pro : user.tier === 1 ? t.tma.profile.levelLabels.basic : t.tma.profile.levelLabels.free;
   const levelColor = user.tier >= 2 ? "var(--brand-gold)" : user.tier === 1 ? "var(--brand-gold-deep)" : "var(--t-2)";
 
   const depositTotal = user.poAccount ? Math.round(Number(user.poAccount.totalDeposit)) : 0;
@@ -48,29 +50,29 @@ function Profile({ user }: { user: TmaUser }) {
           )}
         </div>
         <div className="rounded-xl border border-[var(--b-soft)] bg-[var(--bg-1)] px-3 py-2 text-right">
-          <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">Уровень</div>
+          <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">{t.tma.profile.level}</div>
           <div className="text-sm font-bold" style={{ color: levelColor }}>{level}</div>
           {hasNextTier ? (
             <div className="text-[10px] text-[var(--brand-gold)] mt-0.5">
               До {TIER_LABELS[nextTierKey] ?? `Tier ${nextTierKey}`}: ${neededForNext}
             </div>
           ) : user.tier >= 2 ? (
-            <div className="text-[10px] text-[var(--green)] mt-0.5">Макс. уровень</div>
+            <div className="text-[10px] text-[var(--green)] mt-0.5">{t.tma.profile.maxLevel}</div>
           ) : null}
         </div>
       </header>
 
       {/* Stats row */}
       <section className="grid grid-cols-3 gap-2">
-        <Stat label="Сигналов" value={String(user.signalsReceived)} icon={Activity} />
-        <Stat label="Стрик" value={`${user.streakDays} дн`} icon={Flame} />
-        <Stat label="Рефералы" value={String(user.referralsCount)} icon={Users} />
+        <Stat label={t.tma.profile.signals} value={String(user.signalsReceived)} icon={Activity} />
+        <Stat label={t.tma.profile.streak} value={`${user.streakDays} дн`} icon={Flame} />
+        <Stat label={t.tma.profile.referrals} value={String(user.referralsCount)} icon={Users} />
       </section>
 
       {/* PocketOption account */}
       <section className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-4">
         <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">
-          PocketOption
+          {t.tma.profile.pocketOption.title}
         </div>
         {user.poAccount ? (
           <div className="flex items-center justify-between gap-3">
@@ -79,7 +81,7 @@ function Profile({ user }: { user: TmaUser }) {
                 ID {user.poAccount.poTraderId}
               </div>
               <div className="text-xs text-[var(--t-3)]">
-                Депозит: ${Math.round(Number(user.poAccount.totalDeposit))} ·{" "}
+                {t.tma.profile.pocketOption.deposit} ${Math.round(Number(user.poAccount.totalDeposit))} ·{" "}
                 <span
                   className={
                     user.poAccount.status === "verified"
@@ -87,7 +89,7 @@ function Profile({ user }: { user: TmaUser }) {
                       : "text-[var(--brand-gold)]"
                   }
                 >
-                  {user.poAccount.status === "verified" ? "подтверждён" : "ожидание"}
+                  {user.poAccount.status === "verified" ? t.tma.profile.pocketOption.confirmed : t.tma.profile.pocketOption.pending}
                 </span>
               </div>
             </div>
@@ -100,8 +102,8 @@ function Profile({ user }: { user: TmaUser }) {
             className="flex items-center justify-between gap-3"
           >
             <div className="text-sm">
-              <div className="text-[var(--t-1)]">Привязать PocketOption ID</div>
-              <div className="text-xs text-[var(--t-3)]">Нужно для получения сигналов</div>
+              <div className="text-[var(--t-1)]">{t.tma.profile.linkPo.label}</div>
+              <div className="text-xs text-[var(--t-3)]">{t.tma.profile.linkPo.hint}</div>
             </div>
             <ChevronRight size={16} className="text-[var(--t-3)]" />
           </a>
@@ -116,8 +118,8 @@ function Profile({ user }: { user: TmaUser }) {
         className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-4"
       >
         <div className="text-sm">
-          <div className="text-[var(--t-1)] font-semibold">Открыть Telegram-бот</div>
-          <div className="text-xs text-[var(--t-3)]">Управление, настройки, уведомления</div>
+          <div className="text-[var(--t-1)] font-semibold">{t.tma.profile.bot.label}</div>
+          <div className="text-xs text-[var(--t-3)]">{t.tma.profile.bot.hint}</div>
         </div>
         <ChevronRight size={16} className="text-[var(--t-3)]" />
       </a>

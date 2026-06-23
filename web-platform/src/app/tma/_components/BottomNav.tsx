@@ -3,25 +3,27 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Activity, Calculator, Target, Trophy, User, Users } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 type Item = {
   href: string;
-  label: string;
+  labelKey: keyof { home: string; signals: string; leaders: string; referrals: string; calc: string; profile: string };
   icon: typeof Activity;
   exact?: boolean;
 };
 
 const ITEMS: readonly Item[] = [
-  { href: "/tma",          label: "Главная",   icon: Activity,    exact: true },
-  { href: "/tma/signals",  label: "Сигналы",  icon: Target },
-  { href: "/tma/leaders",  label: "Лидеры",   icon: Trophy },
-  { href: "/tma/ref",      label: "Рефералы", icon: Users },
-  { href: "/tma/calc",     label: "Калькул.", icon: Calculator },
-  { href: "/tma/profile",  label: "Профиль",  icon: User },
+  { href: "/tma",          labelKey: "home",      icon: Activity,    exact: true },
+  { href: "/tma/signals",  labelKey: "signals",   icon: Target },
+  { href: "/tma/leaders",  labelKey: "leaders",   icon: Trophy },
+  { href: "/tma/ref",      labelKey: "referrals", icon: Users },
+  { href: "/tma/calc",     labelKey: "calc",      icon: Calculator },
+  { href: "/tma/profile",  labelKey: "profile",   icon: User },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useI18n();
   return (
     <nav
       className="fixed bottom-0 inset-x-0 border-t border-[var(--b-soft)] bg-[var(--bg-0)]/90 backdrop-blur-xl z-30"
@@ -40,7 +42,7 @@ export function BottomNav() {
               }`}
             >
               <Icon size={19} />
-              <span className="text-[10px] uppercase tracking-wider leading-none">{it.label}</span>
+              <span className="text-[10px] uppercase tracking-wider leading-none">{t.tma.bottomNav[it.labelKey]}</span>
             </Link>
           );
         })}

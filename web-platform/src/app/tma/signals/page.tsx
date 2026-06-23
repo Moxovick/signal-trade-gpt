@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { TmaShell, type TmaUser } from "../_components/TmaShell";
 import { useTma } from "../_components/TmaProvider";
+import { useI18n } from "@/lib/i18n/context";
 
 // ─── Types ───
 
@@ -126,38 +127,38 @@ const ALL_PAIRS: PairInfo[] = [
   { name: "US100", display: "NASDAQ", category: "indices", band: "elite", payout: 45, minTier: 2 },
 ];
 
-const EXPIRATIONS: Record<PairBand, { value: string; label: string }[]> = {
+const EXPIRATIONS: Record<PairBand, { value: string; labelKey: keyof { sec30: string; min1: string; min2: string; min5: string; min15: string } }[]> = {
   otc: [
-    { value: "30s", label: "30 сек" },
-    { value: "60s", label: "1 мин" },
-    { value: "2m", label: "2 мин" },
+    { value: "30s", labelKey: "sec30" },
+    { value: "60s", labelKey: "min1" },
+    { value: "2m", labelKey: "min2" },
   ],
   exchange: [
-    { value: "60s", label: "1 мин" },
-    { value: "2m", label: "2 мин" },
-    { value: "5m", label: "5 мин" },
+    { value: "60s", labelKey: "min1" },
+    { value: "2m", labelKey: "min2" },
+    { value: "5m", labelKey: "min5" },
   ],
   elite: [
-    { value: "60s", label: "1 мин" },
-    { value: "2m", label: "2 мин" },
-    { value: "5m", label: "5 мин" },
-    { value: "15m", label: "15 мин" },
+    { value: "60s", labelKey: "min1" },
+    { value: "2m", labelKey: "min2" },
+    { value: "5m", labelKey: "min5" },
+    { value: "15m", labelKey: "min15" },
   ],
 };
 
-const BANDS: { key: PairBand; label: string; minTier: number; color: string }[] = [
-  { key: "otc", label: "OTC", minTier: 0, color: "#8888ff" },
-  { key: "exchange", label: "Биржевые", minTier: 1, color: "#8ee06b" },
-  { key: "elite", label: "Elite", minTier: 2, color: "#d4a017" },
+const BANDS: { key: PairBand; bandKey: "otc" | "exchange" | "elite"; minTier: number; color: string }[] = [
+  { key: "otc", bandKey: "otc", minTier: 0, color: "#8888ff" },
+  { key: "exchange", bandKey: "exchange", minTier: 1, color: "#8ee06b" },
+  { key: "elite", bandKey: "elite", minTier: 2, color: "#d4a017" },
 ];
 
-const CATEGORIES: { key: PairCategory | "all"; label: string }[] = [
-  { key: "all", label: "Все" },
-  { key: "forex", label: "Форекс" },
-  { key: "crypto", label: "Крипто" },
-  { key: "stocks", label: "Акции" },
-  { key: "commodities", label: "Товары" },
-  { key: "indices", label: "Индексы" },
+const CATEGORIES: { key: PairCategory | "all"; catKey: "all" | "forex" | "crypto" | "stocks" | "commodities" | "indices" }[] = [
+  { key: "all", catKey: "all" },
+  { key: "forex", catKey: "forex" },
+  { key: "crypto", catKey: "crypto" },
+  { key: "stocks", catKey: "stocks" },
+  { key: "commodities", catKey: "commodities" },
+  { key: "indices", catKey: "indices" },
 ];
 
 // ─── Pair icons ───
@@ -271,15 +272,6 @@ function PairIconSmall({ display, size = 32 }: { display: string; size?: number 
 
 // ─── Helpers ───
 
-const ANALYSIS_STEPS = [
-  "Подключение к рынку...",
-  "Анализ графика...",
-  "RSI + MACD проверка...",
-  "Расчёт точки входа...",
-  "Оценка уровней поддержки...",
-  "Формирование сигнала...",
-];
-
 function getPayoutColor(pct: number): string {
   if (pct >= 80) return "#8ee06b";
   if (pct >= 60) return "#e6b840";
@@ -295,6 +287,15 @@ export default function TmaSignalsPage() {
 
 function SignalsPicker({ user }: { user: TmaUser }) {
   const { tmaFetch } = useTma();
+  const { t } = useI18n();
+  const ANALYSIS_STEPS = [
+    t.tma.signals.analysisSteps.connecting,
+    t.tma.signals.analysisSteps.analyzingChart,
+    t.tma.signals.analysisSteps.rsiMacd,
+    t.tma.signals.analysisSteps.calcEntry,
+    t.tma.signals.analysisSteps.supportLevels,
+    t.tma.signals.analysisSteps.formingSignal,
+  ];
   const [step, setStep] = useState<Step>("pick");
   const [activeTab, setActiveTab] = useState<PairBand>("otc");
   const [categoryFilter, setCategoryFilter] = useState<PairCategory | "all">("all");
@@ -371,14 +372,14 @@ function SignalsPicker({ user }: { user: TmaUser }) {
       if (res.status === 429) {
         setLimitReached(true);
         setRemaining(0);
-        setErrorMsg("Дневной лимит сигналов исчерпан");
+        setErrorMsg(t.tma.signals.errors.dailyLimitExhausted);
         setStep("pick");
         return;
       }
 
       if (!res.ok) {
         const err = await res.json() as { error?: string };
-        setErrorMsg(err.error ?? "Ошибка генерации сигнала");
+        setErrorMsg(err.error ?? t.tma.signals.errors.generationError);
         setStep("pick");
         return;
       }
@@ -415,7 +416,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
       setResult(sig);
       setStep("result");
     } catch {
-      setErrorMsg("Ошибка сети. Попробуйте снова.");
+      setErrorMsg(t.tma.signals.errors.networkError);
       setStep("pick");
     } finally {
       setLoading(false);
@@ -440,7 +441,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
             <RefreshCw size={28} className="text-[var(--brand-gold)] animate-spin" />
           </div>
           <div>
-            <div className="text-sm font-semibold text-[var(--t-1)] mb-1">Анализируем рынок</div>
+            <div className="text-sm font-semibold text-[var(--t-1)] mb-1">{t.tma.signals.analyzing}</div>
             <div className="text-xs text-[var(--brand-gold)] h-4 transition-all duration-300">
               {ANALYSIS_STEPS[Math.min(analysisStep, ANALYSIS_STEPS.length - 1)]}
             </div>
@@ -479,15 +480,15 @@ function SignalsPicker({ user }: { user: TmaUser }) {
 
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="rounded-xl bg-[var(--bg-2)] p-3 text-center">
-              <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">Точность</div>
+              <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">{t.tma.signals.result.accuracy}</div>
               <div className="text-xl font-bold text-[var(--brand-gold)]">{result.confidence}%</div>
             </div>
             <div className="rounded-xl bg-[var(--bg-2)] p-3 text-center">
-              <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">Экспирация</div>
+              <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">{t.tma.signals.result.expiration}</div>
               <div className="text-sm font-semibold text-[var(--t-1)]">{result.expiration}</div>
             </div>
             <div className="rounded-xl bg-[var(--bg-2)] p-3 text-center">
-              <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">Выплата</div>
+              <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">{t.tma.signals.result.payout}</div>
               <div className="text-sm font-semibold" style={{ color: getPayoutColor(result.payout) }}>
                 +{result.payout}%
               </div>
@@ -497,14 +498,14 @@ function SignalsPicker({ user }: { user: TmaUser }) {
           {result.entryPrice > 0 && (
             <div className="flex items-center gap-2 text-xs text-[var(--t-2)] px-3 py-2 rounded-lg bg-[rgba(212,160,23,0.06)]">
               <Target size={12} className="text-[var(--brand-gold)]" />
-              Вход: <span className="text-[var(--brand-gold)] font-semibold">{result.entryPrice.toFixed(5)}</span>
+              {t.tma.signals.result.entryAt} <span className="text-[var(--brand-gold)] font-semibold">{result.entryPrice.toFixed(5)}</span>
             </div>
           )}
 
           {result.entryTime && (
             <div className="flex items-center gap-2 text-xs text-[var(--t-2)] px-3 py-2 rounded-lg bg-[rgba(212,160,23,0.06)]">
               <Clock size={12} className="text-[var(--brand-gold)]" />
-              Время входа: <span className="text-[var(--brand-gold)] font-semibold">{result.entryTime}</span>
+              {t.tma.signals.result.entryTime} <span className="text-[var(--brand-gold)] font-semibold">{result.entryTime}</span>
             </div>
           )}
 
@@ -513,7 +514,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
               style={{ background: "rgba(255,255,255,0.03)", border: "1px solid var(--b-soft)" }}
             >
               <div className="text-[10px] uppercase tracking-wider text-[var(--brand-gold)] font-semibold mb-1.5">
-                Аналитика
+                {t.tma.signals.result.analysis}
               </div>
               {result.analysis}
             </div>
@@ -530,7 +531,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
           }}
         >
           <RefreshCw size={15} />
-          Ещё сигнал
+          {t.tma.signals.result.nextSignal}
         </button>
       </main>
     );
@@ -540,13 +541,13 @@ function SignalsPicker({ user }: { user: TmaUser }) {
   return (
     <main className="max-w-md mx-auto p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold text-[var(--t-1)]">Сигналы</h1>
+        <h1 className="text-lg font-bold text-[var(--t-1)]">{t.tma.signals.picker.title}</h1>
         {remaining !== null ? (
           <span className="text-xs text-[var(--t-3)]">
-            Осталось: <span className="text-[var(--brand-gold)] font-semibold">{remaining}</span>
+            {t.tma.signals.picker.remaining} <span className="text-[var(--brand-gold)] font-semibold">{remaining}</span>
           </span>
         ) : (
-          <span className="text-xs text-[var(--brand-gold)]">Безлимит</span>
+          <span className="text-xs text-[var(--brand-gold)]">{t.tma.signals.picker.unlimited}</span>
         )}
       </div>
 
@@ -576,7 +577,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
               }}
             >
               {locked && <Lock size={10} />}
-              {b.label}
+              {t.tma.signals.bands[b.bandKey]}
             </button>
           );
         })}
@@ -597,7 +598,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
                   : "bg-[var(--bg-2)] text-[var(--t-2)]"
               }`}
             >
-              {c.label}
+              {t.tma.signals.categories[c.catKey]}
             </button>
           );
         })}
@@ -606,7 +607,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
       {/* Pair list */}
       <div className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] overflow-hidden divide-y divide-[var(--b-soft)]">
         {filteredPairs.length === 0 && (
-          <div className="py-8 text-center text-sm text-[var(--t-3)]">Нет пар в этой категории</div>
+          <div className="py-8 text-center text-sm text-[var(--t-3)]">{t.tma.signals.picker.noPairsInCategory}</div>
         )}
         {filteredPairs.map((p) => {
           const isSelected = selectedPair?.name === p.name;
@@ -637,7 +638,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
                 <div className="px-4 pb-3 space-y-2">
                   <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[var(--t-3)]">
                     <Clock size={10} />
-                    Экспирация
+                    {t.tma.signals.picker.expiration}
                   </div>
                   <div className="flex gap-2">
                     {EXPIRATIONS[p.band].map((exp) => {
@@ -653,7 +654,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
                               : "bg-[var(--bg-2)] text-[var(--t-2)]"
                           }`}
                         >
-                          {exp.label}
+                          {t.tma.signals.expirations[exp.labelKey]}
                         </button>
                       );
                     })}
@@ -675,9 +676,9 @@ function SignalsPicker({ user }: { user: TmaUser }) {
                       {loading ? (
                         <RefreshCw size={15} className="animate-spin" />
                       ) : limitReached ? (
-                        "Лимит исчерпан"
+                        t.tma.signals.buttons.limitExhausted
                       ) : (
-                        "Получить сигнал"
+                        t.tma.signals.buttons.getSignal
                       )}
                     </button>
                   )}

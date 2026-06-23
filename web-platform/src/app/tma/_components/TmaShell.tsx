@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { Send } from "lucide-react";
 import { TmaProvider, useTma } from "./TmaProvider";
 import { BottomNav } from "./BottomNav";
+import { useI18n } from "@/lib/i18n/context";
 
 export type TmaUser = {
   id: string;
@@ -55,6 +56,7 @@ function Inner({
   withNav: boolean;
 }) {
   const { initData, tmaFetch } = useTma();
+  const { t } = useI18n();
   const [status, setStatus] = useState<Status>({ kind: "loading" });
 
   useEffect(() => {
@@ -99,7 +101,7 @@ function Inner({
   if (status.kind === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-[var(--t-3)] text-sm animate-pulse">Подключаемся к Telegram…</div>
+        <div className="text-[var(--t-3)] text-sm animate-pulse">{t.tma.shell.connecting}</div>
       </div>
     );
   }
@@ -133,7 +135,7 @@ function Inner({
   if (status.kind === "error") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-        <div className="text-[var(--red)] font-semibold mb-2">Ошибка авторизации</div>
+        <div className="text-[var(--red)] font-semibold mb-2">{t.tma.shell.authError}</div>
         <div className="text-sm text-[var(--t-3)]">{status.message}</div>
       </div>
     );
@@ -155,6 +157,7 @@ function Onboarding({
   onRegister?: () => void;
 }) {
   const { tg } = useTma();
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -178,7 +181,7 @@ function Onboarding({
       setError(null);
       Promise.resolve(onRegister?.()).catch((err: unknown) => {
         fired = false;
-        setError((err as Error).message ?? "Ошибка при входе. Попробуй ещё раз.");
+        setError((err as Error).message ?? t.tma.shell.loginError);
       });
     }
 
@@ -212,24 +215,18 @@ function Onboarding({
       </div>
       {mode === "external" ? (
         <>
-          <h1 className="text-xl font-bold mb-2">Открой через Telegram</h1>
+          <h1 className="text-xl font-bold mb-2">{t.tma.shell.external.title}</h1>
           <p className="text-sm text-[var(--t-3)] max-w-sm">
-            Этот экран работает только внутри Telegram. Открой Mini App через нашего бота.
+            {t.tma.shell.external.description}
           </p>
         </>
       ) : (
         <>
-          <h1 className="text-xl font-bold mb-2">Войди через Telegram</h1>
+          <h1 className="text-xl font-bold mb-2">{t.tma.shell.register.title}</h1>
           <div className="text-sm text-[var(--t-3)] max-w-sm mb-6 space-y-2">
-            <p>
-              1. Нажми кнопку ниже → войди через Telegram на нашем сайте.
-            </p>
-            <p>
-              2. Открой PocketOption по нашей реф-ссылке и привяжи Trader ID.
-            </p>
-            <p>
-              3. Вернись сюда — Mini App узнает тебя автоматически.
-            </p>
+            <p>1. {t.tma.shell.register.steps.step1}</p>
+            <p>2. {t.tma.shell.register.steps.step2}</p>
+            <p>3. {t.tma.shell.register.steps.step3}</p>
           </div>
           <button
             type="button"
@@ -238,19 +235,19 @@ function Onboarding({
             className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold text-sm disabled:opacity-60"
           >
             <Send size={16} />
-            {pending ? "Ожидаем возврата…" : "Войти через Telegram"}
+            {pending ? t.tma.shell.register.waiting : t.tma.shell.register.loginButton}
           </button>
           {error && (
             <p className="text-[11px] text-[var(--red)] mt-3 max-w-xs">{error}</p>
           )}
           {!error && pending && (
             <p className="text-[11px] text-[var(--t-3)] mt-4 max-w-xs">
-              После входа вернись в Telegram — Mini App обновится автоматически.
+              {t.tma.shell.pending.afterLogin}
             </p>
           )}
           {!pending && (
             <p className="text-[11px] text-[var(--t-3)] mt-4 max-w-xs">
-              После входа вернись в Telegram и снова открой Mini App.
+              {t.tma.shell.pending.afterLoginAlt}
             </p>
           )}
         </>

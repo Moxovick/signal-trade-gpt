@@ -7,6 +7,7 @@ import { TmaShell } from "../../_components/TmaShell";
 import { useTma } from "../../_components/TmaProvider";
 import { TmaSignalChart } from "../../_components/TmaSignalChart";
 import { PO_AFFILIATE_URL } from "@/lib/constants";
+import { useI18n } from "@/lib/i18n/context";
 
 type Asset = {
   symbol: string;
@@ -38,6 +39,7 @@ export default function TmaSignalPage({ params }: { params: Promise<{ id: string
 
 function SignalView({ id }: { id: string }) {
   const { tmaFetch } = useTma();
+  const { t } = useI18n();
   const [signal, setSignal] = useState<Signal | null>(null);
   const [asset, setAsset] = useState<Asset | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,20 +78,20 @@ function SignalView({ id }: { id: string }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-[var(--t-3)] text-sm animate-pulse">Загружаем…</div>
+        <div className="text-[var(--t-3)] text-sm animate-pulse">{t.tma.signalDetail.loading}</div>
       </div>
     );
   }
   if (error || !signal) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-        <div className="text-[var(--red)] font-semibold mb-2">Сигнал не найден</div>
+        <div className="text-[var(--red)] font-semibold mb-2">{t.tma.signalDetail.notFound}</div>
         {error && <div className="text-xs text-[var(--t-3)]">{error}</div>}
         <Link
           href="/tma"
           className="mt-4 px-4 py-2 rounded-lg border border-[var(--b-soft)] text-sm"
         >
-          К сигналам
+          {t.tma.signalDetail.back}
         </Link>
       </div>
     );
@@ -104,7 +106,7 @@ function SignalView({ id }: { id: string }) {
         href="/tma"
         className="inline-flex items-center gap-2 text-sm text-[var(--t-3)] hover:text-[var(--t-1)]"
       >
-        <ArrowLeft size={14} />К сигналам
+        <ArrowLeft size={14} />{t.tma.signalDetail.back}
       </Link>
 
       <div
@@ -134,27 +136,26 @@ function SignalView({ id }: { id: string }) {
               )}
             </div>
             <div className={`text-sm font-semibold ${isCall ? "text-[var(--green)]" : "text-[var(--red)]"}`}>
-              {isCall ? "BUY · Вверх" : "SELL · Вниз"}
+              {isCall ? t.tma.signalDetail.direction.buy : t.tma.signalDetail.direction.sell}
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-3 gap-2 mb-4">
-          <Stat label="Экспирация" value={signal.expiration} />
-          <Stat label="Уверенность" value={`${signal.confidence}%`} accent />
-          {asset && asset.payoutPct > 0 && <Stat label="Выплата" value={`+${asset.payoutPct}%`} accent />}
+          <Stat label={t.tma.signalDetail.stats.expiration} value={signal.expiration} />
+          <Stat label={t.tma.signalDetail.stats.confidence} value={`${signal.confidence}%`} accent />
+          {asset && asset.payoutPct > 0 && <Stat label={t.tma.signalDetail.stats.payout} value={`+${asset.payoutPct}%`} accent />}
           {(!asset || asset.payoutPct === 0) && (
-            <Stat label="Статус" value={signal.result.toUpperCase()} />
+            <Stat label={t.tma.signalDetail.stats.status} value={signal.result.toUpperCase()} />
           )}
         </div>
 
         {isOtc ? (
           <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--b-soft)] p-4 text-center">
             <Clock size={18} className="mx-auto mb-2 text-[var(--t-3)]" />
-            <div className="text-sm font-semibold mb-1">Точка входа: по рынку</div>
+            <div className="text-sm font-semibold mb-1">{t.tma.signalDetail.otcNotice.entryPoint}</div>
             <p className="text-xs text-[var(--t-3)] leading-relaxed">
-              OTC-актив — синтетический, графика реального рынка нет. Открывай позицию
-              сразу по текущей цене PocketOption.
+              {t.tma.signalDetail.otcNotice.description}
             </p>
           </div>
         ) : (
@@ -169,7 +170,7 @@ function SignalView({ id }: { id: string }) {
         {signal.analysis && (
           <div className="mt-4 rounded-xl bg-[var(--bg-2)] border border-[var(--b-soft)] p-4">
             <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">
-              Анализ
+              {t.tma.signalDetail.analysis}
             </div>
             <p className="text-sm text-[var(--t-2)] leading-relaxed">{signal.analysis}</p>
           </div>
@@ -182,7 +183,7 @@ function SignalView({ id }: { id: string }) {
         rel="noopener noreferrer"
         className="block w-full text-center px-5 py-3.5 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold"
       >
-        Открыть PocketOption
+        {t.tma.signalDetail.openPo}
       </a>
     </main>
   );
