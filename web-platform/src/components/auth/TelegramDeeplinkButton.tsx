@@ -5,14 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { ExternalLink, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useI18n } from "@/lib/i18n/context";
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 10 * 60 * 1000;
-
-const ERROR_COPY: Record<string, string> = {
-  bot_not_configured: "Telegram-бот не настроен. Сообщи админу.",
-  unauthorized: "Войди заново.",
-};
 
 type Props = {
   /**
@@ -35,6 +31,9 @@ export function TelegramDeeplinkButton({
   onLinked,
   label,
 }: Props) {
+  const { t } = useI18n();
+  const btn = t.components?.telegramDeeplinkButton ?? {};
+  const errors = btn.errors ?? {};
   const router = useRouter();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
@@ -52,7 +51,7 @@ export function TelegramDeeplinkButton({
     async function poll() {
       while (!cancelled && session) {
         if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
-          setError("Время ожидания истекло. Попробуй снова.");
+          setError(errors.timeout ?? "Время ожидания истекло. Попробуй снова.");
           setSession(null);
           setWaiting(false);
           return;
@@ -77,7 +76,7 @@ export function TelegramDeeplinkButton({
                 router.push(finalCallback);
                 router.refresh();
               } else {
-                setError("Не удалось создать сессию. Попробуй ещё раз.");
+                setError(errors.sessionError ?? "Не удалось создать сессию. Попробуй ещё раз.");
               }
             } else {
               onLinked?.({
@@ -91,7 +90,7 @@ export function TelegramDeeplinkButton({
             return;
           }
           if (data.ok && data.status === "expired") {
-            setError("Срок действия ссылки истёк. Попробуй снова.");
+            setError(errors.linkExpired ?? "Срок действия ссылки истёк. Попробуй снова.");
             setSession(null);
             setWaiting(false);
             return;
@@ -123,8 +122,12 @@ export function TelegramDeeplinkButton({
         token?: string;
         deepLink?: string;
       };
+      const errorCopy: Record<string, string> = {
+        bot_not_configured: errors.botNotConfigured ?? "Telegram-бот не настроен. Сообщи админу.",
+        unauthorized: errors.loginAgain ?? "Войди заново.",
+      };
       if (!data.ok || !data.token || !data.deepLink) {
-        setError(ERROR_COPY[data.reason ?? ""] ?? "Не удалось создать ссылку.");
+        setError(errorCopy[data.reason ?? ""] ?? errors.createLinkError ?? "Не удалось создать ссылку.");
         setWaiting(false);
         return;
       }
@@ -138,7 +141,7 @@ export function TelegramDeeplinkButton({
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-sm text-[var(--t-2)] rounded-xl border border-[var(--b-soft)] bg-[var(--bg-2)] px-4 py-3">
           <Loader2 size={16} className="animate-spin text-[var(--brand-gold)] shrink-0" />
-          <span>Открыли бота — подтверди вход в Telegram.</span>
+          <span>{btn.waiting?.message ?? "Открыли бота — подтверди вход в Telegram."}</span>
         </div>
         <a
           href={session.deepLink}
@@ -147,7 +150,7 @@ export function TelegramDeeplinkButton({
           className="text-xs text-[var(--brand-gold)] hover:underline inline-flex items-center gap-1"
         >
           <ExternalLink size={12} />
-          Открыть бота заново
+          {btn.waiting?.reopenBot ?? "Открыть бота заново"}
         </a>
         {error ? (
           <div className="text-sm text-[var(--red)]">{error}</div>
@@ -170,8 +173,10 @@ export function TelegramDeeplinkButton({
         }
       >
         {pending || waiting
-          ? "Создаём ссылку…"
-          : (label ?? (purpose === "login" ? "Войти через Telegram" : "Привязать Telegram"))}
+          ? (btn.buttons?.creating ?? "Создаём ссылку…")
+          : (label ?? (purpose === "login"
+              ? (btn.buttons?.login ?? "Войти через Telegram")
+              : (btn.buttons?.link ?? "Привязать Telegram")))}
       </Button>
       {error ? <div className="text-sm text-[var(--red)]">{error}</div> : null}
     </div>
