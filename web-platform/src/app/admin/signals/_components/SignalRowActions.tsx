@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { X } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 type Result = "pending" | "win" | "loss";
 
@@ -16,6 +17,8 @@ export function SignalRowActions({
   isActive: boolean;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const ra = t?.admin?.signals?.rowActions ?? {};
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +38,7 @@ export function SignalRowActions({
   }
 
   async function remove() {
-    if (!confirm("Удалить сигнал безвозвратно?")) return;
+    if (!confirm(ra.deleteConfirm ?? "Удалить сигнал безвозвратно?")) return;
     setError(null);
     const res = await fetch(`/api/admin/signals?id=${id}`, {
       method: "DELETE",
@@ -88,9 +91,9 @@ export function SignalRowActions({
             ? "bg-yellow-500/15 text-yellow-400 hover:bg-yellow-500/25"
             : "bg-white/5 text-[#777] hover:bg-white/10"
         }`}
-        title={isActive ? "Скрыть от пользователей" : "Сделать активным"}
+        title={isActive ? (ra.hide ?? "Скрыть от пользователей") : (ra.makeActive ?? "Сделать активным")}
       >
-        {isActive ? "Активен" : "Скрыт"}
+        {isActive ? (ra.active ?? "Активен") : (ra.hidden ?? "Скрыт")}
       </button>
       <button
         onClick={remove}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Save, X, Star } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useI18n } from "@/lib/i18n/context";
 
 type Review = {
   id: string;
@@ -18,6 +19,8 @@ type Review = {
 };
 
 export default function AdminReviewsPage() {
+  const { t } = useI18n();
+  const rv = t?.admin?.reviews ?? {};
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Review | null>(null);
@@ -50,7 +53,7 @@ export default function AdminReviewsPage() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Удалить отзыв?")) return;
+    if (!confirm((rv as Record<string, string>).deleteConfirm ?? "Удалить отзыв?")) return;
     await fetch(`/api/admin/reviews/${id}`, { method: "DELETE" });
     load();
   }
@@ -59,8 +62,8 @@ export default function AdminReviewsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Отзывы</h1>
-          <p className="text-sm text-[var(--t-3)] mt-1">Всего: {reviews.length}</p>
+          <h1 className="text-2xl font-bold">{(rv as Record<string, string>).title ?? "Отзывы"}</h1>
+          <p className="text-sm text-[var(--t-3)] mt-1">{(rv as Record<string, string>).total ?? "Всего:"} {reviews.length}</p>
         </div>
         <button
           onClick={() => {
@@ -69,7 +72,7 @@ export default function AdminReviewsPage() {
           }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--brand-gold)] text-[var(--bg-0)] font-semibold hover:opacity-90"
         >
-          <Plus size={16} /> Новый отзыв
+          <Plus size={16} /> {(rv as Record<string, string>).newReview ?? "Новый отзыв"}
         </button>
       </div>
 
@@ -85,7 +88,7 @@ export default function AdminReviewsPage() {
       )}
 
       {loading ? (
-        <div className="text-[var(--t-3)] text-center py-12">Загрузка…</div>
+        <div className="text-[var(--t-3)] text-center py-12">{(rv as Record<string, string>).loading ?? "Загрузка…"}</div>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           {reviews.map((r) => (
@@ -136,7 +139,7 @@ export default function AdminReviewsPage() {
                     }}
                     className="text-xs px-3 py-1 rounded-lg bg-[var(--bg-2)] hover:bg-[var(--bg-3)]"
                   >
-                    Изменить
+                    {(rv as Record<string, string>).edit ?? "Изменить"}
                   </button>
                   <button
                     onClick={() => remove(r.id)}
@@ -163,6 +166,8 @@ function ReviewForm({
   onCancel: () => void;
   onSave: (data: Partial<Review>) => void;
 }) {
+  const { t } = useI18n();
+  const rf = (t?.admin?.reviews as Record<string, Record<string, string>> | undefined)?.form ?? {};
   const [authorName, setAuthorName] = useState(initial?.authorName ?? "");
   const [authorRole, setAuthorRole] = useState(initial?.authorRole ?? "");
   const [rating, setRating] = useState(initial?.rating ?? 5);
@@ -175,7 +180,7 @@ function ReviewForm({
     <Card padding="lg">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-semibold">
-          {initial ? "Редактирование отзыва" : "Новый отзыв"}
+          {initial ? (rf.editTitle ?? "Редактирование отзыва") : (rf.newTitle ?? "Новый отзыв")}
         </h2>
         <button onClick={onCancel} className="text-[var(--t-3)] hover:text-[var(--t-1)]">
           <X size={18} />
@@ -183,14 +188,14 @@ function ReviewForm({
       </div>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Имя автора">
+          <Field label={rf.authorName ?? "Имя автора"}>
             <input
               value={authorName}
               onChange={(e) => setAuthorName(e.target.value)}
               className="w-full bg-[var(--bg-2)] border border-[var(--b-soft)] rounded-lg px-3 py-2 outline-none focus:border-[var(--brand-gold)]"
             />
           </Field>
-          <Field label='Роль (например "Trader, T3")'>
+          <Field label={rf.authorRole ?? 'Роль (например "Trader, T3")'}>
             <input
               value={authorRole}
               onChange={(e) => setAuthorRole(e.target.value)}
@@ -198,7 +203,7 @@ function ReviewForm({
             />
           </Field>
         </div>
-        <Field label="Текст отзыва">
+        <Field label={rf.text ?? "Текст отзыва"}>
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -207,7 +212,7 @@ function ReviewForm({
           />
         </Field>
         <div className="grid grid-cols-4 gap-4">
-          <Field label="Рейтинг (1-5)">
+          <Field label={rf.rating ?? "Рейтинг (1-5)"}>
             <input
               type="number"
               min={1}
@@ -217,7 +222,7 @@ function ReviewForm({
               className="w-full bg-[var(--bg-2)] border border-[var(--b-soft)] rounded-lg px-3 py-2 outline-none focus:border-[var(--brand-gold)]"
             />
           </Field>
-          <Field label="Позиция">
+          <Field label={rf.position ?? "Позиция"}>
             <input
               type="number"
               value={position}
@@ -232,7 +237,7 @@ function ReviewForm({
                 checked={isFeatured}
                 onChange={(e) => setIsFeatured(e.target.checked)}
               />
-              <span className="text-sm">На главной</span>
+              <span className="text-sm">{rf.featured ?? "На главной"}</span>
             </label>
           </Field>
           <Field label="Публичный">
@@ -242,7 +247,7 @@ function ReviewForm({
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}
               />
-              <span className="text-sm">Видим</span>
+              <span className="text-sm">{rf.visible ?? "Видим"}</span>
             </label>
           </Field>
         </div>
@@ -262,13 +267,13 @@ function ReviewForm({
             disabled={!authorName || !text}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--brand-gold)] text-[var(--bg-0)] font-semibold hover:opacity-90 disabled:opacity-50"
           >
-            <Save size={16} /> Сохранить
+            <Save size={16} /> {rf.save ?? "Сохранить"}
           </button>
           <button
             onClick={onCancel}
             className="px-4 py-2 rounded-xl bg-[var(--bg-2)] hover:bg-[var(--bg-3)]"
           >
-            Отмена
+            {rf.cancel ?? "Отмена"}
           </button>
         </div>
       </div>

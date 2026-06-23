@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/i18n/context";
 
 type Props = {
   tierThresholds: unknown;
@@ -36,6 +37,9 @@ export function SettingsForm({
       : {};
 
   const router = useRouter();
+  const { t } = useI18n();
+  const st = t?.admin?.settings ?? {};
+  const stBtns = (st as Record<string, Record<string, string>>).buttons ?? {};
   // 3-tier модель: T1 (Basic) и T2 (Pro) редактируемы; T3/T4 выключены.
   const [t1, setT1] = useState(asNumber(initialThresholds["1"], 20));
   const [t2, setT2] = useState(asNumber(initialThresholds["2"], 100));
@@ -75,15 +79,15 @@ export function SettingsForm({
       {/* Tiers */}
       <fieldset>
         <legend className="text-sm font-semibold mb-3">
-          Пороги депозита (USD)
+          {(st as Record<string, Record<string, string>>).tierThresholds?.title ?? "Пороги депозита (USD)"}
         </legend>
         <p className="text-xs text-[var(--t-3)] mb-3">
-          3-тирная модель: Free — рег, Basic — депозит ≥ T1, Pro — депозит ≥ T2. T3/T4 выключены.
+          {(st as Record<string, Record<string, string>>).tierThresholds?.description ?? "3-тирная модель: Free — рег, Basic — депозит ≥ T1, Pro — депозит ≥ T2. T3/T4 выключены."}
         </p>
         <div className="flex gap-4 max-w-md">
           <label className="block flex-1">
             <span className="text-xs text-[var(--t-3)] uppercase tracking-wider">
-              T1 · Basic
+              {(st as Record<string, Record<string, string>>).tierThresholds?.t1 ?? "T1 · Basic"}
             </span>
             <input
               type="number"
@@ -96,7 +100,7 @@ export function SettingsForm({
           </label>
           <label className="block flex-1">
             <span className="text-xs text-[var(--t-3)] uppercase tracking-wider">
-              T2 · Pro
+              {(st as Record<string, Record<string, string>>).tierThresholds?.t2 ?? "T2 · Pro"}
             </span>
             <input
               type="number"
@@ -112,9 +116,9 @@ export function SettingsForm({
 
       {/* Ref link */}
       <label className="block">
-        <span className="text-sm font-semibold">PocketOption · шаблон реферальной ссылки</span>
+        <span className="text-sm font-semibold">{(st as Record<string, Record<string, string>>).refLinkTemplate?.title ?? "PocketOption · шаблон реферальной ссылки"}</span>
         <p className="text-xs text-[var(--t-3)] mt-1 mb-2">
-          Поддерживается плейсхолдер <code>{"{click_id}"}</code> — он подставляется как user.id.
+          {(st as Record<string, Record<string, string>>).refLinkTemplate?.description ?? "Поддерживается плейсхолдер "}<code>{"{click_id}"}</code>{(st as Record<string, Record<string, string>>).refLinkTemplate?.description ? "" : " — он подставляется как user.id."}
         </p>
         <input
           value={refTpl}
@@ -125,7 +129,7 @@ export function SettingsForm({
       </label>
 
       <label className="block">
-        <span className="text-sm font-semibold">PocketOption · partner account ID</span>
+        <span className="text-sm font-semibold">{(st as Record<string, Record<string, string>>).partnerAccountId?.title ?? "PocketOption · partner account ID"}</span>
         <input
           value={partner}
           onChange={(e) => setPartner(e.target.value)}
@@ -135,9 +139,9 @@ export function SettingsForm({
       </label>
 
       <label className="block">
-        <span className="text-sm font-semibold">Sub-affiliate (%)</span>
+        <span className="text-sm font-semibold">{(st as Record<string, Record<string, string>>).subAffiliate?.title ?? "Sub-affiliate (%)"}</span>
         <p className="text-xs text-[var(--t-3)] mt-1 mb-2">
-          Сколько процентов от FTD рефералов 2-го уровня мы выплачиваем нашему юзеру.
+          {(st as Record<string, Record<string, string>>).subAffiliate?.description ?? "Сколько процентов от FTD рефералов 2-го уровня мы выплачиваем нашему юзеру."}
         </p>
         <input
           type="number"
@@ -151,7 +155,7 @@ export function SettingsForm({
       </label>
 
       <label className="block">
-        <span className="text-sm font-semibold">Дисклеймер</span>
+        <span className="text-sm font-semibold">{(st as Record<string, string>).disclaimer ?? "Дисклеймер"}</span>
         <textarea
           value={disclaimer}
           onChange={(e) => setDisclaimer(e.target.value)}
@@ -167,11 +171,11 @@ export function SettingsForm({
           className="inline-flex items-center gap-2 h-11 px-6 rounded-full bg-[var(--brand-gold)] text-[#1a1208] font-semibold text-sm hover:bg-[var(--brand-gold-bright)] transition-colors disabled:opacity-50"
         >
           <Save size={16} />
-          {pending ? "Сохраняем…" : "Сохранить"}
+          {pending ? (stBtns.saving ?? "Сохраняем…") : (stBtns.save ?? "Сохранить")}
         </button>
         {savedAt && (
           <span className="text-xs text-[var(--green)]">
-            Сохранено в {savedAt.toLocaleTimeString("ru-RU")}
+            {(stBtns.savedAt ?? "Сохранено в {time}").replace("{time}", savedAt.toLocaleTimeString("ru-RU"))}
           </span>
         )}
       </div>

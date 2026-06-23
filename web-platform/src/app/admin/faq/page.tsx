@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Save, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useI18n } from "@/lib/i18n/context";
 
 type Faq = {
   id: string;
@@ -24,6 +25,9 @@ const CATEGORIES = [
 ];
 
 export default function AdminFaqPage() {
+  const { t } = useI18n();
+  const faqI = t?.admin?.faq ?? {};
+  const faqForm = (faqI as Record<string, Record<string, string>>).form ?? {};
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Faq | null>(null);
@@ -62,7 +66,7 @@ export default function AdminFaqPage() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Удалить вопрос?")) return;
+    if (!confirm((faqI as Record<string, string>).deleteConfirm ?? "Удалить вопрос?")) return;
     await fetch(`/api/admin/faq/${id}`, { method: "DELETE" });
     load();
   }
@@ -77,8 +81,8 @@ export default function AdminFaqPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Управление FAQ</h1>
-          <p className="text-sm text-[var(--t-3)] mt-1">Всего: {faqs.length}</p>
+          <h1 className="text-2xl font-bold">{(faqI as Record<string, string>).title ?? "Управление FAQ"}</h1>
+          <p className="text-sm text-[var(--t-3)] mt-1">{(faqI as Record<string, string>).total ?? "Всего:"} {faqs.length}</p>
         </div>
         <button
           onClick={() => {
@@ -87,7 +91,7 @@ export default function AdminFaqPage() {
           }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--brand-gold)] text-[var(--bg-0)] font-semibold hover:opacity-90"
         >
-          <Plus size={16} /> Новый вопрос
+          <Plus size={16} /> {(faqI as Record<string, string>).newQuestion ?? "Новый вопрос"}
         </button>
       </div>
 
@@ -103,7 +107,7 @@ export default function AdminFaqPage() {
       )}
 
       {loading ? (
-        <div className="text-[var(--t-3)] text-center py-12">Загрузка…</div>
+        <div className="text-[var(--t-3)] text-center py-12">{(faqI as Record<string, string>).loading ?? "Загрузка…"}</div>
       ) : (
         [...grouped.entries()].map(([cat, items]) => (
           <div key={cat}>
@@ -140,7 +144,7 @@ export default function AdminFaqPage() {
                       }}
                       className="text-xs px-3 py-1 rounded-lg bg-[var(--bg-2)] hover:bg-[var(--bg-3)]"
                     >
-                      Изменить
+                      {(faqI as Record<string, string>).edit ?? "Изменить"}
                     </button>
                     <button
                       onClick={() => remove(f.id)}
@@ -169,6 +173,8 @@ function FaqForm({
   onCancel: () => void;
   onSave: (data: Partial<Faq>) => void;
 }) {
+  const { t } = useI18n();
+  const ff = (t?.admin?.faq as Record<string, Record<string, string>> | undefined)?.form ?? {};
   const [question, setQuestion] = useState(initial?.question ?? "");
   const [answer, setAnswer] = useState(initial?.answer ?? "");
   const [category, setCategory] = useState(initial?.category ?? "general");
@@ -179,21 +185,21 @@ function FaqForm({
     <Card padding="lg">
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-semibold">
-          {initial ? "Редактирование" : "Новый вопрос"}
+          {initial ? (ff.editTitle ?? "Редактирование") : (ff.newTitle ?? "Новый вопрос")}
         </h2>
         <button onClick={onCancel} className="text-[var(--t-3)] hover:text-[var(--t-1)]">
           <X size={18} />
         </button>
       </div>
       <div className="space-y-4">
-        <Field label="Вопрос">
+        <Field label={ff.question ?? "Вопрос"}>
           <input
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             className="w-full bg-[var(--bg-2)] border border-[var(--b-soft)] rounded-lg px-3 py-2 outline-none focus:border-[var(--brand-gold)]"
           />
         </Field>
-        <Field label="Ответ (поддерживается перенос строк)">
+        <Field label={ff.answer ?? "Ответ (поддерживается перенос строк)"}>
           <textarea
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
@@ -202,7 +208,7 @@ function FaqForm({
           />
         </Field>
         <div className="grid grid-cols-3 gap-4">
-          <Field label="Категория">
+          <Field label={ff.category ?? "Категория"}>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -215,7 +221,7 @@ function FaqForm({
               ))}
             </select>
           </Field>
-          <Field label="Позиция">
+          <Field label={ff.position ?? "Позиция"}>
             <input
               type="number"
               value={position}
@@ -223,7 +229,7 @@ function FaqForm({
               className="w-full bg-[var(--bg-2)] border border-[var(--b-soft)] rounded-lg px-3 py-2 outline-none focus:border-[var(--brand-gold)]"
             />
           </Field>
-          <Field label="Видимость">
+          <Field label={ff.visibility ?? "Видимость"}>
             <label className="flex items-center gap-2 px-3 py-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -240,13 +246,13 @@ function FaqForm({
             disabled={!question || !answer}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--brand-gold)] text-[var(--bg-0)] font-semibold hover:opacity-90 disabled:opacity-50"
           >
-            <Save size={16} /> Сохранить
+            <Save size={16} /> {ff.save ?? "Сохранить"}
           </button>
           <button
             onClick={onCancel}
             className="px-4 py-2 rounded-xl bg-[var(--bg-2)] hover:bg-[var(--bg-3)]"
           >
-            Отмена
+            {ff.cancel ?? "Отмена"}
           </button>
         </div>
       </div>

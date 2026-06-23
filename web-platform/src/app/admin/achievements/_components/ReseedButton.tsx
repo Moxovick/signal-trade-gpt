@@ -4,10 +4,13 @@ import { useTransition } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/lib/i18n/context";
 
 export function ReseedButton() {
   const [pending, start] = useTransition();
   const router = useRouter();
+  const { t } = useI18n();
+  const ar = (t?.admin?.achievements as Record<string, Record<string, string>> | undefined)?.reseed ?? {};
 
   function run() {
     start(async () => {
@@ -15,7 +18,7 @@ export function ReseedButton() {
         method: "POST",
       });
       if (!r.ok) {
-        alert("Не получилось пересеять");
+        alert(ar.error ?? "Не получилось пересеять");
         return;
       }
       router.refresh();
@@ -30,7 +33,7 @@ export function ReseedButton() {
       disabled={pending}
       iconLeft={<RefreshCw size={13} className={pending ? "animate-spin" : ""} />}
     >
-      {pending ? "Пересеиваю..." : "Пересеять"}
+      {pending ? (ar.reseeding ?? "Пересеиваю...") : (ar.reseed ?? "Пересеять")}
     </Button>
   );
 }

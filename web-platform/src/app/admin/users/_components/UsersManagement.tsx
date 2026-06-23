@@ -22,6 +22,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { TierBadge } from "@/components/ui/TierBadge";
+import { useI18n } from "@/lib/i18n/context";
 
 /* ---------- types ---------- */
 
@@ -148,16 +149,16 @@ function formatDateTime(date: string | null): string {
   });
 }
 
-function timeAgo(date: string | null): string {
-  if (!date) return "никогда";
+function timeAgoWithDict(date: string | null, ta: Record<string, string>): string {
+  if (!date) return ta.never ?? "никогда";
   const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "только что";
-  if (mins < 60) return `${mins} мин. назад`;
+  if (mins < 1) return ta.justNow ?? "только что";
+  if (mins < 60) return (ta.minutesAgo ?? "{n} мин. назад").replace("{n}", String(mins));
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} ч. назад`;
+  if (hours < 24) return (ta.hoursAgo ?? "{n} ч. назад").replace("{n}", String(hours));
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} дн. назад`;
+  if (days < 30) return (ta.daysAgo ?? "{n} дн. назад").replace("{n}", String(days));
   return formatDate(date);
 }
 
@@ -197,6 +198,9 @@ function UserDetailPanel({
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"profile" | "activity" | "logins">("profile");
+  const { t } = useI18n();
+  const ud = t?.admin?.users?.detail ?? {};
+  const tabsDef = (ud as Record<string, Record<string, string>>).tabs ?? {};
 
   useEffect(() => {
     const controller = new AbortController();
@@ -225,15 +229,15 @@ function UserDetailPanel({
   if (!detail) {
     return (
       <div className="flex items-center justify-center py-12 text-[var(--t-3)]">
-        <AlertCircle size={16} className="mr-2" /> Пользователь не найден
+        <AlertCircle size={16} className="mr-2" /> {ud.empty?.notFound ?? "Пользователь не найден"}
       </div>
     );
   }
 
   const tabs = [
-    { key: "profile" as const, label: "Профиль", icon: UserIcon },
-    { key: "activity" as const, label: "Активность", icon: Activity },
-    { key: "logins" as const, label: "Входы", icon: Shield },
+    { key: "profile" as const, label: tabsDef.profile ?? "Профиль", icon: UserIcon },
+    { key: "activity" as const, label: tabsDef.activity ?? "Активность", icon: Activity },
+    { key: "logins" as const, label: tabsDef.logins ?? "Входы", icon: Shield },
   ];
 
   return (
@@ -267,7 +271,7 @@ function UserDetailPanel({
               background: `${STATUS_COLOR[detail.status] ?? "#888"}15`,
             }}
           >
-            {STATUS_LABEL[detail.status] ?? detail.status}
+            {(t?.admin?.users as Record<string, Record<string, string>> | undefined)?.status?.[detail.status] ?? STATUS_LABEL[detail.status] ?? detail.status}
           </span>
         </div>
         <button
@@ -332,50 +336,54 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof UserIcon; label: s
 
 function ProfileTab({ detail }: { detail: UserDetail }) {
   const wr = winRate(detail.wins, detail.losses);
+  const { t } = useI18n();
+  const pr = (t?.admin?.users?.detail as Record<string, Record<string, string>> | undefined)?.profile ?? {};
+  const roles = (t?.admin?.users?.detail as Record<string, Record<string, string>> | undefined)?.roles ?? {};
+  const poStatusLabels = (t?.admin?.users?.poStatus as Record<string, string> | undefined) ?? PO_STATUS_LABEL;
   return (
     <div className="grid md:grid-cols-2 gap-6">
       <div>
         <h3 className="text-xs font-semibold text-[var(--t-3)] uppercase tracking-wider mb-3">
-          Основная информация
+          {pr.basicInfo ?? "Основная информация"}
         </h3>
         <div className="space-y-0.5">
-          <InfoRow icon={UserIcon} label="Имя" value={`${detail.firstName ?? "—"} ${detail.lastName ?? ""}`.trim()} />
+          <InfoRow icon={UserIcon} label={pr.name ?? "Имя"} value={`${detail.firstName ?? "—"} ${detail.lastName ?? ""}`.trim()} />
           <InfoRow icon={Hash} label="Telegram ID" value={detail.telegramId ?? "—"} />
           <InfoRow icon={UserIcon} label="Username" value={detail.username ? `@${detail.username}` : "—"} />
-          <InfoRow icon={Shield} label="Роль" value={detail.role === "admin" ? "Админ" : "Юзер"} />
-          <InfoRow icon={Calendar} label="Регистрация" value={formatDateTime(detail.createdAt)} />
-          <InfoRow icon={Clock} label="Последний вход" value={formatDateTime(detail.lastLogin)} />
-          <InfoRow icon={Hash} label="Реф. код" value={detail.referralCode} />
+          <InfoRow icon={Shield} label={pr.role ?? "Роль"} value={detail.role === "admin" ? (roles.admin ?? "Админ") : (roles.user ?? "Юзер")} />
+          <InfoRow icon={Calendar} label={pr.registeredAt ?? "Регистрация"} value={formatDateTime(detail.createdAt)} />
+          <InfoRow icon={Clock} label={pr.lastLogin ?? "Последний вход"} value={formatDateTime(detail.lastLogin)} />
+          <InfoRow icon={Hash} label={pr.referralCode ?? "Реф. код"} value={detail.referralCode} />
         </div>
       </div>
 
       <div>
         <h3 className="text-xs font-semibold text-[var(--t-3)] uppercase tracking-wider mb-3">
-          Торговая статистика
+          {pr.tradingStats ?? "Торговая статистика"}
         </h3>
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <StatMini label="Сигналов" value={String(detail.signalsReceived)} />
-          <StatMini label="Win rate" value={wr} highlight={wr !== "—"} />
-          <StatMini label="Победы" value={String(detail.wins)} />
-          <StatMini label="Поражения" value={String(detail.losses)} />
-          <StatMini label="Серия дней" value={String(detail.streakDays)} />
-          <StatMini label="Сегодня" value={String(detail.dailySignalsUsed)} />
+          <StatMini label={pr.signals ?? "Сигналов"} value={String(detail.signalsReceived)} />
+          <StatMini label={pr.winRate ?? "Win rate"} value={wr} highlight={wr !== "—"} />
+          <StatMini label={pr.wins ?? "Победы"} value={String(detail.wins)} />
+          <StatMini label={pr.losses ?? "Поражения"} value={String(detail.losses)} />
+          <StatMini label={pr.streakDays ?? "Серия дней"} value={String(detail.streakDays)} />
+          <StatMini label={pr.today ?? "Сегодня"} value={String(detail.dailySignalsUsed)} />
         </div>
 
         <h3 className="text-xs font-semibold text-[var(--t-3)] uppercase tracking-wider mb-3 mt-6">
-          PocketOption
+          {pr.pocketOption ?? "PocketOption"}
         </h3>
         {detail.poAccount ? (
           <div className="space-y-0.5">
             <InfoRow icon={Hash} label="Trader ID" value={`#${detail.poAccount.poTraderId}`} />
-            <InfoRow icon={Shield} label="Статус" value={PO_STATUS_LABEL[detail.poAccount.status] ?? detail.poAccount.status} />
-            <InfoRow icon={Wallet} label="Депозит (PO)" value={`$${detail.poAccount.totalDeposit.toLocaleString("en-US")}`} />
-            <InfoRow icon={TrendingUp} label="RevShare" value={`$${detail.poAccount.totalRevShare.toLocaleString("en-US")}`} />
-            <InfoRow icon={Calendar} label="FTD" value={detail.poAccount.ftdAt ? `${formatDate(detail.poAccount.ftdAt)} ($${detail.poAccount.ftdAmount ?? 0})` : "—"} />
-            <InfoRow icon={Clock} label="Последний постбэк" value={formatDateTime(detail.poAccount.lastPostbackAt)} />
+            <InfoRow icon={Shield} label={pr.poStatus ?? "Статус"} value={poStatusLabels[detail.poAccount.status] ?? detail.poAccount.status} />
+            <InfoRow icon={Wallet} label={pr.poDeposit ?? "Депозит (PO)"} value={`$${detail.poAccount.totalDeposit.toLocaleString("en-US")}`} />
+            <InfoRow icon={TrendingUp} label={pr.revShare ?? "RevShare"} value={`$${detail.poAccount.totalRevShare.toLocaleString("en-US")}`} />
+            <InfoRow icon={Calendar} label={pr.ftd ?? "FTD"} value={detail.poAccount.ftdAt ? `${formatDate(detail.poAccount.ftdAt)} ($${detail.poAccount.ftdAmount ?? 0})` : "—"} />
+            <InfoRow icon={Clock} label={pr.lastPostback ?? "Последний постбэк"} value={formatDateTime(detail.poAccount.lastPostbackAt)} />
           </div>
         ) : (
-          <div className="text-xs text-[var(--t-3)] py-3">PO-аккаунт не привязан</div>
+          <div className="text-xs text-[var(--t-3)] py-3">{pr.noPoAccount ?? "PO-аккаунт не привязан"}</div>
         )}
       </div>
     </div>
@@ -406,8 +414,10 @@ function StatMini({ label, value, highlight }: { label: string; value: string; h
 }
 
 function ActivityTab({ logs }: { logs: ActivityLogEntry[] }) {
+  const { t } = useI18n();
+  const emptyLabels = (t?.admin?.users?.detail as Record<string, Record<string, string>> | undefined)?.empty ?? {};
   if (logs.length === 0) {
-    return <div className="text-sm text-[var(--t-3)] py-6 text-center">Нет записей активности</div>;
+    return <div className="text-sm text-[var(--t-3)] py-6 text-center">{emptyLabels.activity ?? "Нет записей активности"}</div>;
   }
   return (
     <div className="space-y-2">
@@ -440,8 +450,11 @@ function ActivityTab({ logs }: { logs: ActivityLogEntry[] }) {
 }
 
 function LoginsTab({ events }: { events: LoginEventEntry[] }) {
+  const { t } = useI18n();
+  const emptyLabels = (t?.admin?.users?.detail as Record<string, Record<string, string>> | undefined)?.empty ?? {};
+  const loginEventLabels = (t?.admin?.users?.loginEvents as Record<string, string> | undefined) ?? {};
   if (events.length === 0) {
-    return <div className="text-sm text-[var(--t-3)] py-6 text-center">Нет записей входа</div>;
+    return <div className="text-sm text-[var(--t-3)] py-6 text-center">{emptyLabels.logins ?? "Нет записей входа"}</div>;
   }
   return (
     <div className="space-y-2">
@@ -460,7 +473,7 @@ function LoginsTab({ events }: { events: LoginEventEntry[] }) {
             />
             <div className="flex-1 min-w-0">
               <span className="text-sm text-[var(--t-1)]">
-                {LOGIN_EVENT_LABEL[ev.kind] ?? ev.kind}
+                {loginEventLabels[ev.kind] ?? LOGIN_EVENT_LABEL[ev.kind] ?? ev.kind}
               </span>
             </div>
             {ev.ip && (
@@ -481,6 +494,14 @@ function LoginsTab({ events }: { events: LoginEventEntry[] }) {
 /* ---------- Main component ---------- */
 
 export function UsersManagement({ initialTotal }: { initialTotal: number }) {
+  const { t } = useI18n();
+  const um = t?.admin?.users ?? {};
+  const umFilters = (um as Record<string, Record<string, string>>).filters ?? {};
+  const umTable = (um as Record<string, Record<string, string>>).table ?? {};
+  const umSort = (um as Record<string, Record<string, string>>).sort ?? {};
+  const umTimeAgo = (um as Record<string, Record<string, string>>).timeAgo ?? {};
+  const umStatus = (um as Record<string, Record<string, string>>).status ?? {};
+  const umPoStatus = (um as Record<string, Record<string, string>>).poStatus ?? {};
   const [users, setUsers] = useState<UserRow[]>([]);
   const [total, setTotal] = useState(initialTotal);
   const [page, setPage] = useState(1);
@@ -548,13 +569,13 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
           className="text-2xl font-bold"
           style={{ fontFamily: "var(--font-bebas)" }}
         >
-          Управление пользователями
+          {(um as Record<string, string>).title ?? "Управление пользователями"}
         </h1>
         <span
           className="text-sm tabular-nums"
           style={{ fontFamily: "var(--font-jetbrains)", color: "var(--t-3)" }}
         >
-          Всего: {total}
+          {((um as Record<string, string>).totalCount ?? "Всего: {n}").replace("{n}", String(total))}
         </span>
       </div>
 
@@ -573,7 +594,7 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
             type="text"
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Поиск по имени, username, email..."
+            placeholder={(um as Record<string, string>).search ?? "Поиск по имени, username, email..."}
             className="bg-transparent outline-none text-sm text-[var(--t-1)] w-full placeholder:text-[var(--t-3)]"
           />
           {search && (
@@ -594,7 +615,7 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
             color: "var(--t-1)",
           }}
         >
-          <option value="all">Все тиры</option>
+          <option value="all">{umFilters.allTiers ?? "Все тиры"}</option>
           <option value="0">Free</option>
           <option value="1">Basic</option>
           <option value="2">Pro</option>
@@ -611,10 +632,10 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
             color: "var(--t-1)",
           }}
         >
-          <option value="all">Все статусы</option>
-          <option value="active">Активные</option>
-          <option value="banned">Заблокированные</option>
-          <option value="pending">Ожидание</option>
+          <option value="all">{umFilters.allStatuses ?? "Все статусы"}</option>
+          <option value="active">{umFilters.active ?? "Активные"}</option>
+          <option value="banned">{umFilters.blocked ?? "Заблокированные"}</option>
+          <option value="pending">{umStatus.pending ?? "Ожидание"}</option>
         </select>
 
         {/* Sort */}
@@ -629,7 +650,7 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
           }}
         >
           {SORT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>{umSort[o.value] ?? o.label}</option>
           ))}
         </select>
 
@@ -659,15 +680,15 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
           className="hidden md:grid px-5 py-3 text-xs text-[var(--t-3)] border-b gap-2"
           style={{ gridTemplateColumns: "2.5fr 0.8fr 1.2fr 0.8fr 0.8fr 1.2fr 1fr 1fr 1fr", borderColor: "var(--b-soft, rgba(255,255,255,0.06))" }}
         >
-          <span>Пользователь</span>
-          <SortHeader label="Тир" field="tier" current={sortBy} dir={sortDir} onClick={handleSort} />
-          <SortHeader label="Депозит" field="depositTotal" current={sortBy} dir={sortDir} onClick={handleSort} />
-          <SortHeader label="Сигналы" field="signalsReceived" current={sortBy} dir={sortDir} onClick={handleSort} />
-          <span>Win rate</span>
-          <span>PO</span>
-          <span>Статус</span>
-          <SortHeader label="Вход" field="lastLogin" current={sortBy} dir={sortDir} onClick={handleSort} />
-          <SortHeader label="Рег-ция" field="createdAt" current={sortBy} dir={sortDir} onClick={handleSort} />
+          <span>{umTable.user ?? "Пользователь"}</span>
+          <SortHeader label={umTable.tier ?? "Тир"} field="tier" current={sortBy} dir={sortDir} onClick={handleSort} />
+          <SortHeader label={umTable.deposit ?? "Депозит"} field="depositTotal" current={sortBy} dir={sortDir} onClick={handleSort} />
+          <SortHeader label={umTable.signals ?? "Сигналы"} field="signalsReceived" current={sortBy} dir={sortDir} onClick={handleSort} />
+          <span>{umTable.winRate ?? "Win rate"}</span>
+          <span>{umTable.po ?? "PO"}</span>
+          <span>{umTable.status ?? "Статус"}</span>
+          <SortHeader label={umTable.lastLogin ?? "Вход"} field="lastLogin" current={sortBy} dir={sortDir} onClick={handleSort} />
+          <SortHeader label={umTable.registeredAt ?? "Рег-ция"} field="createdAt" current={sortBy} dir={sortDir} onClick={handleSort} />
         </div>
 
         {/* Loading */}
@@ -680,7 +701,7 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
         {/* Rows */}
         {!loading && users.length === 0 && (
           <div className="text-center py-12 text-sm text-[var(--t-3)]">
-            Пользователи не найдены
+            {(um as Record<string, string>).empty ?? "Пользователи не найдены"}
           </div>
         )}
 
@@ -761,7 +782,7 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
                             : "var(--brand-gold, #C8A55C)",
                       }}
                     >
-                      {PO_STATUS_LABEL[u.poAccount.status] ?? u.poAccount.status}
+                      {umPoStatus[u.poAccount.status] ?? PO_STATUS_LABEL[u.poAccount.status] ?? u.poAccount.status}
                     </span>
                   ) : (
                     <span className="text-xs text-[var(--t-3)]">—</span>
@@ -774,13 +795,13 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
                     className="text-xs font-semibold whitespace-nowrap"
                     style={{ color: STATUS_COLOR[u.status] ?? "#888" }}
                   >
-                    {STATUS_LABEL[u.status] ?? u.status}
+                    {umStatus[u.status] ?? STATUS_LABEL[u.status] ?? u.status}
                   </span>
                 </div>
 
                 {/* Last login */}
                 <div className="text-xs text-[var(--t-3)] whitespace-nowrap">
-                  {timeAgo(u.lastLogin)}
+                  {timeAgoWithDict(u.lastLogin, umTimeAgo)}
                 </div>
 
                 {/* Created */}

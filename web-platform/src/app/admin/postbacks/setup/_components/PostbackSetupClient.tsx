@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Copy, KeyRound, RefreshCw, Eye, EyeOff, Check } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 type EventDef = { key: string; label: string; description: string };
 type MacroDef = { macro: string; description: string };
@@ -59,7 +60,7 @@ function buildUrl(baseUrl: string, event: string, secret: string): string {
   return `${baseUrl}/api/po/postback?${allParams.join("&")}`;
 }
 
-const SECRET_PLACEHOLDER = "ВСТАВЬ_СЕКРЕТ";
+const SECRET_PLACEHOLDER_FALLBACK = "ВСТАВЬ_СЕКРЕТ";
 
 export function PostbackSetupClient({
   baseUrl,
@@ -68,6 +69,14 @@ export function PostbackSetupClient({
   initialSecretSet,
   initialSecretSource,
 }: Props) {
+  const { t } = useI18n();
+  const ps = t?.admin?.postbackSetup ?? {};
+  const psSecret = (ps as Record<string, Record<string, unknown>>).secret ?? {};
+  const psSecretBtns = (psSecret.buttons as Record<string, string> | undefined) ?? {};
+  const psSecretSources = (psSecret.sources as Record<string, string> | undefined) ?? {};
+  const psSecretStatus = (psSecret.status as Record<string, string> | undefined) ?? {};
+  const psErrors = (ps as Record<string, Record<string, string>>).errors ?? {};
+  const SECRET_PLACEHOLDER = (psSecret.placeholder as string | undefined) ?? SECRET_PLACEHOLDER_FALLBACK;
   const [secret, setSecret] = useState<string>(""); // only present after rotate/reveal
   const [secretSet, setSecretSet] = useState<boolean>(initialSecretSet);
   const [secretSource, setSecretSource] = useState<typeof initialSecretSource>(
@@ -138,7 +147,7 @@ export function PostbackSetupClient({
       setCopied(label);
       setTimeout(() => setCopied((cur) => (cur === label ? null : cur)), 1500);
     } catch {
-      setError("Не удалось скопировать. Скопируй вручную.");
+      setError(psErrors.copyFailed ?? "Не удалось скопировать. Скопируй вручную.");
     }
   }
 
@@ -153,20 +162,20 @@ export function PostbackSetupClient({
             <KeyRound size={16} className="text-[var(--brand-gold)]" />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-semibold">Секрет постбэков</h2>
+            <h2 className="text-base font-semibold">{(psSecret.title as string | undefined) ?? "Секрет постбэков"}</h2>
             <p className="text-xs text-[var(--t-3)] mt-1">
               Этот секрет вставляется в URL постбэка (<code>?secret=…</code>).
               Сайт принимает только запросы, в которых он совпадает.
               {secretSource === "env" && (
                 <>
                   {" "}
-                  Сейчас секрет берётся из <code>.env</code> — нажми «сгенерировать», чтобы перенести его в БД.
+                  {psSecretSources.env ?? "Задан через переменную окружения POCKETOPTION_POSTBACK_SECRET (только для чтения)."}
                 </>
               )}
               {secretSource === "unset" && (
                 <>
                   {" "}
-                  Секрет ещё не задан — без него постбэки не сработают в проде.
+                  {psSecretSources.none ?? "Не задан. Постбэки будут отклонены."}
                 </>
               )}
             </p>
@@ -178,7 +187,9 @@ export function PostbackSetupClient({
                 : "bg-[rgba(255,90,90,0.10)] text-[var(--red)]"
             }`}
           >
-            {secretSet ? `задан · ${secretSource}` : "не задан"}
+            {secretSet
+              ? (psSecretStatus.set ?? "задан · {source}").replace("{source}", secretSource)
+              : (psSecretStatus.notSet ?? "не задан")}
           </span>
         </div>
 
@@ -196,7 +207,7 @@ export function PostbackSetupClient({
               onClick={() => setShowSecret((s) => !s)}
               iconLeft={showSecret ? <EyeOff size={14} /> : <Eye size={14} />}
             >
-              {showSecret ? "Скрыть" : "Показать"}
+              {showSecret ? (psSecretBtns.hide ?? "Скрыть") : (psSecretBtns.show ?? "Показать")}
             </Button>
           )}
           {secret && (
@@ -206,7 +217,7 @@ export function PostbackSetupClient({
               onClick={() => copyText("secret", secret)}
               iconLeft={copied === "secret" ? <Check size={14} /> : <Copy size={14} />}
             >
-              {copied === "secret" ? "Скопировано" : "Копировать"}
+              {copied === "secret" ? (psSecretBtns.copied ?? "Скопировано") : (psSecretBtns.copy ?? "Копировать")}
             </Button>
           )}
         </div>
@@ -219,7 +230,7 @@ export function PostbackSetupClient({
             onClick={() => rotate(true)}
             iconLeft={<RefreshCw size={14} />}
           >
-            {secretSet ? "Сгенерировать новый" : "Сгенерировать секрет"}
+            {secretSet ? (psSecretBtns.generateNew ?? "Сгенерировать новый") : (psSecretBtns.generate ?? "Сгенерировать секрет")}
           </Button>
           {secretSet && secretSource === "db" && !secret && (
             <Button
@@ -229,20 +240,20 @@ export function PostbackSetupClient({
               onClick={reveal}
               iconLeft={<Eye size={14} />}
             >
-              Показать текущий
+              {psSecretBtns.showCurrent ?? "Показать текущий"}
             </Button>
           )}
         </div>
 
         {error && (
-          <p className="text-xs text-[var(--red)]">Ошибка: {error}</p>
+          <p className="text-xs text-[var(--red)]">{(psErrors.generic ?? "Ошибка: {error}").replace("{error}", error)}</p>
         )}
       </Card>
 
       {/* Per-event URLs */}
       <Card padding="none">
         <div className="px-5 py-3 border-b border-[var(--b-soft)] text-sm font-semibold">
-          URL для вставки в Pocket Partners
+          {(ps as Record<string, string>).urlTitle ?? "URL для вставки в Pocket Partners"}
         </div>
         <div className="divide-y divide-[var(--b-soft)]">
           {events.map((ev) => {
@@ -264,7 +275,7 @@ export function PostbackSetupClient({
                       copied === ev.key ? <Check size={14} /> : <Copy size={14} />
                     }
                   >
-                    {copied === ev.key ? "Скопировано" : "Копировать URL"}
+                    {copied === ev.key ? (psSecretBtns.copied ?? "Скопировано") : "Копировать URL"}
                   </Button>
                 </div>
                 <p className="text-xs text-[var(--t-3)]">{ev.description}</p>
@@ -282,7 +293,7 @@ export function PostbackSetupClient({
 
       {/* Macros cheat-sheet */}
       <Card padding="lg">
-        <h2 className="text-base font-semibold mb-1">Шпаргалка по макросам PO</h2>
+        <h2 className="text-base font-semibold mb-1">{(ps as Record<string, string>).macroCrib ?? "Шпаргалка по макросам PO"}</h2>
         <p className="text-xs text-[var(--t-3)] mb-3">
           Эти плейсхолдеры PocketOption подставит автоматически — менять их
           вручную не нужно.

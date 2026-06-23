@@ -546,8 +546,7 @@ const dict = {
         ],
       },
     ],
-    progressUntil: (nextTierName: string, amount: number) =>
-      `До ${nextTierName} — $${amount}`,
+    progressUntil: "До {tier} — ${amount}",
   },
 
   // ---------------------------------------------------------------------------

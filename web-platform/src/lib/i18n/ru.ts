@@ -565,9 +565,8 @@ const dict = {
         ],
       },
     ],
-    // Progress bar: "До {nextTierName} — ${amount}"
-    progressUntil: (nextTierName: string, amount: number) =>
-      `До ${nextTierName} — $${amount}`,
+    // Progress bar: use .replace("{tier}", name).replace("{amount}", num)
+    progressUntil: "До {tier} — ${amount}",
   },
 
   // ---------------------------------------------------------------------------

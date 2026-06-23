@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/lib/i18n/context";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Save, Plus, Trash2, MessageSquare, Send, Activity, HelpCircle, LineChart, BarChart3, Layers } from "lucide-react";
@@ -27,6 +28,13 @@ const SECTION_HEADER = "flex items-center gap-2 text-sm font-semibold mb-3 text-
 
 export function BotConfigForm({ initial }: { initial: BotConfig }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const bc = t?.admin?.botConfig ?? {};
+  const bcSections = (bc as Record<string, Record<string, string>>).sections ?? {};
+  const bcFeatureFlags = (bc as Record<string, Record<string, string>>).featureFlags ?? {};
+  const bcPriceProvider = (bc as Record<string, Record<string, string>>).priceProvider ?? {};
+  const bcFaqFields = (bc as Record<string, Record<string, string>>).faqFields ?? {};
+  const bcBtns = (bc as Record<string, Record<string, string>>).buttons ?? {};
   const [welcome, setWelcome] = useState(initial.welcome);
   const [signalTemplate, setSignalTemplate] = useState(initial.signalTemplate);
   const [disclaimer, setDisclaimer] = useState(initial.disclaimer);
@@ -132,7 +140,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
       <div className={SECTION_CARD} style={SECTION_STYLE}>
         <div className={SECTION_HEADER}>
           <MessageSquare size={16} className="text-[#f5c518]" />
-          Приветственное сообщение бота
+          {bcSections.welcome ?? "Приветственное сообщение бота"}
         </div>
         <p className="text-xs text-[#777]">
           Отправляется при <code>/start</code>. Доступные переменные:{" "}
@@ -151,7 +159,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
       <div className={SECTION_CARD} style={SECTION_STYLE}>
         <div className={SECTION_HEADER}>
           <Send size={16} className="text-[#f5c518]" />
-          Шаблон сообщения сигнала
+          {bcSections.signalTemplate ?? "Шаблон сообщения сигнала"}
         </div>
         <p className="text-xs text-[#777]">
           Как бот форматирует каждый сигнал. Переменные:{" "}
@@ -172,7 +180,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
       <div className={SECTION_CARD} style={SECTION_STYLE}>
         <div className={SECTION_HEADER}>
           <Activity size={16} className="text-[#f5c518]" />
-          Модель сигналов: On-demand
+          {bcSections.onDemandModel ?? "Модель сигналов: On-demand"}
         </div>
         <p className="text-sm text-[#aaa]">
           Сигналы генерируются по запросу пользователя (кнопка в дашборде или
@@ -188,7 +196,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
       <div className={SECTION_CARD} style={SECTION_STYLE}>
         <div className={SECTION_HEADER}>
           <Layers size={16} className="text-[#f5c518]" />
-          Пороги депозита для тиров (USD)
+          {bcSections.tierThresholds ?? "Пороги депозита для тиров (USD)"}
         </div>
         <p className="text-xs text-[#777]">
           Минимальная сумма депозита на PocketOption, при которой открывается
@@ -219,7 +227,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
       <div className={SECTION_CARD} style={SECTION_STYLE}>
         <div className={SECTION_HEADER}>
           <BarChart3 size={16} className="text-[#f5c518]" />
-          Перки на тир
+          {bcSections.tierPerks ?? "Перки на тир"}
         </div>
         <p className="text-xs text-[#777]">
           Что открывается на каждом уровне. T0 (Free) = 3 сигнала/день OTC,
@@ -241,10 +249,10 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
                   }
                   className="w-4 h-4 accent-[#f5c518]"
                 />
-                График с RSI / MACD / объёмом
+                {bcFeatureFlags.chartWithIndicators ?? "График с RSI / MACD / объёмом"}
               </label>
               <label className="flex items-center gap-2 text-xs text-[#aaa]">
-                Ранний доступ (сек)
+                {bcFeatureFlags.earlyAccess ?? "Ранний доступ (сек)"}
                 <input
                   type="number"
                   min={0}
@@ -266,7 +274,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
                   }
                   className="w-4 h-4 accent-[#f5c518]"
                 />
-                Elite-пары (≥90%)
+                {bcFeatureFlags.elitePairs ?? "Elite-пары (≥90%)"}
               </label>
             </div>
           ))}
@@ -277,7 +285,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
       <div className={SECTION_CARD} style={SECTION_STYLE}>
         <div className={SECTION_HEADER}>
           <LineChart size={16} className="text-[#f5c518]" />
-          Источник цен
+          {bcSections.priceSource ?? "Источник цен"}
         </div>
         <p className="text-xs text-[#777]">
           Откуда брать реальные цены для расчёта входа/прогноза. PocketOption
@@ -286,7 +294,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <label className="text-xs text-[#777] flex flex-col gap-1">
-            Провайдер
+            {bcPriceProvider.provider ?? "Провайдер"}
             <select
               value={priceSource.provider}
               onChange={(e) =>
@@ -297,15 +305,15 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
               }
               className={FIELD}
             >
-              <option value="off">Выкл (генерировать случайно)</option>
+              <option value="off">{bcPriceProvider.disabled ?? "Выкл (генерировать случайно)"}</option>
               <option value="twelvedata">TwelveData (forex realtime)</option>
-              <option value="yahoo">Yahoo Finance (15-min задержка)</option>
-              <option value="binance">Binance (только крипта)</option>
-              <option value="pocketoption">PocketOption (когда дадут API)</option>
+              <option value="yahoo">{bcPriceProvider.yahoo ?? "Yahoo Finance (15-min задержка)"}</option>
+              <option value="binance">{bcPriceProvider.binance ?? "Binance (только крипта)"}</option>
+              <option value="pocketoption">{bcPriceProvider.pocketOption ?? "PocketOption (когда дадут API)"}</option>
             </select>
           </label>
           <label className="text-xs text-[#777] flex flex-col gap-1">
-            Endpoint (необязательно)
+            {bcPriceProvider.endpoint ?? "Endpoint (необязательно)"}
             <input
               value={priceSource.endpoint ?? ""}
               onChange={(e) =>
@@ -316,7 +324,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
             />
           </label>
           <label className="text-xs text-[#777] flex flex-col gap-1">
-            API ключ (если требуется)
+            {bcPriceProvider.apiKey ?? "API ключ (если требуется)"}
             <input
               type="password"
               value={priceSource.apiKey ?? ""}
@@ -334,7 +342,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
       <div className={SECTION_CARD} style={SECTION_STYLE}>
         <div className={SECTION_HEADER}>
           <HelpCircle size={16} className="text-[#f5c518]" />
-          FAQ бота ({faq.length})
+          {(bcSections.faq ?? "FAQ бота ({n})").replace("{n}", String(faq.length))}
         </div>
         <div className="space-y-3">
           {faq.map((entry, i) => (
@@ -345,13 +353,13 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
               <input
                 value={entry.question}
                 onChange={(e) => updateFaq(i, { question: e.target.value })}
-                placeholder="Вопрос"
+                placeholder={bcFaqFields.question ?? "Вопрос"}
                 className={FIELD}
               />
               <textarea
                 value={entry.answer}
                 onChange={(e) => updateFaq(i, { answer: e.target.value })}
-                placeholder="Ответ"
+                placeholder={bcFaqFields.answer ?? "Ответ"}
                 rows={2}
                 className={`${FIELD} py-2`}
               />
@@ -370,7 +378,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
             onClick={addFaq}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold bg-white/[0.04] hover:bg-white/[0.08] text-white/80"
           >
-            <Plus size={14} /> Добавить вопрос
+            <Plus size={14} /> {bcFaqFields.addQuestion ?? "Добавить вопрос"}
           </button>
         </div>
       </div>
@@ -379,7 +387,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
       <div className={SECTION_CARD} style={SECTION_STYLE}>
         <div className={SECTION_HEADER}>
           <MessageSquare size={16} className="text-[#f5c518]" />
-          Дисклеймер
+          {bcSections.disclaimer ?? "Дисклеймер"}
         </div>
         <textarea
           value={disclaimer}
@@ -398,11 +406,11 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
           style={{ background: "#f5c518", color: "#1a1208" }}
         >
           <Save size={14} />
-          {pending ? "Сохраняем…" : "Сохранить весь конфиг"}
+          {pending ? (bcBtns.saving ?? "Сохраняем…") : (bcBtns.save ?? "Сохранить весь конфиг")}
         </button>
         {savedAt && (
           <span className="text-xs text-green-400">
-            Сохранено в {savedAt.toLocaleTimeString("ru-RU")}
+            {(bcBtns.savedAt ?? "Сохранено в {time}").replace("{time}", savedAt.toLocaleTimeString("ru-RU"))}
           </span>
         )}
       </div>

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Save, Settings, CheckCircle2 } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 const FIELD =
   "h-10 px-3 rounded-lg text-sm outline-none transition-colors bg-[#0a0a13] border border-white/[0.08] focus:border-white/20 text-white";
@@ -29,6 +30,8 @@ const SIGNAL_TYPES = [
 
 export function TierSignalSettings({ initial }: { initial: OnDemandConfig }) {
   const router = useRouter();
+  const { t } = useI18n();
+  const ts = t?.admin?.signals?.tierSettings ?? {};
   const [config, setConfig] = useState<OnDemandConfig>({
     ...initial,
     analysisDelayMin: initial.analysisDelayMin ?? 5,
@@ -95,12 +98,12 @@ export function TierSignalSettings({ initial }: { initial: OnDemandConfig }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Settings size={16} className="text-[#f5c518]" />
-          <h2 className="text-lg font-semibold">Настройки по тирам</h2>
+          <h2 className="text-lg font-semibold">{ts.title ?? "Настройки по тирам"}</h2>
         </div>
         <div className="flex items-center gap-2">
           {saved && (
             <span className="text-xs text-green-400 flex items-center gap-1">
-              <CheckCircle2 size={12} /> Сохранено
+              <CheckCircle2 size={12} /> {ts.saved ?? "Сохранено"}
             </span>
           )}
           <button
@@ -109,7 +112,7 @@ export function TierSignalSettings({ initial }: { initial: OnDemandConfig }) {
             className="inline-flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold bg-[#f5c518] text-[#1a1208] disabled:opacity-50"
           >
             <Save size={13} />
-            {pending ? "Сохраняем..." : "Сохранить"}
+            {pending ? (ts.saving ?? "Сохраняем...") : (ts.save ?? "Сохранить")}
           </button>
         </div>
       </div>
@@ -121,8 +124,7 @@ export function TierSignalSettings({ initial }: { initial: OnDemandConfig }) {
       )}
 
       <p className="text-xs text-[#777]">
-        Дневные лимиты и доступные типы сигналов для каждого тира.
-        Пустое поле лимита = безлимит.
+        {ts.description ?? "Дневные лимиты и доступные типы сигналов для каждого тира. Пустое поле лимита = безлимит."}
       </p>
 
       <div className="space-y-3">
@@ -142,19 +144,19 @@ export function TierSignalSettings({ initial }: { initial: OnDemandConfig }) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="text-xs text-[#777] flex flex-col gap-1">
-                Дневной лимит сигналов
+                {ts.dailyLimit ?? "Дневной лимит сигналов"}
                 <input
                   type="number"
                   min={0}
                   value={config.dailyLimits[key] ?? ""}
                   onChange={(e) => setDailyLimit(key, e.target.value)}
-                  placeholder="Безлимит"
+                  placeholder={ts.unlimited ?? "Безлимит"}
                   className={FIELD}
                 />
               </label>
 
               <div className="text-xs text-[#777]">
-                <span className="block mb-1.5">Доступные типы сигналов</span>
+                <span className="block mb-1.5">{ts.availableTypes ?? "Доступные типы сигналов"}</span>
                 <div className="flex gap-2">
                   {SIGNAL_TYPES.map((st) => (
                     <label
@@ -179,7 +181,7 @@ export function TierSignalSettings({ initial }: { initial: OnDemandConfig }) {
 
       <div>
         <label className="text-xs text-[#777] flex flex-col gap-1">
-          Минимальный интервал между сигналами для Pro (секунды, 0 = без ограничений)
+          {ts.proMinInterval ?? "Минимальный интервал между сигналами для Pro (секунды, 0 = без ограничений)"}
           <input
             type="number"
             min={0}
@@ -197,7 +199,7 @@ export function TierSignalSettings({ initial }: { initial: OnDemandConfig }) {
 
       <div>
         <span className="text-xs text-[#777] block mb-1">
-          Задержка анализа (секунды)
+          {ts.analysisDelay ?? "Задержка анализа (секунды)"}
         </span>
         <div className="flex items-center gap-3">
           <label className="text-xs text-[#777] flex flex-col gap-1">
@@ -236,7 +238,7 @@ export function TierSignalSettings({ initial }: { initial: OnDemandConfig }) {
           </label>
         </div>
         <p className="text-xs text-[#555] mt-1">
-          Время &quot;анализа&quot; перед выдачей сигнала. Рандомное значение между min и max.
+          {ts.analysisDelayHint ?? "Время «анализа» перед выдачей сигнала. Рандомное значение между min и max."}
         </p>
       </div>
     </div>

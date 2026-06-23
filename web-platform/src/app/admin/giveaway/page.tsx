@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Save, Gift, Trophy, Medal, Award } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useI18n } from "@/lib/i18n/context";
 
 type GiveawayPrize = {
   place: number;
@@ -22,6 +23,9 @@ const PLACE_META: Record<number, { icon: typeof Trophy; color: string; label: st
 };
 
 export default function AdminGiveawayPage() {
+  const { t } = useI18n();
+  const gw = t?.admin?.giveaway ?? {};
+  const gwPlaces = (gw as Record<string, Record<string, string>>).places ?? {};
   const [prizes, setPrizes] = useState<GiveawayPrize[]>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -77,9 +81,9 @@ export default function AdminGiveawayPage() {
         <div className="flex items-center gap-3">
           <Gift size={20} className="text-[var(--brand-gold)]" />
           <div>
-            <h1 className="text-xl font-bold">Розыгрыш — призы</h1>
+            <h1 className="text-xl font-bold">{(gw as Record<string, string>).title ?? "Розыгрыш — призы"}</h1>
             <p className="text-sm text-[var(--t-3)] mt-0.5">
-              Настройка 3 призовых мест. Отображается на /dashboard/giveaway.
+              {(gw as Record<string, string>).description ?? "Настройка 3 призовых мест. Отображается на /dashboard/giveaway."}
             </p>
           </div>
         </div>
@@ -89,7 +93,7 @@ export default function AdminGiveawayPage() {
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--brand-gold)] text-[#1a1208] text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           <Save size={14} />
-          {saving ? "Сохранение..." : "Сохранить"}
+          {saving ? ((gw as Record<string, string>).saving ?? "Сохранение...") : ((gw as Record<string, string>).save ?? "Сохранить")}
         </button>
       </div>
 

@@ -10,6 +10,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Link2, X, Check, AlertCircle, Search } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
 
 type UserHit = {
   id: string;
@@ -18,7 +19,7 @@ type UserHit = {
   email: string | null;
 };
 
-const REASON_RU: Record<string, string> = {
+const REASON_RU_FALLBACK: Record<string, string> = {
   forbidden: "Нет доступа.",
   missing_user_id: "Не указан user_id.",
   postback_not_found: "Postback не найден.",
@@ -35,6 +36,19 @@ type Props = {
 
 export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
   const router = useRouter();
+  const { t } = useI18n();
+  const bu = t?.admin?.bindUnmatched ?? {};
+  const buErrors = (bu as Record<string, Record<string, string>>).errors ?? {};
+  const buUi = (bu as Record<string, Record<string, string>>).ui ?? {};
+  const REASON_RU: Record<string, string> = {
+    forbidden: buErrors.noAccess ?? REASON_RU_FALLBACK.forbidden,
+    missing_user_id: buErrors.noUserId ?? REASON_RU_FALLBACK.missing_user_id,
+    postback_not_found: buErrors.postbackNotFound ?? REASON_RU_FALLBACK.postback_not_found,
+    already_bound: buErrors.alreadyBound ?? REASON_RU_FALLBACK.already_bound,
+    user_not_found: buErrors.userNotFound ?? REASON_RU_FALLBACK.user_not_found,
+    missing_trader_id: buErrors.noTraderId ?? REASON_RU_FALLBACK.missing_trader_id,
+    trader_id_taken: buErrors.traderIdTaken ?? REASON_RU_FALLBACK.trader_id_taken,
+  };
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<UserHit[]>([]);
@@ -61,7 +75,7 @@ export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
       setHits(data.ok && data.users ? data.users : []);
     } catch {
       setHits([]);
-      setError("Не удалось искать пользователей.");
+      setError(buUi.searchError ?? "Не удалось искать пользователей.");
     } finally {
       setSearching(false);
     }
@@ -82,14 +96,14 @@ export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
       });
       const data = (await r.json()) as { ok: boolean; reason?: string };
       if (!data.ok) {
-        setError(REASON_RU[data.reason ?? ""] ?? data.reason ?? "Ошибка");
+        setError(REASON_RU[data.reason ?? ""] ?? data.reason ?? (buUi.error ?? "Ошибка"));
         return;
       }
       setDone(true);
       // Reload row state.
       router.refresh();
     } catch {
-      setError("Сетевая ошибка, попробуй ещё раз.");
+      setError(buUi.networkError ?? "Сетевая ошибка, попробуй ещё раз.");
     } finally {
       setBinding(false);
     }
@@ -103,7 +117,7 @@ export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
         className="text-xs text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] inline-flex items-center gap-1"
       >
         <Link2 size={12} />
-        Привязать
+        {buUi.bind ?? "Привязать"}
       </button>
     );
   }
@@ -112,7 +126,7 @@ export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
     return (
       <span className="text-xs text-[var(--green)] inline-flex items-center gap-1">
         <Check size={12} />
-        Привязано
+        {buUi.bound ?? "Привязано"}
       </span>
     );
   }
@@ -121,7 +135,7 @@ export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
     <div className="space-y-2 p-3 rounded-lg bg-[var(--bg-2)] border border-[var(--b-soft)]">
       <div className="flex items-center justify-between">
         <span className="text-xs uppercase tracking-wider text-[var(--t-3)]">
-          Привязать postback к пользователю
+          {buUi.title ?? "Привязать postback к пользователю"}
         </span>
         <button
           type="button"
@@ -133,7 +147,7 @@ export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
             setError(null);
           }}
           className="text-[var(--t-3)] hover:text-[var(--t-1)]"
-          aria-label="Закрыть"
+          aria-label={buUi.close ?? "Закрыть"}
         >
           <X size={14} />
         </button>
@@ -163,12 +177,12 @@ export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
               disabled={searching || query.trim().length < 2}
               className="text-xs h-9 px-3 rounded-lg bg-[var(--brand-gold)] text-[#1a1208] font-semibold disabled:opacity-50"
             >
-              {searching ? "Ищу…" : "Найти"}
+              {searching ? (buUi.searching ?? "Ищу…") : (buUi.find ?? "Найти")}
             </button>
           </div>
           {hits.length === 0 && query.length >= 2 && !searching && (
             <div className="text-xs text-[var(--t-3)]">
-              Нет совпадений.
+              {buUi.noMatches ?? "Нет совпадений."}
             </div>
           )}
           {hits.length > 0 && (
@@ -196,7 +210,7 @@ export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
       ) : (
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-[var(--t-3)]">Юзер:</span>
+            <span className="text-[var(--t-3)]">{buUi.user ?? "Юзер:"}</span>
             <span className="text-[var(--t-1)]">
               {selected.firstName ?? selected.username ?? selected.email}
             </span>
@@ -205,7 +219,7 @@ export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
               onClick={() => setSelected(null)}
               className="ml-auto text-[var(--t-3)] hover:text-[var(--t-1)]"
             >
-              Сменить
+              {buUi.change ?? "Сменить"}
             </button>
           </div>
           <label className="block">
@@ -227,7 +241,7 @@ export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
             disabled={binding}
             className="w-full h-9 rounded-lg bg-[var(--brand-gold)] text-[#1a1208] font-semibold text-xs disabled:opacity-50"
           >
-            {binding ? "Привязываем…" : "Привязать"}
+            {binding ? (buUi.binding ?? "Привязываем…") : (buUi.bind ?? "Привязать")}
           </button>
         </div>
       )}

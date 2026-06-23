@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Save, FlaskConical, CheckCircle2, XCircle, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useI18n } from "@/lib/i18n/context";
 
 type Source = "db" | "env" | "unset";
 
@@ -31,7 +32,7 @@ type TestResult =
   | { kind: "ok"; deposit: number; ftdAt: string | null }
   | { kind: "error"; reason: string };
 
-const REASON_RU: Record<string, string> = {
+const REASON_RU_FALLBACK: Record<string, string> = {
   not_configured: "Не настроено: задай api token и partner id выше и сохрани.",
   not_found: "PO вернул 404. Этого трейдера нет в нашей сети — он не регался по нашей ссылке.",
   auth_failed: "PO вернул 401/403. Проверь api token и partner id.",
@@ -42,19 +43,22 @@ const REASON_RU: Record<string, string> = {
 };
 
 function SourceBadge({ source }: { source: Source }) {
+  const { t } = useI18n();
+  const sourceBadges = (t?.admin?.poApi as Record<string, Record<string, string>> | undefined)?.sourceBadges ?? {};
   const colour: Record<Source, string> = {
     db: "bg-[rgba(142,224,107,0.10)] text-[var(--green)]",
     env: "bg-[rgba(212,160,23,0.12)] text-[var(--brand-gold)]",
     unset: "bg-[rgba(255,90,90,0.10)] text-[var(--red)]",
   };
-  const label: Record<Source, string> = {
+  const labelFallback: Record<Source, string> = {
     db: "из БД",
     env: "из .env",
     unset: "не задано",
   };
+  const label = sourceBadges[source] ?? labelFallback[source];
   return (
     <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider ${colour[source]}`}>
-      {label[source]}
+      {label}
     </span>
   );
 }
@@ -67,6 +71,22 @@ export function PoApiForm({
   partnerSource,
 }: Props) {
   const router = useRouter();
+  const { t } = useI18n();
+  const pa = t?.admin?.poApi ?? {};
+  const paErrors = (pa as Record<string, Record<string, string>>).errors ?? {};
+  const paApiToken = (pa as Record<string, Record<string, string>>).apiToken ?? {};
+  const paPartnerId = (pa as Record<string, Record<string, string>>).partnerId ?? {};
+  const paBtns = (pa as Record<string, Record<string, string>>).buttons ?? {};
+  const paTest = (pa as Record<string, Record<string, string>>).test ?? {};
+  const REASON_RU: Record<string, string> = {
+    not_configured: paErrors.notConfigured ?? REASON_RU_FALLBACK.not_configured,
+    not_found: paErrors.notFound ?? REASON_RU_FALLBACK.not_found,
+    auth_failed: paErrors.unauthorized ?? REASON_RU_FALLBACK.auth_failed,
+    network_error: paErrors.networkError ?? REASON_RU_FALLBACK.network_error,
+    invalid_response: paErrors.unexpectedFormat ?? REASON_RU_FALLBACK.invalid_response,
+    invalid_id_format: paErrors.invalidTraderId ?? REASON_RU_FALLBACK.invalid_id_format,
+    missing_id: paErrors.emptyTraderId ?? REASON_RU_FALLBACK.missing_id,
+  };
   // Empty input means «не трогать токен в БД». Admin types a fresh value to
   // replace it; we never preload the real token into the DOM.
   const [apiTokenInput, setApiTokenInput] = useState("");
@@ -94,7 +114,7 @@ export function PoApiForm({
       const nothingChanged =
         !("apiToken" in body) && body.partnerId === initialPartnerId.trim();
       if (nothingChanged) {
-        setError("Нечего сохранять — введи новое значение.");
+        setError(paErrors.nothingToSave ?? "Нечего сохранять — введи новое значение.");
         return;
       }
       const r = await fetch("/api/admin/po-config", {
@@ -152,7 +172,7 @@ export function PoApiForm({
           <SourceBadge source={tokenSource} />
         </div>
         <p className="text-xs text-[var(--t-3)] mb-2">
-          Секретный токен, выданный сапортом PocketOption.
+          {paApiToken.description ?? "Секретный токен, выданный сапортом PocketOption."}
         </p>
         {apiTokenSet && !editToken ? (
           <div className="flex items-center gap-3 flex-wrap">
@@ -169,7 +189,7 @@ export function PoApiForm({
               onClick={() => setEditToken(true)}
               iconLeft={<Pencil size={14} />}
             >
-              Заменить
+              {paApiToken.replace ?? "Заменить"}
             </Button>
           </div>
         ) : (
@@ -196,7 +216,7 @@ export function PoApiForm({
                 }}
                 className="text-xs text-[var(--t-3)] hover:text-[var(--t-1)]"
               >
-                Отмена
+                {paApiToken.cancel ?? "Отмена"}
               </button>
             )}
           </div>
@@ -209,7 +229,7 @@ export function PoApiForm({
           <SourceBadge source={partnerId === initialPartnerId ? partnerSource : "db"} />
         </div>
         <p className="text-xs text-[var(--t-3)] mb-2">
-          Числовой ID партнёра с pocketpartners.com (вкладка «Профиль»).
+          {paPartnerId.description ?? "Числовой ID партнёра с pocketpartners.com (вкладка «Профиль»)."}
         </p>
         <input
           value={partnerId}
@@ -229,15 +249,15 @@ export function PoApiForm({
           disabled={pending}
           iconLeft={<Save size={16} />}
         >
-          {pending ? "Сохраняем…" : "Сохранить"}
+          {pending ? (paBtns.saving ?? "Сохраняем…") : (paBtns.save ?? "Сохранить")}
         </Button>
         {savedAt && (
           <span className="text-xs text-[var(--green)]">
-            Сохранено в {savedAt.toLocaleTimeString("ru-RU")}
+            {(paBtns.savedAt ?? "Сохранено в {time}").replace("{time}", savedAt.toLocaleTimeString("ru-RU"))}
           </span>
         )}
         {error && (
-          <span className="text-xs text-[var(--red)]">Ошибка: {error}</span>
+          <span className="text-xs text-[var(--red)]">{(paBtns.error ?? "Ошибка: {msg}").replace("{msg}", error)}</span>
         )}
       </div>
 
@@ -245,11 +265,10 @@ export function PoApiForm({
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
             <FlaskConical size={14} className="text-[var(--brand-gold)]" />
-            Проверка API
+            {paTest.title ?? "Проверка API"}
           </h3>
           <p className="text-xs text-[var(--t-3)] mt-1">
-            Введи ID реального трейдера из нашей сети — сайт сделает запрос
-            к PocketOption Affiliate API с текущими кредами.
+            {paTest.description ?? "Введи ID реального трейдера из нашей сети — сайт сделает запрос к PocketOption Affiliate API с текущими кредами."}
           </p>
         </div>
         <div className="flex items-stretch gap-2 flex-wrap">
@@ -257,7 +276,7 @@ export function PoApiForm({
             value={testTraderId}
             onChange={(e) => setTestTraderId(e.target.value)}
             className={`${FIELD} max-w-xs`}
-            placeholder="ID трейдера, напр. 1234567"
+            placeholder={paTest.placeholder ?? "ID трейдера, напр. 1234567"}
             inputMode="numeric"
           />
           <Button
@@ -267,17 +286,17 @@ export function PoApiForm({
             onClick={runTest}
             disabled={testResult.kind === "pending"}
           >
-            {testResult.kind === "pending" ? "Запрашиваем…" : "Запросить"}
+            {testResult.kind === "pending" ? (paTest.requesting ?? "Запрашиваем…") : (paTest.request ?? "Запросить")}
           </Button>
         </div>
         {testResult.kind === "ok" && (
           <div className="flex items-start gap-2 text-sm text-[var(--green)]">
             <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
             <div>
-              <div>Трейдер найден в нашей сети.</div>
+              <div>{paTest.traderFound ?? "Трейдер найден в нашей сети."}</div>
               <div className="text-xs text-[var(--t-3)] mt-0.5">
                 Total deposit: ${testResult.deposit.toFixed(2)}
-                {testResult.ftdAt ? ` · FTD @ ${testResult.ftdAt}` : " · FTD не зафиксирован"}
+                {testResult.ftdAt ? ` · FTD @ ${testResult.ftdAt}` : ` · ${paTest.noFtd ?? "FTD не зафиксирован"}`}
               </div>
             </div>
           </div>
