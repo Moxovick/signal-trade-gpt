@@ -442,7 +442,7 @@ async def log_activity(
 
 
 async def increment_daily_signal(telegram_id: int) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     pool = _get_pool()
     await pool.execute(
         """UPDATE "users"
