@@ -17,6 +17,8 @@ from aiogram.types import BufferedInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import settings
+from i18n import t
+from i18n_helpers import get_locale
 from constants import (
     EXPIRATIONS,
     PAIRS_BY_TIER,
@@ -52,13 +54,14 @@ router = Router()
 # Per-user lock to prevent concurrent signal requests bypassing daily limits.
 _user_locks: dict[int, asyncio.Lock] = {}
 
-ANALYSIS_STEPS = [
-    "Анализируем рынок...",
-    "Проверяем индикаторы...",
-    "Оцениваем точку входа...",
-    "Рассчитываем вероятность...",
-    "Формируем сигнал...",
-]
+def _analysis_steps(locale: str) -> list[str]:
+    return [
+        t("signal.analyzing", locale),
+        t("signal.checking_indicators", locale),
+        t("signal.evaluating_entry", locale),
+        t("signal.calculating_probability", locale),
+        t("signal.forming_signal", locale),
+    ]
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -108,16 +111,13 @@ def _build_category_keyboard(user_tier: int) -> InlineKeyboardBuilder:
     return builder
 
 
-async def _validate_user(user_id: int) -> tuple[str | None, Any]:
+async def _validate_user(user_id: int, locale: str = "ru") -> tuple[str | None, Any]:
     """Validate that a user exists and has PO linked."""
     user = await get_user(user_id)
     if user is None:
-        return "Сначала нажми /start, чтобы зарегистрироваться.", None
+        return t("signal.register_first", locale), None
     if not user.po_trader_id:
-        return (
-            "⚠️ Для получения сигналов нужен привязанный PocketOption аккаунт.\n\n"
-            "Нажми /start чтобы пройти регистрацию и привязать Trader ID."
-        ), None
+        return t("signal.need_po_account_with_link", locale), None
     return None, user
 
 
@@ -132,7 +132,7 @@ def _get_web_daily_usage(telegram_id: int) -> int | None:
     return None
 
 
-async def _check_daily_limit(user: Any) -> str | None:
+async def _check_daily_limit(user: Any, locale: str = "ru") -> str | None:
     """Check daily limit. Returns error text or None if OK."""
     await reset_daily_signals_if_expired(user.telegram_id)
     daily_limit = web_sync.get_daily_limit(user.tier)
@@ -153,33 +153,29 @@ async def _check_daily_limit(user: Any) -> str | None:
     if not can_request:
         if user.tier < 2:
             next_tier = TIER_NAMES.get(user.tier + 1, "Pro")
-            return (
-                f"Лимит исчерпан ({used}/{limit} сигналов сегодня).\n\n"
-                f"Повысь тариф до <b>{next_tier}</b> для большего количества сигналов."
-            )
-        return (
-            f"Лимит исчерпан ({used}/{limit} сигналов сегодня).\n"
-            "Следующий сигнал будет доступен через несколько часов."
-        )
+            return t("signal.limit_exceeded_upgrade", locale,
+                     used=used, limit=limit, next_tier=next_tier)
+        return t("signal.limit_exceeded", locale, used=used, limit=limit)
     return None
 
 
 @router.message(Command("signal"))
 async def cmd_signal(message: Message) -> None:
     """Handle /signal command — show category picker."""
-    error, user = await _validate_user(message.from_user.id)
+    locale = get_locale(message.from_user)
+    error, user = await _validate_user(message.from_user.id, locale)
     if error:
         await message.answer(error, parse_mode=ParseMode.HTML)
         return
 
-    limit_error = await _check_daily_limit(user)
+    limit_error = await _check_daily_limit(user, locale)
     if limit_error:
         await message.answer(limit_error, parse_mode=ParseMode.HTML)
         return
 
     kb = _build_category_keyboard(user.tier)
     await message.answer(
-        "📊 <b>Выбери тип сигнала:</b>",
+        t("signal.choose_type", locale),
         parse_mode=ParseMode.HTML,
         reply_markup=kb.as_markup(),
     )
@@ -192,19 +188,20 @@ async def cb_get_signal(query: CallbackQuery) -> None:
     if query.from_user is None:
         return
 
-    error, user = await _validate_user(query.from_user.id)
+    locale = get_locale(query.from_user)
+    error, user = await _validate_user(query.from_user.id, locale)
     if error:
         await query.message.answer(error, parse_mode=ParseMode.HTML)
         return
 
-    limit_error = await _check_daily_limit(user)
+    limit_error = await _check_daily_limit(user, locale)
     if limit_error:
         await query.message.answer(limit_error, parse_mode=ParseMode.HTML)
         return
 
     kb = _build_category_keyboard(user.tier)
     await query.message.answer(
-        "📊 <b>Выбери тип сигнала:</b>",
+        t("signal.choose_type", locale),
         parse_mode=ParseMode.HTML,
         reply_markup=kb.as_markup(),
     )
@@ -220,10 +217,11 @@ async def cb_signal_category(query: CallbackQuery) -> None:
     if query.from_user is None:
         return
 
+    locale = get_locale(query.from_user)
     sig_tier = query.data.split(":", 1)[1]  # e.g. "otc"
 
     # Validate tier access
-    error, user = await _validate_user(query.from_user.id)
+    error, user = await _validate_user(query.from_user.id, locale)
     if error:
         await query.message.answer(error, parse_mode=ParseMode.HTML)
         return
@@ -233,7 +231,7 @@ async def cb_signal_category(query: CallbackQuery) -> None:
     )
     if sig_tier not in allowed:
         await query.message.answer(
-            "⛔ Этот тип сигналов недоступен на твоём уровне.",
+            t("signal.unavailable_tier", locale),
             parse_mode=ParseMode.HTML,
         )
         return
@@ -245,19 +243,20 @@ async def cb_signal_category(query: CallbackQuery) -> None:
     for cat in categories:
         label = SUBCATEGORY_LABELS.get(cat, cat.title())
         builder.button(text=label, callback_data=f"sig_sub:{sig_tier}:{cat}")
-    builder.button(text="⬅️ Назад", callback_data="sig_back_to_cat")
+    builder.button(text=t("keyboard.back", locale), callback_data="sig_back_to_cat")
     builder.adjust(2)
 
     tier_label = SIGNAL_TIER_LABELS.get(sig_tier, sig_tier.upper())
+    choose_cat = t("signal.choose_category", locale)
     try:
         await query.message.edit_text(
-            f"{tier_label}\n\n📂 <b>Выбери категорию:</b>",
+            f"{tier_label}\n\n{choose_cat}",
             parse_mode=ParseMode.HTML,
             reply_markup=builder.as_markup(),
         )
     except Exception:  # noqa: BLE001
         await query.message.answer(
-            f"{tier_label}\n\n📂 <b>Выбери категорию:</b>",
+            f"{tier_label}\n\n{choose_cat}",
             parse_mode=ParseMode.HTML,
             reply_markup=builder.as_markup(),
         )
@@ -269,20 +268,22 @@ async def cb_back_to_category(query: CallbackQuery) -> None:
     await query.answer()
     if query.from_user is None:
         return
-    error, user = await _validate_user(query.from_user.id)
+    locale = get_locale(query.from_user)
+    error, user = await _validate_user(query.from_user.id, locale)
     if error:
         await query.message.answer(error, parse_mode=ParseMode.HTML)
         return
     kb = _build_category_keyboard(user.tier)
+    choose_type = t("signal.choose_type", locale)
     try:
         await query.message.edit_text(
-            "📊 <b>Выбери тип сигнала:</b>",
+            choose_type,
             parse_mode=ParseMode.HTML,
             reply_markup=kb.as_markup(),
         )
     except Exception:  # noqa: BLE001
         await query.message.answer(
-            "📊 <b>Выбери тип сигнала:</b>",
+            choose_type,
             parse_mode=ParseMode.HTML,
             reply_markup=kb.as_markup(),
         )
@@ -298,6 +299,7 @@ async def cb_signal_subcategory(query: CallbackQuery) -> None:
     if query.from_user is None:
         return
 
+    locale = get_locale(query.from_user)
     parts = query.data.split(":", 2)
     if len(parts) < 3:
         return
@@ -306,7 +308,7 @@ async def cb_signal_subcategory(query: CallbackQuery) -> None:
 
     pairs = _get_pairs_for_subcategory(sig_tier, subcategory)
     if not pairs:
-        await query.message.answer("Нет доступных пар в этой категории.")
+        await query.message.answer(t("signal.no_pairs_in_category", locale))
         return
 
     builder = InlineKeyboardBuilder()
@@ -317,19 +319,20 @@ async def cb_signal_subcategory(query: CallbackQuery) -> None:
             text=btn_text,
             callback_data=f"sig_pair:{sig_tier}:{p['symbol']}",
         )
-    builder.button(text="⬅️ Назад", callback_data=f"sig_cat:{sig_tier}")
+    builder.button(text=t("keyboard.back", locale), callback_data=f"sig_cat:{sig_tier}")
     builder.adjust(2)
 
     cat_label = SUBCATEGORY_LABELS.get(subcategory, subcategory.title())
+    choose_pair = t("signal.choose_pair", locale)
     try:
         await query.message.edit_text(
-            f"{cat_label}\n\n🎯 <b>Выбери пару:</b>",
+            f"{cat_label}\n\n{choose_pair}",
             parse_mode=ParseMode.HTML,
             reply_markup=builder.as_markup(),
         )
     except Exception:  # noqa: BLE001
         await query.message.answer(
-            f"{cat_label}\n\n🎯 <b>Выбери пару:</b>",
+            f"{cat_label}\n\n{choose_pair}",
             parse_mode=ParseMode.HTML,
             reply_markup=builder.as_markup(),
         )
@@ -345,6 +348,7 @@ async def cb_signal_pair(query: CallbackQuery) -> None:
     if query.from_user is None:
         return
 
+    locale = get_locale(query.from_user)
     parts = query.data.split(":", 2)
     if len(parts) < 3:
         return
@@ -353,7 +357,7 @@ async def cb_signal_pair(query: CallbackQuery) -> None:
 
     pair_info = _find_pair(sig_tier, pair_symbol)
     if pair_info is None:
-        await query.message.answer("Пара не найдена.")
+        await query.message.answer(t("signal.pair_not_found", locale))
         return
 
     expirations = EXPIRATIONS.get(sig_tier, EXPIRATIONS["otc"])
@@ -365,22 +369,23 @@ async def cb_signal_pair(query: CallbackQuery) -> None:
         )
     # Back to sub-category
     builder.button(
-        text="⬅️ Назад",
+        text=t("keyboard.back", locale),
         callback_data=f"sig_sub:{sig_tier}:{pair_info['category']}",
     )
     builder.adjust(3)
 
+    pair_payout = t("signal.pair_payout", locale,
+                    pair_name=pair_info["name"], payout=pair_info["payout"])
+    choose_exp = t("signal.choose_expiration", locale)
     try:
         await query.message.edit_text(
-            f"🎯 <b>{pair_info['name']}</b>  ·  Выплата: <b>+{pair_info['payout']}%</b>\n\n"
-            "⏱ <b>Выбери экспирацию:</b>",
+            f"{pair_payout}\n\n{choose_exp}",
             parse_mode=ParseMode.HTML,
             reply_markup=builder.as_markup(),
         )
     except Exception:  # noqa: BLE001
         await query.message.answer(
-            f"🎯 <b>{pair_info['name']}</b>  ·  Выплата: <b>+{pair_info['payout']}%</b>\n\n"
-            "⏱ <b>Выбери экспирацию:</b>",
+            f"{pair_payout}\n\n{choose_exp}",
             parse_mode=ParseMode.HTML,
             reply_markup=builder.as_markup(),
         )
@@ -420,17 +425,20 @@ async def _mirror_signal_to_web(telegram_id: int, pair: str, expiration: str) ->
         )
 
 
-async def _show_analysis_animation(bot: Bot, chat_id: int, delay_seconds: float) -> Message:
+async def _show_analysis_animation(
+    bot: Bot, chat_id: int, delay_seconds: float, locale: str = "ru"
+) -> Message:
     """Send and animate analysis progress messages."""
-    msg = await bot.send_message(chat_id, f"⏳ {ANALYSIS_STEPS[0]}")
-    step_interval = delay_seconds / len(ANALYSIS_STEPS)
+    steps = _analysis_steps(locale)
+    msg = await bot.send_message(chat_id, f"⏳ {steps[0]}")
+    step_interval = delay_seconds / len(steps)
 
-    for i, text in enumerate(ANALYSIS_STEPS[1:], 1):
+    for i, step_text in enumerate(steps[1:], 1):
         await asyncio.sleep(step_interval)
-        progress = "▓" * i + "░" * (len(ANALYSIS_STEPS) - i)
+        progress = "▓" * i + "░" * (len(steps) - i)
         try:
             await msg.edit_text(
-                f"⏳ {text}\n\n[{progress}] {int(i / len(ANALYSIS_STEPS) * 100)}%"
+                f"⏳ {step_text}\n\n[{progress}] {int(i / len(steps) * 100)}%"
             )
         except Exception:  # noqa: BLE001
             pass
@@ -451,6 +459,7 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
     if query.from_user is None:
         return
 
+    locale = get_locale(query.from_user)
     parts = query.data.split(":", 3)
     if len(parts) < 4:
         return
@@ -463,18 +472,18 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
 
     lock = _get_user_lock(user_id)
     if lock.locked():
-        await query.message.answer("Подожди — предыдущий сигнал ещё генерируется.")
+        await query.message.answer(t("signal.generating", locale))
         return
 
     async with lock:
         # Validate user again
-        error, user = await _validate_user(user_id)
+        error, user = await _validate_user(user_id, locale)
         if error:
             await query.message.answer(error, parse_mode=ParseMode.HTML)
             return
 
         # Check daily limit
-        limit_error = await _check_daily_limit(user)
+        limit_error = await _check_daily_limit(user, locale)
         if limit_error:
             await query.message.answer(limit_error, parse_mode=ParseMode.HTML)
             return
@@ -485,7 +494,7 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
         )
         if sig_tier not in allowed:
             await query.message.answer(
-                "⛔ Этот тип сигналов недоступен на твоём уровне.",
+                t("signal.unavailable_tier", locale),
                 parse_mode=ParseMode.HTML,
             )
             return
@@ -502,7 +511,7 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
 
         try:
             animation_task = asyncio.create_task(
-                _show_analysis_animation(bot, user.telegram_id, delay)
+                _show_analysis_animation(bot, user.telegram_id, delay, locale)
             )
 
             # Generate signal
@@ -571,9 +580,7 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
                     await analysis_msg.delete()
                 except Exception:  # noqa: BLE001
                     pass
-            await query.message.answer(
-                "Произошла ошибка при генерации сигнала. Попробуй позже."
-            )
+            await query.message.answer(t("signal.generation_error", locale))
 
 
 # ── Legacy: full auto-flow (used by web API path) ───────────────────────────
@@ -617,6 +624,7 @@ def _api_signal_to_local(data: dict[str, Any]) -> Signal:
 
 async def _generate_signal_data(
     user: Any,
+    locale: str = "ru",
 ) -> tuple[str | None, Signal | None, bytes | None, dict[str, Any] | None]:
     """Generate a signal via API or local fallback (legacy random)."""
 
@@ -635,17 +643,16 @@ async def _generate_signal_data(
                     if tier < 2:
                         next_tier = TIER_NAMES.get(tier + 1, "Pro")
                         return (
-                            f"Лимит исчерпан ({used}/{daily_limit} сигналов сегодня).\n\n"
-                            f"Повысь тариф до <b>{next_tier}</b> для большего количества сигналов."
+                            t("signal.limit_exceeded_upgrade", locale,
+                              used=used, limit=daily_limit, next_tier=next_tier)
                         ), None, None, None
                     return (
-                        f"Лимит исчерпан ({used}/{daily_limit} сигналов сегодня).\n"
-                        "Следующий сигнал будет доступен через несколько часов."
+                        t("signal.limit_exceeded", locale, used=used, limit=daily_limit)
                     ), None, None, None
-                return "Пользователь не найден на платформе.", None, None, None
+                return t("signal.user_not_found_platform", locale), None, None, None
 
             if status == 404:
-                return "Пользователь не найден на платформе. Зарегистрируйся на сайте.", None, None, None
+                return t("signal.user_not_found_register", locale), None, None, None
 
             if status >= 400:
                 logger.warning("Web API returned status %s: %s", status, api_resp.get("error"))
@@ -692,12 +699,10 @@ async def _generate_signal_data(
         if user.tier < 2:
             next_tier = TIER_NAMES.get(user.tier + 1, "Pro")
             return (
-                f"Лимит исчерпан ({used}/{limit} сигналов сегодня).\n\n"
-                f"Повысь тариф до <b>{next_tier}</b> для большего количества сигналов."
+                t("signal.limit_exceeded_upgrade", locale, used=used, limit=limit, next_tier=next_tier)
             ), None, None, None
         return (
-            f"Лимит исчерпан ({used}/{limit} сигналов сегодня).\n"
-            "Следующий сигнал будет доступен через несколько часов."
+            t("signal.limit_exceeded", locale, used=used, limit=limit)
         ), None, None, None
 
     allowed_types = web_sync.get_allowed_types(user.tier) or TIER_SIGNAL_TYPES.get(user.tier, ["otc"])
@@ -719,18 +724,18 @@ async def _generate_signal_data(
     return None, signal, chart_bytes, None
 
 
-async def _send_signal_with_animation(user_id: int, bot: Bot) -> str | None:
+async def _send_signal_with_animation(user_id: int, bot: Bot, locale: str = "ru") -> str | None:
     """
     Full signal flow for legacy callers (menu button).
 
     Now starts the multi-step picker instead of generating immediately.
     Returns error text or None.
     """
-    error, user = await _validate_user(user_id)
+    error, user = await _validate_user(user_id, locale)
     if error:
         return error
 
-    limit_error = await _check_daily_limit(user)
+    limit_error = await _check_daily_limit(user, locale)
     if limit_error:
         return limit_error
 
@@ -738,7 +743,7 @@ async def _send_signal_with_animation(user_id: int, bot: Bot) -> str | None:
     kb = _build_category_keyboard(user.tier)
     await bot.send_message(
         user.telegram_id,
-        "📊 <b>Выбери тип сигнала:</b>",
+        t("signal.choose_type", locale),
         parse_mode=ParseMode.HTML,
         reply_markup=kb.as_markup(),
     )
@@ -764,8 +769,9 @@ async def cb_signal_result(query: CallbackQuery) -> None:
         await query.answer()
         return
 
+    locale = get_locale(query.from_user)
     await record_signal_result(query.from_user.id, signal_id, result)
-    label = "✅ Записано как WIN" if result == "win" else "❌ Записано как LOSS"
+    label = t("signal.result_win", locale) if result == "win" else t("signal.result_loss", locale)
     await query.answer(label, show_alert=False)
 
     try:

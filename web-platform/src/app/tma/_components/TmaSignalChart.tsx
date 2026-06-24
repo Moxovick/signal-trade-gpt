@@ -7,6 +7,7 @@
  * with a directional arrow.
  */
 import { useEffect, useState } from "react";
+import { useI18n } from "@/lib/i18n/context";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -30,6 +31,8 @@ type Props = {
 };
 
 export function TmaSignalChart({ pair, providerSymbol, entryPrice, direction }: Props) {
+  const { t } = useI18n();
+  const sc = t?.tma?.signalChart ?? {};
   const [data, setData] = useState<Candle[]>([]);
   const [source, setSource] = useState<ChartSource>("synthetic");
   const symbol = providerSymbol || pair;
@@ -67,7 +70,7 @@ export function TmaSignalChart({ pair, providerSymbol, entryPrice, direction }: 
   return (
     <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--b-soft)] p-3">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">График</div>
+        <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">{(sc as Record<string, string>).chartLabel ?? "График"}</div>
         <div className="flex items-center gap-2">
           {last && (
             <span className="text-xs font-mono tabular-nums text-[var(--t-2)]">
@@ -161,7 +164,9 @@ export function TmaSignalChart({ pair, providerSymbol, entryPrice, direction }: 
                 stroke={isCall ? "var(--green)" : "var(--red)"}
                 strokeDasharray="3 3"
                 label={{
-                  value: `вход ${entryPrice.toFixed(4)} ${isCall ? "↑" : "↓"}`,
+                  value: ((sc as Record<string, string>).entryLine ?? "вход {price} {arrow}")
+                    .replace("{price}", entryPrice.toFixed(4))
+                    .replace("{arrow}", isCall ? "↑" : "↓"),
                   position: "right",
                   fill: isCall ? "var(--green)" : "var(--red)",
                   fontSize: 10,

@@ -15,9 +15,11 @@ import {
   ExternalLink,
   Menu,
   X,
+  Globe,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
-import { useI18n } from "@/lib/i18n/context";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { useI18n, useLocale } from "@/lib/i18n/context";
 
 /** Avatar with onError fallback to initials */
 function UserAvatar({
@@ -66,6 +68,7 @@ export function DashboardTopNav({
   user: { name: string | null; email: string | null; role?: string; avatar?: string | null };
 }) {
   const { t } = useI18n();
+  const locale = useLocale();
   const pathname = usePathname();
 
   const MAIN_NAV: NavItem[] = [
@@ -175,6 +178,11 @@ export function DashboardTopNav({
               </span>
             </Link>
 
+            {/* Language switcher — desktop */}
+            <div className="hidden sm:block">
+              <LanguageSwitcher locale={locale} />
+            </div>
+
             {/* Settings icon-button — desktop */}
             <Link
               href="/dashboard/settings"
@@ -256,6 +264,15 @@ export function DashboardTopNav({
           </nav>
 
           <div className="mt-3 pt-3 border-t border-[var(--b-soft)] flex flex-col gap-1">
+            {/* Language switcher — mobile */}
+            <div className="flex items-center gap-2.5 px-3 py-2.5">
+              <Globe size={14} className="text-[var(--t-3)]" />
+              <span className="text-sm text-[var(--t-2)]">{t.dashboardNav.language ?? "Язык"}</span>
+              <div className="ml-auto">
+                <LanguageSwitcher locale={locale} />
+              </div>
+            </div>
+
             {/* Telegram bot link — mobile */}
             <a
               href={BOT_URL}

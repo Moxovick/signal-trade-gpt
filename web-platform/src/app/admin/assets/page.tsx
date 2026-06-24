@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Save, X, Power, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { useI18n } from "@/lib/i18n/context";
 
 type Asset = {
   id: string;
@@ -53,7 +54,7 @@ const EMPTY: Draft = {
   isActive: true,
 };
 
-const CAT_LABEL: Record<Asset["category"], string> = {
+const CAT_LABEL_FALLBACK: Record<Asset["category"], string> = {
   currency: "Валюты",
   crypto: "Крипта",
   commodity: "Сырьевые",
@@ -61,13 +62,34 @@ const CAT_LABEL: Record<Asset["category"], string> = {
   index: "Индексы",
 };
 
-const TIER_LABEL: Record<Asset["signalTier"], string> = {
+const TIER_LABEL_FALLBACK: Record<Asset["signalTier"], string> = {
   otc: "OTC (T0+)",
   exchange: "Биржа (T1+)",
   elite: "Elite (T2+)",
 };
 
 export default function AdminAssetsPage() {
+  const { t } = useI18n();
+  const as_ = t?.admin?.assets ?? {};
+  const asCats = (as_ as Record<string, Record<string, string>>).categories ?? {};
+  const asTiers = (as_ as Record<string, Record<string, string>>).tiers ?? {};
+  const asTable = (as_ as Record<string, Record<string, string>>).table ?? {};
+  const asActions = (as_ as Record<string, Record<string, string>>).actions ?? {};
+  const asFilter = (as_ as Record<string, Record<string, string>>).filter ?? {};
+  const asModal = (as_ as Record<string, Record<string, string>>).modal ?? {};
+  const asBtns = (as_ as Record<string, Record<string, string>>).buttons ?? {};
+  const CAT_LABEL: Record<Asset["category"], string> = {
+    currency: asCats.currencies ?? CAT_LABEL_FALLBACK.currency,
+    crypto: asCats.crypto ?? CAT_LABEL_FALLBACK.crypto,
+    commodity: asCats.commodities ?? CAT_LABEL_FALLBACK.commodity,
+    stock: asCats.stocks ?? CAT_LABEL_FALLBACK.stock,
+    index: asCats.indices ?? CAT_LABEL_FALLBACK.index,
+  };
+  const TIER_LABEL: Record<Asset["signalTier"], string> = {
+    otc: asTiers.otc ?? TIER_LABEL_FALLBACK.otc,
+    exchange: asTiers.exchange ?? TIER_LABEL_FALLBACK.exchange,
+    elite: asTiers.elite ?? TIER_LABEL_FALLBACK.elite,
+  };
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -148,7 +170,7 @@ export default function AdminAssetsPage() {
     });
     if (!r.ok) {
       const j = (await r.json().catch(() => ({}))) as { error?: string };
-      setError(j.error ?? `Ошибка ${r.status}`);
+      setError(j.error ?? `${(as_ as Record<string, string>).errorPrefix ?? "Ошибка"} ${r.status}`);
       setBusy(false);
       return;
     }
@@ -167,7 +189,8 @@ export default function AdminAssetsPage() {
   }
 
   async function remove(a: Asset) {
-    if (!confirm(`Удалить «${a.symbol}»? Сигналы по этому ассету продолжат существовать, но новые создавать будет нельзя.`))
+    const asAlerts = (as_ as Record<string, Record<string, string>>).alerts ?? {};
+    if (!confirm((asAlerts.deleteConfirm ?? "Удалить «{symbol}»? Сигналы по этому ассету продолжат существовать, но новые создавать будет нельзя.").replace("{symbol}", a.symbol)))
       return;
     await fetch(`/api/admin/assets/${a.id}`, { method: "DELETE" });
     void load();
@@ -177,7 +200,8 @@ export default function AdminAssetsPage() {
     setBusy(true);
     const r = await fetch("/api/admin/assets?action=seed", { method: "POST" });
     const j = (await r.json()) as { inserted?: number };
-    alert(`Пересеяно. Добавлено новых: ${j.inserted ?? 0}`);
+    const asAlerts2 = (as_ as Record<string, Record<string, string>>).alerts ?? {};
+    alert((asAlerts2.reseeded ?? "Пересеяно. Добавлено новых: {n}").replace("{n}", String(j.inserted ?? 0)));
     setBusy(false);
     void load();
   }
@@ -186,11 +210,13 @@ export default function AdminAssetsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Активы (PocketOption пары)</h1>
+          <h1 className="text-2xl font-bold">{(as_ as Record<string, string>).title ?? "Активы (PocketOption пары)"}</h1>
           <p className="text-sm text-[var(--t-3)] mt-1">
-            Всего: {assets.length} · {assets.filter((a) => a.isActive).length} активных ·
-            {" "}OTC: {assets.filter((a) => a.isOtc).length} ·
-            {" "}Реал: {assets.filter((a) => !a.isOtc).length}
+            {((as_ as Record<string, string>).headerSummary ?? "Всего: {n} · {n} активных · OTC: {n} · Реал: {n}")
+              .replace("{n}", String(assets.length))
+              .replace("{n}", String(assets.filter((a) => a.isActive).length))
+              .replace("{n}", String(assets.filter((a) => a.isOtc).length))
+              .replace("{n}", String(assets.filter((a) => !a.isOtc).length))}
           </p>
         </div>
         <div className="flex gap-2">
@@ -199,20 +225,20 @@ export default function AdminAssetsPage() {
             disabled={busy}
             className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[var(--b-soft)] hover:bg-[var(--bg-2)] text-sm"
           >
-            <RefreshCw size={14} /> Пересеять из списка
+            <RefreshCw size={14} /> {asBtns.reseed ?? "Пересеять из списка"}
           </button>
           <button
             onClick={openCreate}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold hover:bg-[var(--brand-gold-bright)]"
           >
-            <Plus size={16} /> Добавить актив
+            <Plus size={16} /> {asBtns.add ?? "Добавить актив"}
           </button>
         </div>
       </div>
 
       <div className="flex gap-2 flex-wrap items-center">
         <input
-          placeholder="Поиск по символу…"
+          placeholder={asFilter.search ?? "Поиск по символу…"}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="px-3 py-2 rounded-xl border border-[var(--b-soft)] bg-[var(--bg-2)] text-sm"
@@ -228,7 +254,7 @@ export default function AdminAssetsPage() {
                   : "border-[var(--b-soft)] text-[var(--t-2)] hover:bg-[var(--bg-2)]"
               }`}
             >
-              {c === "all" ? "Все" : CAT_LABEL[c as Asset["category"]]}
+              {c === "all" ? (asFilter.all ?? "Все") : CAT_LABEL[c as Asset["category"]]}
             </button>
           ))}
         </div>
@@ -236,7 +262,7 @@ export default function AdminAssetsPage() {
 
       {loading ? (
         <Card padding="lg">
-          <div className="text-[var(--t-3)] text-sm">Загружаем…</div>
+          <div className="text-[var(--t-3)] text-sm">{(as_ as Record<string, string>).loading ?? "Загружаем…"}</div>
         </Card>
       ) : (
         <Card padding="md">
@@ -244,14 +270,14 @@ export default function AdminAssetsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-[var(--t-3)] text-[11px] uppercase tracking-wider">
-                  <th className="px-2 py-2">Символ</th>
-                  <th className="px-2 py-2">Имя</th>
-                  <th className="px-2 py-2">Кат.</th>
-                  <th className="px-2 py-2">OTC</th>
-                  <th className="px-2 py-2">Выплата</th>
-                  <th className="px-2 py-2">Sig.tier</th>
-                  <th className="px-2 py-2">Провайдер</th>
-                  <th className="px-2 py-2 text-right">Действия</th>
+                  <th className="px-2 py-2">{asTable.symbol ?? "Символ"}</th>
+                  <th className="px-2 py-2">{asTable.name ?? "Имя"}</th>
+                  <th className="px-2 py-2">{asTable.category ?? "Кат."}</th>
+                  <th className="px-2 py-2">{asTable.otc ?? "OTC"}</th>
+                  <th className="px-2 py-2">{asTable.payout ?? "Выплата"}</th>
+                  <th className="px-2 py-2">{asTable.sigTier ?? "Sig.tier"}</th>
+                  <th className="px-2 py-2">{asTable.provider ?? "Провайдер"}</th>
+                  <th className="px-2 py-2 text-right">{asTable.actions ?? "Действия"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -270,7 +296,7 @@ export default function AdminAssetsPage() {
                         </span>
                       ) : (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(142,224,107,0.12)] text-[var(--green)]">
-                          Реал
+                          {(as_ as Record<string, string>).real ?? "Реал"}
                         </span>
                       )}
                     </td>
@@ -287,21 +313,21 @@ export default function AdminAssetsPage() {
                         className={`p-1.5 rounded-lg hover:bg-[var(--bg-2)] ${
                           a.isActive ? "text-[var(--green)]" : "text-[var(--t-3)]"
                         }`}
-                        title={a.isActive ? "Выключить" : "Включить"}
+                        title={a.isActive ? (asActions.disable ?? "Выключить") : (asActions.enable ?? "Включить")}
                       >
                         <Power size={14} />
                       </button>
                       <button
                         onClick={() => openEdit(a)}
                         className="p-1.5 rounded-lg hover:bg-[var(--bg-2)] text-[var(--t-2)]"
-                        title="Редактировать"
+                        title={asActions.edit ?? "Редактировать"}
                       >
                         <Pencil size={14} />
                       </button>
                       <button
                         onClick={() => remove(a)}
                         className="p-1.5 rounded-lg hover:bg-[var(--bg-2)] text-[var(--red)]"
-                        title="Удалить"
+                        title={asActions.delete ?? "Удалить"}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -311,7 +337,7 @@ export default function AdminAssetsPage() {
                 {filtered.length === 0 && (
                   <tr>
                     <td colSpan={8} className="text-center text-[var(--t-3)] py-6">
-                      Ничего не найдено.
+                      {(as_ as Record<string, string>).empty ?? "Ничего не найдено."}
                     </td>
                   </tr>
                 )}
@@ -326,7 +352,7 @@ export default function AdminAssetsPage() {
           <Card padding="lg" className="max-w-2xl w-full">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">
-                {draft.id ? "Редактировать актив" : "Новый актив"}
+                {draft.id ? (asModal.editTitle ?? "Редактировать актив") : (asModal.newTitle ?? "Новый актив")}
               </h2>
               <button
                 onClick={() => setDraft(null)}
@@ -353,7 +379,7 @@ export default function AdminAssetsPage() {
                 />
               </div>
               <div>
-                <label className="text-[12px] text-[var(--t-3)]">Категория</label>
+                <label className="text-[12px] text-[var(--t-3)]">{asModal.category ?? "Категория"}</label>
                 <select
                   value={draft.category}
                   onChange={(e) => setDraft({ ...draft, category: e.target.value as Asset["category"] })}
@@ -377,7 +403,7 @@ export default function AdminAssetsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-[12px] text-[var(--t-3)]">Выплата %</label>
+                <label className="text-[12px] text-[var(--t-3)]">{asModal.payout ?? "Выплата %"}</label>
                 <input
                   type="number"
                   value={draft.payoutPct}
@@ -395,13 +421,13 @@ export default function AdminAssetsPage() {
                 />
               </div>
               <div>
-                <label className="text-[12px] text-[var(--t-3)]">Провайдер графика</label>
+                <label className="text-[12px] text-[var(--t-3)]">{asModal.chartProvider ?? "Провайдер графика"}</label>
                 <select
                   value={draft.provider}
                   onChange={(e) => setDraft({ ...draft, provider: e.target.value as Asset["provider"] })}
                   className="w-full mt-1 px-3 py-2 rounded-xl border border-[var(--b-soft)] bg-[var(--bg-2)] text-sm"
                 >
-                  <option value="none">none (нет графика)</option>
+                  <option value="none">none ({asModal.noChart ?? "нет графика"})</option>
                   <option value="twelvedata">TwelveData</option>
                   <option value="binance">Binance</option>
                   <option value="yahoo">Yahoo Finance</option>
@@ -423,7 +449,7 @@ export default function AdminAssetsPage() {
                   checked={draft.isOtc}
                   onChange={(e) => setDraft({ ...draft, isOtc: e.target.checked })}
                 />
-                Это OTC (синтетика, без графика)
+                {asModal.isOtc ?? "Это OTC (синтетика, без графика)"}
               </label>
               <label className="flex items-center gap-2 text-sm md:col-span-1">
                 <input
@@ -431,7 +457,7 @@ export default function AdminAssetsPage() {
                   checked={draft.isActive}
                   onChange={(e) => setDraft({ ...draft, isActive: e.target.checked })}
                 />
-                Активен (показывается в публикаторе)
+                {asModal.isActive ?? "Активен (показывается в публикаторе)"}
               </label>
             </div>
 
@@ -446,14 +472,14 @@ export default function AdminAssetsPage() {
                 onClick={() => setDraft(null)}
                 className="px-4 py-2 rounded-xl border border-[var(--b-soft)] text-sm hover:bg-[var(--bg-2)]"
               >
-                Отмена
+                {(as_ as Record<string, string>).cancel ?? "Отмена"}
               </button>
               <button
                 disabled={busy}
                 onClick={save}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold hover:bg-[var(--brand-gold-bright)] disabled:opacity-50"
               >
-                <Save size={14} /> Сохранить
+                <Save size={14} /> {(as_ as Record<string, string>).save ?? "Сохранить"}
               </button>
             </div>
           </Card>

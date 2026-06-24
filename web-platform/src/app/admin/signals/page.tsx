@@ -93,7 +93,7 @@ export default async function AdminSignalsPage() {
             {ts.subtitle ?? "On-demand модель: пользователи запрашивают сигналы по кнопке."}
           </p>
         </div>
-        <span className="text-sm text-[#666]">Последние {signals.length}</span>
+        <span className="text-sm text-[#666]">{(ts.recentCount ?? "Последние {n}").replace("{n}", String(signals.length))}</span>
       </div>
 
       {/* Statistics */}
@@ -101,7 +101,7 @@ export default async function AdminSignalsPage() {
         {[
           { label: ts.stats?.todayTotal ?? "Сегодня всего", value: todayTotal.toString() },
           { label: "OTC", value: todayByTier.otc.toString(), color: "#8888ff" },
-          { label: "Биржа", value: todayByTier.exchange.toString(), color: "#00e5a0" },
+          { label: ts.stats?.exchange ?? "Биржа", value: todayByTier.exchange.toString(), color: "#00e5a0" },
           { label: "Elite", value: todayByTier.elite.toString(), color: "#f5c518" },
           { label: ts.stats?.uniqueUsers ?? "Уникальных юзеров", value: todayUniqueUsers.toString() },
         ].map((stat) => (

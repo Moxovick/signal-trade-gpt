@@ -10,7 +10,7 @@ import { auth } from "@/lib/auth";
 import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
-import { getDictionary, getDictionaryForUser } from "@/lib/i18n";
+import { getDictionary, getDictionaryForUser, getLocaleFromCookies, getLocaleForUser } from "@/lib/i18n";
 
 const BOT_URL = process.env["NEXT_PUBLIC_BOT_URL"] ?? "";
 
@@ -56,9 +56,10 @@ function PrizeIcon({ title }: { title: string }) {
 
 export default async function BonusProgramPage() {
   const session = await auth();
-  const t = session?.user?.id
-    ? await getDictionaryForUser(session.user.id)
-    : await getDictionary("ru");
+  const locale = session?.user?.id
+    ? await getLocaleForUser(session.user.id)
+    : await getLocaleFromCookies();
+  const t = await getDictionary(locale);
 
   const giveaway = t.giveaway as {
     heroTitle: string;
@@ -145,7 +146,7 @@ export default async function BonusProgramPage() {
 
   return (
     <>
-      <SiteHeader translations={siteTranslations} />
+      <SiteHeader translations={siteTranslations} locale={locale} />
       <main className="relative">
         {/* Hero */}
         <section className="max-w-5xl mx-auto px-6 pt-16 pb-12 text-center">
@@ -375,7 +376,7 @@ export default async function BonusProgramPage() {
           </Card>
         </section>
       </main>
-      <SiteFooter translations={siteTranslations} />
+      <SiteFooter translations={siteTranslations} locale={locale} />
     </>
   );
 }

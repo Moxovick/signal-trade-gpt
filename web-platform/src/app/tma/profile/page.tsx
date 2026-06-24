@@ -1,9 +1,11 @@
 "use client";
 
-import { Activity, ChevronRight, Flame, User2, Users } from "lucide-react";
+import { useState } from "react";
+import { Activity, ChevronRight, Flame, Globe, User2, Users } from "lucide-react";
 import { TmaShell, type TmaUser } from "../_components/TmaShell";
+import { useTma } from "../_components/TmaProvider";
 import { DEFAULT_TIER_THRESHOLDS, TIER_LABELS } from "@/lib/tier-constants";
-import { useI18n } from "@/lib/i18n/context";
+import { useI18n, useLocale } from "@/lib/i18n/context";
 
 const BOT_URL = process.env["NEXT_PUBLIC_BOT_URL"] ?? "";
 
@@ -123,6 +125,9 @@ function Profile({ user }: { user: TmaUser }) {
         </div>
         <ChevronRight size={16} className="text-[var(--t-3)]" />
       </a>
+
+      {/* Language */}
+      <TmaLanguagePicker />
     </main>
   );
 }
@@ -142,5 +147,56 @@ function Stat({
       <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">{label}</div>
       <div className="text-sm font-bold text-[var(--t-1)] mt-0.5">{value}</div>
     </div>
+  );
+}
+
+function TmaLanguagePicker() {
+  const { t } = useI18n();
+  const locale = useLocale();
+  const { tmaFetch } = useTma();
+  const [busy, setBusy] = useState(false);
+
+  const lang = t.tma?.profile?.language ?? { title: "Язык", ru: "RU", uk: "UK" };
+
+  async function pick(next: "ru" | "uk") {
+    if (next === locale || busy) return;
+    setBusy(true);
+    try {
+      await tmaFetch("/api/tma/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: next }),
+      });
+      window.location.reload();
+    } catch {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rounded-2xl border border-[var(--b-soft)] bg-[var(--bg-1)] p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Globe size={14} className="text-[var(--brand-gold)]" />
+        <span className="text-[10px] uppercase tracking-wider text-[var(--t-3)]">
+          {lang.title}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        {(["ru", "uk"] as const).map((l) => (
+          <button
+            key={l}
+            onClick={() => pick(l)}
+            disabled={busy}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+              locale === l
+                ? "bg-[var(--brand-gold)] text-[#1a1208]"
+                : "bg-[var(--bg-2)] border border-[var(--b-soft)] text-[var(--t-2)] hover:border-[var(--brand-gold)]"
+            } disabled:opacity-50`}
+          >
+            {lang[l]}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }

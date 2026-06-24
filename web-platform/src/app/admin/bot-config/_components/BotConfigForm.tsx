@@ -120,7 +120,7 @@ export function BotConfigForm({ initial }: { initial: BotConfig }) {
       });
       if (!res.ok) {
         const data: { reason?: string } = await res.json().catch(() => ({}));
-        setError(data.reason ?? `Ошибка ${res.status}`);
+        setError(data.reason ?? `${(bc as Record<string, string>).errorPrefix ?? "Ошибка"} ${res.status}`);
         return;
       }
       setSavedAt(new Date());

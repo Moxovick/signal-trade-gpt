@@ -11,7 +11,7 @@ from aiogram.types import MenuButtonWebApp, WebAppInfo
 
 from config import settings
 from database.db import init_db, close_db
-from handlers import admin, link, menu, onboarding, signals, start, stats
+from handlers import admin, lang, link, menu, onboarding, signals, start, stats
 from middlewares import BannedUserMiddleware
 from services.scheduler import daily_brief_loop
 from services.tier_sync import tier_sync_loop
@@ -67,6 +67,7 @@ async def main() -> None:
     dp.include_router(start.router)
     dp.include_router(onboarding.router)
     dp.include_router(signals.router)
+    dp.include_router(lang.router)
     dp.include_router(link.router)
     dp.include_router(stats.router)
     dp.include_router(menu.router)

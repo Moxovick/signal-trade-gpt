@@ -17,6 +17,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
 from database.db import get_user, log_activity, set_po_trader_id  # noqa: F401
+from i18n import t
+from i18n_helpers import get_locale
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -30,15 +32,15 @@ class LinkPo(StatesGroup):
 
 @router.message(Command("link"))
 async def cmd_link(message: Message, state: FSMContext) -> None:
+    locale = get_locale(message.from_user)
     user = await get_user(message.from_user.id)
     if user is None:
-        await message.answer("Сначала /start.")
+        await message.answer(t("common.start_first_alt", locale))
         return
 
     if user.po_trader_id:
         await message.answer(
-            f"Аккаунт привязан: <code>{user.po_trader_id}</code>.\n"
-            f"Если нужно сменить — пришли новый ID (6–12 цифр).",
+            t("link.already_linked", locale, po_trader_id=user.po_trader_id),
             parse_mode=ParseMode.HTML,
         )
         await state.set_state(LinkPo.waiting_for_id)
@@ -51,19 +53,19 @@ async def cmd_link(message: Message, state: FSMContext) -> None:
 @router.message(LinkPo.waiting_for_id, Command("cancel"))
 async def cmd_cancel_in_link(message: Message, state: FSMContext) -> None:
     """Handle /cancel while waiting for PO trader ID."""
+    locale = get_locale(message.from_user)
     await state.clear()
-    await message.answer("Привязка отменена. Вернись когда будет готов — /link.")
+    await message.answer(t("link.cancel_in_fsm", locale))
 
 
 @router.message(LinkPo.waiting_for_id, F.text)
 async def receive_id(message: Message, state: FSMContext) -> None:
+    locale = get_locale(message.from_user)
     candidate = (message.text or "").strip()
     # Catch any other command sent while in state (safety net)
     if candidate.startswith("/"):
         await state.clear()
-        await message.answer(
-            "Привязка отменена. Используй /link чтобы начать заново.",
-        )
+        await message.answer(t("link.command_cancelled", locale))
         return
     # If user tapped a menu button, cancel FSM and forward to menu handler
     from services.keyboards import MENU_BUTTONS
@@ -74,11 +76,7 @@ async def receive_id(message: Message, state: FSMContext) -> None:
         await dispatch_menu_button(message, state)
         return
     if not PO_ID_RE.match(candidate):
-        await message.answer(
-            "Trader ID должен быть числовым, 6–12 цифр.\n"
-            "Найти его можно: PocketOption → Профиль → «Мой ID».\n\n"
-            "Нажми /cancel чтобы отменить.",
-        )
+        await message.answer(t("link.invalid_id", locale))
         return
 
     # Strict PO API verification
@@ -97,15 +95,12 @@ async def receive_id(message: Message, state: FSMContext) -> None:
             # ID not found in our partner network — REJECT
             from config import settings
             await message.answer(
-                "❌ <b>Trader ID не найден</b> в нашей партнёрской сети.\n\n"
-                "Убедись, что ты зарегистрировался на PocketOption "
-                "<b>по нашей реферальной ссылке</b>.\n\n"
-                "Если ещё не зарегистрирован — нажми кнопку ниже:",
+                t("link.not_found_in_network", locale),
                 parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🚀 Зарегистрироваться в PocketOption", url=settings.pocket_option_url)],
-                    [InlineKeyboardButton(text="🔄 Ввести другой ID", callback_data="link:enter_id")],
-                    [InlineKeyboardButton(text="❌ Отменить", callback_data="onb:cancel")],
+                    [InlineKeyboardButton(text=t("keyboard.register_po_full", locale), url=settings.pocket_option_url)],
+                    [InlineKeyboardButton(text=t("keyboard.enter_another_id", locale), callback_data="link:enter_id")],
+                    [InlineKeyboardButton(text=t("keyboard.cancel", locale), callback_data="onb:cancel")],
                 ]),
             )
             await state.clear()
@@ -123,15 +118,13 @@ async def receive_id(message: Message, state: FSMContext) -> None:
 
     except Exception as exc:
         logger.warning("PO verification error: %s", exc)
-        await message.answer(
-            "⚠️ PocketOption API временно недоступен. Попробуй через минуту.\n"
-            "Нажми /cancel чтобы отменить.",
-        )
+        await message.answer(t("link.po_api_unavailable", locale))
         # Keep FSM state so user can retry
 
 
 async def _send_success(message: Message, state: FSMContext, trader_id: str, verified: bool, deposit: float) -> None:
     """Send success message after PO ID is saved."""
+    locale = get_locale(message.from_user)
     asyncio.create_task(log_activity(message.from_user.id, "po_link", {
         "trader_id": trader_id,
         "verified": verified,
@@ -143,7 +136,7 @@ async def _send_success(message: Message, state: FSMContext, trader_id: str, ver
 
     verify_line = ""
     if verified:
-        verify_line = f"\n✅ <b>Подтверждено</b> — депозит: ${deposit:,.0f}"
+        verify_line = t("link.verified_deposit", locale, deposit=deposit)
 
     if is_onboarding:
         bot_info = await message.bot.get_me()
@@ -151,25 +144,13 @@ async def _send_success(message: Message, state: FSMContext, trader_id: str, ver
         ref_code = user.referral_code if user else "??"
         ref_link = f"https://t.me/{bot_info.username}?start=ref_{ref_code}"
         await message.answer(
-            f"<b>✅ Готово — PocketOption привязан!</b>\n"
-            f"\n"
-            f"Trader ID: <code>{trader_id}</code>"
-            f"{verify_line}\n"
-            f"Уровень: <b>Free</b> — OTC-сигналы, 3/день\n"
-            f"\n"
-            f"Нажми «🎯 Получить сигнал» в меню, чтобы запросить сигнал.\n"
-            f"Депозит ≥ $20 → <b>Basic</b> (10/день), ≥ $100 → <b>Pro</b> (безлимит).\n"
-            f"\n"
-            f"Реф-ссылка (5% с FTD приглашённых):\n"
-            f"<code>{ref_link}</code>",
+            t("link.success_onboarding", locale,
+              trader_id=trader_id, verify_line=verify_line, ref_link=ref_link),
             parse_mode=ParseMode.HTML,
         )
     else:
         await message.answer(
-            f"<b>✅ PocketOption привязан.</b>\n\n"
-            f"Trader ID: <code>{trader_id}</code>"
-            f"{verify_line}\n"
-            f"Уровень обновится автоматически после депозита.",
+            t("link.success", locale, trader_id=trader_id, verify_line=verify_line),
             parse_mode=ParseMode.HTML,
         )
 
@@ -177,15 +158,14 @@ async def _send_success(message: Message, state: FSMContext, trader_id: str, ver
 @router.callback_query(F.data == "link:enter_id")
 async def cb_enter_id(query: CallbackQuery, state: FSMContext) -> None:
     """Handle inline button 'Я уже зарегистрирован — ввести ID'."""
+    locale = get_locale(query.from_user)
     await query.answer()
     await state.set_state(LinkPo.waiting_for_id)
-    await query.message.answer(
-        "Пришли свой PocketOption Trader ID (только цифры, 6–12 знаков).\n"
-        "Найти его можно в профиле PocketOption → раздел «Мой ID».",
-    )
+    await query.message.answer(t("link.enter_id_prompt", locale))
 
 
 @router.message(Command("cancel"))
 async def cmd_cancel(message: Message, state: FSMContext) -> None:
+    locale = get_locale(message.from_user)
     await state.clear()
-    await message.answer("Отменено.")
+    await message.answer(t("link.cancelled", locale))

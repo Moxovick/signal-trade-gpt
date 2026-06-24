@@ -30,6 +30,7 @@ import matplotlib.pyplot as plt
 
 from constants import TIER_NAMES
 from database.models import Signal
+from i18n import t, DEFAULT_LOCALE
 
 
 # ── palette (must mirror web/globals.css) ────────────────────────────────────
@@ -603,7 +604,7 @@ def make_otc_banner(signal: Signal) -> bytes:
     return buf.getvalue()
 
 
-def make_tier_card(tier: int, deposit: float, next_threshold: int | None) -> bytes:
+def make_tier_card(tier: int, deposit: float, next_threshold: int | None, locale: str = DEFAULT_LOCALE) -> bytes:
     """A small horizontal progress card image for /tier responses."""
     w, h = 1100, 380
     img = _gradient_bg(w, h)
@@ -637,18 +638,18 @@ def make_tier_card(tier: int, deposit: float, next_threshold: int | None) -> byt
     )
 
     # Stats
-    draw.text((bar_x, bar_y - 50), f"Депозит: ${deposit:,.0f}", font=txt_f, fill=TEXT_1)
+    draw.text((bar_x, bar_y - 50), t("imagegen.deposit_label", locale, deposit=deposit), font=txt_f, fill=TEXT_1)
     if next_threshold:
         remaining = max(0, next_threshold - int(deposit))
         next_name = {0: "Basic", 1: "Pro"}.get(tier, f"T{tier + 1}")
         draw.text(
             (bar_x, bar_y + 30),
-            f"До {next_name}: ещё ${remaining:,}",
+            t("imagegen.to_next_tier", locale, next_name=next_name, remaining=remaining),
             font=txt_f,
             fill=TEXT_2,
         )
     else:
-        draw.text((bar_x, bar_y + 30), "Полный доступ открыт", font=txt_f, fill=GOLD_SOFT)
+        draw.text((bar_x, bar_y + 30), t("imagegen.full_access", locale), font=txt_f, fill=GOLD_SOFT)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
@@ -689,6 +690,7 @@ def make_stats_card(
     signals_received: int,
     wins: int,
     losses: int,
+    locale: str = DEFAULT_LOCALE,
 ) -> bytes:
     """Personal stats dashboard card."""
     w, h = 1100, 620
@@ -700,13 +702,13 @@ def make_stats_card(
     f_label = _font_regular(20)
     f_val = _font_bold(58)
 
-    d.text((60, 50), "Личный кабинет", font=f_sub, fill=TEXT_2)
+    d.text((60, 50), t("imagegen.personal_cabinet", locale), font=f_sub, fill=TEXT_2)
     d.text((60, 80), name, font=f_title, fill=GOLD)
 
     cards = [
-        (f"T{tier}", "ТИР", GOLD),
-        (f"${deposit:,.0f}", "ДЕПОЗИТ", TEXT_1),
-        (str(signals_received), "СИГНАЛОВ", TEXT_1),
+        (f"T{tier}", t("imagegen.tier_label", locale), GOLD),
+        (f"${deposit:,.0f}", t("imagegen.deposit_stat_label", locale), TEXT_1),
+        (str(signals_received), t("imagegen.signals_label", locale), TEXT_1),
     ]
     card_w = (w - 60 * 2 - 30 * 2) // 3
     card_h = 180
@@ -762,6 +764,7 @@ def make_referral_card(
     referral_code: str,
     deep_link: str,
     invited_count: int,
+    locale: str = DEFAULT_LOCALE,
 ) -> bytes:
     """Card with QR + ref link + headline reward."""
     w, h = 1100, 620
@@ -775,9 +778,9 @@ def make_referral_card(
     f_stat = _font_bold(56)
     f_label = _font_regular(20)
 
-    d.text((60, 60), "РЕФ-ПРОГРАММА", font=f_eyebrow, fill=GOLD_SOFT)
-    d.text((60, 92), "5% sub-affiliate", font=f_title, fill=GOLD)
-    d.text((60, 180), "От FTD каждого приглашённого. Без потолка.", font=f_body, fill=TEXT_1)
+    d.text((60, 60), t("imagegen.ref_program", locale), font=f_eyebrow, fill=GOLD_SOFT)
+    d.text((60, 92), t("imagegen.sub_affiliate", locale), font=f_title, fill=GOLD)
+    d.text((60, 180), t("imagegen.ref_from_ftd", locale), font=f_body, fill=TEXT_1)
 
     # QR right side
     qr_size = 280
@@ -787,15 +790,15 @@ def make_referral_card(
 
     # Code box
     box_y = 280
-    d.text((60, box_y), "Твой реф-код", font=f_label, fill=TEXT_2)
+    d.text((60, box_y), t("imagegen.your_ref_code", locale), font=f_label, fill=TEXT_2)
     d.text((60, box_y + 24), referral_code.upper(), font=f_code, fill=GOLD)
 
     # invited stat
     d.text((60, 410), str(invited_count), font=f_stat, fill=TEXT_1)
-    d.text((60, 480), "приглашено всего", font=f_label, fill=TEXT_2)
+    d.text((60, 480), t("imagegen.invited_total", locale), font=f_label, fill=TEXT_2)
 
     # name footer
-    name_label = f"для {name}"
+    name_label = t("imagegen.for_name", locale, name=name)
     nw = d.textlength(name_label, font=f_label)
     d.text((qr_x + qr_size - nw, qr_y + qr_size + 16), name_label, font=f_label, fill=TEXT_2)
 
@@ -805,7 +808,7 @@ def make_referral_card(
     return buf.getvalue()
 
 
-def make_achievements_grid(items: list[tuple[str, str, bool]]) -> bytes:
+def make_achievements_grid(items: list[tuple[str, str, bool]], locale: str = DEFAULT_LOCALE) -> bytes:
     """
     items = [(emoji, title, unlocked), ...]
     Renders 3-column grid. Up to 9 items shown.
@@ -826,8 +829,8 @@ def make_achievements_grid(items: list[tuple[str, str, bool]]) -> bytes:
     f_count = _font_bold(36)
 
     earned = sum(1 for _, _, ok in items if ok)
-    d.text((60, 50), "ДОСТИЖЕНИЯ", font=f_sub, fill=GOLD_SOFT)
-    d.text((60, 80), "КОЛЛЕКЦИЯ ТРОФЕЕВ", font=f_title, fill=GOLD)
+    d.text((60, 50), t("imagegen.achievements_eyebrow", locale), font=f_sub, fill=GOLD_SOFT)
+    d.text((60, 80), t("imagegen.achievements_title", locale), font=f_title, fill=GOLD)
     cnt_str = f"{earned} / {len(items)}"
     cw = d.textlength(cnt_str, font=f_count)
     d.text((w - 60 - cw, 100), cnt_str, font=f_count, fill=TEXT_1)
@@ -890,6 +893,7 @@ def make_leaderboard_table(
     rows: list[tuple[int, str, float, int, int, int]],
     *,
     highlight_rank: int | None = None,
+    locale: str = DEFAULT_LOCALE,
 ) -> bytes:
     """
     rows = [(rank, name, winrate_pct, wins, losses, tier), ...]
@@ -904,15 +908,15 @@ def make_leaderboard_table(
     f_row = _font_regular(22)
     f_rank = _font_bold(28)
 
-    d.text((60, 50), "ЛИДЕРБОРД", font=f_sub, fill=GOLD_SOFT)
-    d.text((60, 80), "ТОП ТРЕЙДЕРОВ", font=f_title, fill=GOLD)
+    d.text((60, 50), t("imagegen.leaderboard_eyebrow", locale), font=f_sub, fill=GOLD_SOFT)
+    d.text((60, 80), t("imagegen.leaderboard_title", locale), font=f_title, fill=GOLD)
 
     # Header — earnings + signals ranking (mirrors web leaderboard)
     cols = [
-        ("#", 60, 70),
-        ("ТРЕЙДЕР", 130, 500),
-        ("СИГНАЛОВ", 640, 200),
-        ("ЗАРАБОТОК", 850, 200),
+        (t("imagegen.col_rank", locale), 60, 70),
+        (t("imagegen.col_trader", locale), 130, 500),
+        (t("imagegen.col_signals", locale), 640, 200),
+        (t("imagegen.col_earnings", locale), 850, 200),
     ]
     head_y = 200
     for label, x, _w in cols:
@@ -959,6 +963,7 @@ def make_settings_card(
     tier: int,
     po_trader_id: str | None,
     notifications_enabled: bool,
+    locale: str = DEFAULT_LOCALE,
 ) -> bytes:
     w, h = 1100, 520
     img = _frame(w, h)
@@ -969,22 +974,22 @@ def make_settings_card(
     f_label = _font_regular(22)
     f_val = _font_bold(28)
 
-    d.text((60, 50), "НАСТРОЙКИ", font=f_sub, fill=GOLD_SOFT)
-    d.text((60, 80), "ПРОФИЛЬ", font=f_title, fill=GOLD)
+    d.text((60, 50), t("imagegen.settings_eyebrow", locale), font=f_sub, fill=GOLD_SOFT)
+    d.text((60, 80), t("imagegen.settings_title", locale), font=f_title, fill=GOLD)
     d.text((60, 160), name, font=f_val, fill=TEXT_1)
 
     tier_label = TIER_NAMES.get(tier, "Free")
     # Rows
     rows = [
-        ("Уровень доступа", tier_label, GOLD),
+        (t("imagegen.tier_access_label", locale), tier_label, GOLD),
         (
-            "PocketOption ID",
-            po_trader_id if po_trader_id else "не привязан",
+            t("imagegen.po_id_label", locale),
+            po_trader_id if po_trader_id else t("imagegen.not_linked_short", locale),
             TEXT_1 if po_trader_id else GOLD_SOFT,
         ),
         (
-            "Уведомления",
-            "включены" if notifications_enabled else "отключены",
+            t("imagegen.notifications_label", locale),
+            t("imagegen.notifications_on", locale) if notifications_enabled else t("imagegen.notifications_off", locale),
             GREEN if notifications_enabled else RED,
         ),
     ]
@@ -1002,7 +1007,7 @@ def make_settings_card(
     return buf.getvalue()
 
 
-def make_help_sheet(commands: list[tuple[str, str]]) -> bytes:
+def make_help_sheet(commands: list[tuple[str, str]], locale: str = DEFAULT_LOCALE) -> bytes:
     """commands = [(/cmd, description), ...]"""
     w, h = 1100, max(520, 200 + 50 * len(commands))
     img = _frame(w, h)
@@ -1013,8 +1018,8 @@ def make_help_sheet(commands: list[tuple[str, str]]) -> bytes:
     f_cmd = _font_bold(24)
     f_desc = _font_regular(22)
 
-    d.text((60, 50), "СПРАВКА", font=f_sub, fill=GOLD_SOFT)
-    d.text((60, 80), "КОМАНДЫ БОТА", font=f_title, fill=GOLD)
+    d.text((60, 50), t("imagegen.help_eyebrow", locale), font=f_sub, fill=GOLD_SOFT)
+    d.text((60, 80), t("imagegen.help_title", locale), font=f_title, fill=GOLD)
 
     y = 180
     for cmd, desc in commands:

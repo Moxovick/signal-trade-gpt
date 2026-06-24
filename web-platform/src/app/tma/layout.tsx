@@ -7,7 +7,7 @@
  */
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary, getLocaleFromCookies } from "@/lib/i18n";
 import { I18nProvider } from "@/lib/i18n/context";
 
 export const metadata: Metadata = {
@@ -23,9 +23,10 @@ export const viewport: Viewport = {
 };
 
 export default async function TmaLayout({ children }: { children: React.ReactNode }) {
-  const dictionary = await getDictionary("ru");
+  const locale = await getLocaleFromCookies();
+  const dictionary = await getDictionary(locale);
   return (
-    <I18nProvider locale="ru" dictionary={dictionary}>
+    <I18nProvider locale={locale} dictionary={dictionary}>
       <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       <div
         className="min-h-screen text-[var(--t-1)]"

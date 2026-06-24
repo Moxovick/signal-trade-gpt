@@ -7,15 +7,16 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
 import { auth } from "@/lib/auth";
-import { getDictionary, getDictionaryForUser } from "@/lib/i18n";
+import { getDictionary, getDictionaryForUser, getLocaleFromCookies, getLocaleForUser } from "@/lib/i18n";
 
 const VALUE_ICONS = [Target, Shield, BarChart3, Users];
 
 export default async function AboutPage() {
   const session = await auth();
-  const t = session?.user?.id
-    ? await getDictionaryForUser(session.user.id)
-    : await getDictionary("ru");
+  const locale = session?.user?.id
+    ? await getLocaleForUser(session.user.id)
+    : await getLocaleFromCookies();
+  const t = await getDictionary(locale);
 
   const about = t.about as {
     badge: string;
@@ -63,7 +64,7 @@ export default async function AboutPage() {
 
   return (
     <>
-      <SiteHeader translations={siteTranslations} />
+      <SiteHeader translations={siteTranslations} locale={locale} />
       <main className="relative">
         <section className="max-w-4xl mx-auto px-6 pt-20 pb-16 text-center">
           <div className="inline-flex items-center gap-2 px-3 h-8 rounded-full text-xs uppercase tracking-widest border border-[var(--b-soft)] text-[var(--brand-gold)] bg-[var(--bg-1)]">
@@ -140,7 +141,7 @@ export default async function AboutPage() {
           </Card>
         </section>
       </main>
-      <SiteFooter translations={siteTranslations} />
+      <SiteFooter translations={siteTranslations} locale={locale} />
     </>
   );
 }

@@ -3,13 +3,20 @@
 import { useEffect, useState } from "react";
 import { Save, Eye, EyeOff } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-
-const SLUGS = [
-  { slug: "terms", label: "Правила использования", path: "/terms" },
-  { slug: "privacy", label: "Конфиденциальность", path: "/privacy" },
-];
+import { useI18n } from "@/lib/i18n/context";
 
 export default function AdminLegalPage() {
+  const { t } = useI18n();
+  const lg = t?.admin?.legal ?? {};
+  const lgTabs = (lg as Record<string, Record<string, string>>).tabs ?? {};
+  const lgFields = (lg as Record<string, Record<string, string>>).fields ?? {};
+  const lgBtns = (lg as Record<string, Record<string, string>>).buttons ?? {};
+
+  const SLUGS = [
+    { slug: "terms", label: lgTabs.terms ?? "Правила использования", path: "/terms" },
+    { slug: "privacy", label: lgTabs.privacy ?? "Конфиденциальность", path: "/privacy" },
+  ];
+
   const [activeSlug, setActiveSlug] = useState("terms");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -53,9 +60,9 @@ export default function AdminLegalPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Правовые страницы</h1>
+        <h1 className="text-2xl font-bold">{(lg as Record<string, string>).title ?? "Правовые страницы"}</h1>
         <p className="text-sm text-[var(--t-3)] mt-1">
-          Поддерживается Markdown. Заголовки, списки, **жирный**, ссылки.
+          {(lg as Record<string, string>).hint ?? "Поддерживается Markdown. Заголовки, списки, **жирный**, ссылки."}
         </p>
       </div>
 
@@ -79,16 +86,16 @@ export default function AdminLegalPage() {
           rel="noopener noreferrer"
           className="ml-auto px-4 py-2 rounded-xl text-sm font-medium bg-[var(--bg-2)] hover:bg-[var(--bg-3)] text-[var(--t-2)] flex items-center gap-2"
         >
-          <Eye size={14} /> Посмотреть страницу
+          <Eye size={14} /> {(lg as Record<string, string>).viewPage ?? "Посмотреть страницу"}
         </a>
       </div>
 
       {loading ? (
-        <div className="text-[var(--t-3)] text-center py-12">Загрузка…</div>
+        <div className="text-[var(--t-3)] text-center py-12">{(lg as Record<string, string>).loading ?? "Загрузка…"}</div>
       ) : (
         <Card padding="lg">
           <div className="space-y-4">
-            <Field label="Заголовок">
+            <Field label={lgFields.title ?? "Заголовок"}>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -97,14 +104,14 @@ export default function AdminLegalPage() {
             </Field>
             <div className="flex items-center justify-between">
               <span className="text-xs uppercase tracking-widest text-[var(--t-3)]">
-                Содержимое (Markdown)
+                {lgFields.content ?? "Содержимое (Markdown)"}
               </span>
               <button
                 onClick={() => setPreview(!preview)}
                 className="text-xs px-3 py-1 rounded-lg bg-[var(--bg-2)] hover:bg-[var(--bg-3)] flex items-center gap-1"
               >
                 {preview ? <EyeOff size={12} /> : <Eye size={12} />}{" "}
-                {preview ? "Редактор" : "Превью"}
+                {preview ? (lgFields.editor ?? "Редактор") : (lgFields.preview ?? "Превью")}
               </button>
             </div>
             {preview ? (
@@ -128,7 +135,7 @@ export default function AdminLegalPage() {
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
                 />
-                <span className="text-sm">Опубликовано</span>
+                <span className="text-sm">{lgFields.published ?? "Опубликовано"}</span>
               </label>
               <button
                 onClick={save}
@@ -136,7 +143,7 @@ export default function AdminLegalPage() {
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--brand-gold)] text-[var(--bg-0)] font-semibold hover:opacity-90 disabled:opacity-50 ml-auto"
               >
                 <Save size={16} />
-                {saving ? "Сохранение…" : "Сохранить"}
+                {saving ? (lgBtns.saving ?? "Сохранение…") : (lgBtns.save ?? "Сохранить")}
               </button>
             </div>
           </div>

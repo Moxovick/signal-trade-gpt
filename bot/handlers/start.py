@@ -27,6 +27,8 @@ from database.db import (
     set_click_id,
 )
 from database.models import User
+from i18n import t
+from i18n_helpers import get_locale
 from services.imagegen import get_brand_card_path
 from services.keyboards import MAIN_MENU, start_inline
 
@@ -34,42 +36,23 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-def _format_welcome(first_name: str, ref_code: str, bot_username: str) -> str:
+def _format_welcome(first_name: str, ref_code: str, bot_username: str, locale: str = "ru") -> str:
     ref_link = f"https://t.me/{bot_username}?start=ref_{ref_code}"
-    return (
-        f"Привет, <b>{first_name}</b>! 👋\n"
-        f"\n"
-        f"<b>SpaceSignal</b> — AI-сигналы для PocketOption.\n"
-        f"Доступ открывается регистрацией, а не подпиской.\n"
-        f"\n"
-        f"<b>Как начать:</b>\n"
-        f"  1. Открой счёт PocketOption по нашей ссылке (/link)\n"
-        f"  2. Привяжи свой Trader ID командой /link\n"
-        f"  3. Нажми «🎯 Получить сигнал» — и получи первый сигнал\n"
-        f"\n"
-        f"<b>Уровни доступа:</b>\n"
-        f"  • <b>Free</b> — OTC-сигналы, 3/день\n"
-        f"  • <b>Basic</b> (депозит ≥ $20) — OTC + биржа, 10/день\n"
-        f"  • <b>Pro</b> (депозит ≥ $100) — всё безлимитно + Elite\n"
-        f"\n"
-        f"<b>Реф-ссылка</b> (5% с FTD каждого приглашённого):\n"
-        f"<code>{ref_link}</code>\n"
-        f"\n"
-        f"<i>Не финансовый совет. Бинарные опционы — высокий риск.</i>"
-    )
+    return t("start.welcome", locale, first_name=first_name, ref_link=ref_link)
 
 
 async def _get_photo_url(message: Message) -> str | None:
     """
-    Return a direct HTTPS URL to the user's Telegram profile photo, or None
-    if they have no photo or the fetch fails.
+    Download the user's Telegram profile photo and return it as a
+    ``data:image/jpeg;base64,...`` URL so it can be stored in the DB
+    permanently (Telegram CDN file URLs expire after ~1 hour).
 
-    Strategy:
-      1. Call getUserProfilePhotos to get the file_id of the first photo.
-      2. Call getFile to resolve the file_path on Telegram's CDN.
-      3. Construct the public URL using the bot token from settings.
+    Returns None if the user has no photo or the fetch fails.
     """
     try:
+        import base64
+        from io import BytesIO
+
         photos = await message.bot.get_user_profile_photos(
             message.from_user.id, limit=1
         )
@@ -79,12 +62,21 @@ async def _get_photo_url(message: Message) -> str | None:
         file_info = await message.bot.get_file(file_id)
         if not file_info.file_path:
             return None
-        return (
+
+        # Download the photo bytes
+        photo_url = (
             f"https://api.telegram.org/file/bot{settings.bot_token}"
             f"/{file_info.file_path}"
         )
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(photo_url)
+            resp.raise_for_status()
+
+        # Convert to base64 data URL (JPEG, typically < 100 KB)
+        b64 = base64.b64encode(resp.content).decode("ascii")
+        return f"data:image/jpeg;base64,{b64}"
     except Exception as exc:  # noqa: BLE001
-        logger.debug("Could not fetch profile photo URL: %s", exc)
+        logger.debug("Could not fetch profile photo: %s", exc)
         return None
 
 
@@ -95,10 +87,8 @@ async def _redeem_link_token(message: Message, token: str) -> bool:
     replies to the user and returns True so cmd_start skips the normal flow.
     """
     if not settings.platform_api_url or not settings.bot_sync_secret:
-        await message.answer(
-            "Привязка временно недоступна — связь с сайтом не настроена. "
-            "Сообщи админу.",
-        )
+        locale = get_locale(message.from_user)
+        await message.answer(t("start.link_not_configured", locale))
         return True
     photo_url = await _get_photo_url(message)
     payload = {
@@ -118,70 +108,54 @@ async def _redeem_link_token(message: Message, token: str) -> bool:
                 headers={"X-Bot-Secret": settings.bot_sync_secret},
             )
         if not resp.is_success:
+            locale = get_locale(message.from_user)
             content_type = resp.headers.get("content-type", "")
             body = resp.json() if content_type.startswith("application/json") else {}
             reason = str(body.get("reason", "unknown"))
             logger.warning("link-token redeem HTTP %d: %s (url=%s)", resp.status_code, reason, url)
             if reason == "expired" or resp.status_code == 410:
-                await message.answer(
-                    "⏰ Ссылка для привязки истекла. Запроси новую на сайте "
-                    "(нажми «Привязать Telegram» ещё раз).",
-                )
+                await message.answer(t("start.link_expired", locale))
             elif reason == "telegram_taken":
-                await message.answer(
-                    "⚠️ Этот Telegram уже привязан к другому аккаунту на сайте.",
-                )
+                await message.answer(t("start.link_telegram_taken", locale))
             elif reason == "already_used":
-                await message.answer(
-                    "Эта ссылка уже использована. Запроси новую на сайте.",
-                )
+                await message.answer(t("start.link_already_used", locale))
             else:
-                await message.answer(
-                    "Не удалось привязать аккаунт (сервер вернул ошибку). "
-                    "Попробуй ещё раз позже.",
-                )
+                await message.answer(t("start.link_server_error", locale))
             return True
         body = resp.json()
     except Exception as exc:  # noqa: BLE001
         logger.warning("link-token redeem failed: %s", exc)
-        await message.answer(
-            "Не удалось связаться с сайтом для привязки. Попробуй ещё раз "
-            "позже.",
-        )
+        locale = get_locale(message.from_user)
+        await message.answer(t("start.link_connection_error", locale))
         return True
 
     if body.get("ok"):
-        await message.answer(
-            "✅ Telegram привязан к твоему аккаунту на сайте!\n\n"
-            "Бот автоматически подтянет данные аккаунта в течение минуты.\n"
-            "Нажми /start чтобы начать пользоваться ботом.",
-        )
+        locale = get_locale(message.from_user)
+        await message.answer(t("start.link_ok", locale))
         return True
 
+    locale = get_locale(message.from_user)
     reason = str(body.get("reason") or "unknown")
-    copy_map = {
-        "unknown_token": "Эта ссылка недействительна или уже использована.",
-        "already_used": "Эта ссылка уже была использована.",
-        "expired": "Срок действия ссылки истёк. Запроси новую на сайте.",
-        "telegram_taken": "Этот Telegram уже привязан к другому аккаунту на сайте.",
-        "bad_secret": "Внутренняя ошибка авторизации (BOT_SYNC_SECRET).",
-        "not_configured": "Привязка не настроена на сервере.",
-        "po_required": (
-            "Для входа через Telegram сначала нужно зарегистрироваться на сайте — "
-            "там потребуется PocketOption Trader ID и подтверждённый депозит."
-        ),
+    key_map = {
+        "unknown_token": "start.link_unknown_token",
+        "already_used": "start.link_already_used_2",
+        "expired": "start.link_expired_2",
+        "telegram_taken": "start.link_telegram_taken_2",
+        "bad_secret": "start.link_bad_secret",
+        "not_configured": "start.link_not_configured_2",
+        "po_required": "start.link_po_required",
     }
-    await message.answer(
-        f"⚠️ {copy_map.get(reason, 'Не удалось привязать. Попробуй позже.')}",
-    )
+    key = key_map.get(reason, "start.link_fallback_error")
+    await message.answer(f"⚠️ {t(key, locale)}" if reason not in key_map else t(key, locale))
     return True
 
 
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext) -> None:
     await state.clear()
+    locale = get_locale(message.from_user)
     user_id = message.from_user.id
-    first_name = message.from_user.first_name or "Трейдер"
+    first_name = message.from_user.first_name or t("common.trader", locale)
     username = message.from_user.username
 
     # Parse deep-link payload
@@ -239,19 +213,18 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         tier_name = TIER_NAMES.get(user.tier, "Free")
         if user.po_trader_id:
             await message.answer(
-                f"С возвращением, <b>{first_name}</b>! 👋\n\n"
-                f"Уровень: <b>{tier_name}</b>\n"
-                f"PocketOption ID: <code>{user.po_trader_id}</code>\n\n"
-                "Нажми «🎯 Получить сигнал» в меню.",
+                t("start.returning_with_po", locale,
+                  first_name=first_name,
+                  tier_name=tier_name,
+                  po_trader_id=user.po_trader_id),
                 parse_mode=ParseMode.HTML,
                 reply_markup=MAIN_MENU,
             )
         else:
             await message.answer(
-                f"С возвращением, <b>{first_name}</b>! 👋\n\n"
-                f"Уровень: <b>{tier_name}</b>\n\n"
-                "Привяжи PocketOption ID командой /link чтобы открыть сигналы.\n"
-                "Нажми «🎯 Получить сигнал» в меню.",
+                t("start.returning_no_po", locale,
+                  first_name=first_name,
+                  tier_name=tier_name),
                 parse_mode=ParseMode.HTML,
                 reply_markup=MAIN_MENU,
             )
@@ -264,20 +237,20 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
         card_path = get_brand_card_path()
         await message.answer_photo(
             FSInputFile(card_path),
-            caption=_format_welcome(first_name, user.referral_code, bot_info.username),
+            caption=_format_welcome(first_name, user.referral_code, bot_info.username, locale),
             parse_mode=ParseMode.HTML,
             reply_markup=start_inline(settings.pocket_option_url, settings.webapp_url),
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Could not render brand card: %s — falling back to text", exc)
         await message.answer(
-            _format_welcome(first_name, user.referral_code, bot_info.username),
+            _format_welcome(first_name, user.referral_code, bot_info.username, locale),
             parse_mode=ParseMode.HTML,
             reply_markup=start_inline(settings.pocket_option_url, settings.webapp_url),
         )
 
     await message.answer(
-        "Меню активно — пользуйся кнопками снизу 👇",
+        t("start.menu_active", locale),
         reply_markup=MAIN_MENU,
     )
 
@@ -288,28 +261,6 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
 
 @router.message(Command("help"))
 async def cmd_help(message: Message) -> None:
-    text = (
-        "<b>SpaceSignal — справка</b>\n"
-        "\n"
-        "<b>Основные команды:</b>\n"
-        "/start — запуск бота и онбординг\n"
-        "/signal — получить торговый сигнал\n"
-        "/ref — реферальная программа + ссылка\n"
-        "/calc — калькулятор размера сделки\n"
-        "/leaderboard — топ-10 трейдеров\n"
-        "/cancel — отменить текущее действие\n"
-        "\n"
-        "<b>Как это работает:</b>\n"
-        "1. Зарегистрируйся на PocketOption по нашей ссылке\n"
-        "2. Привяжи свой Trader ID через /start\n"
-        "3. Нажми «🎯 Получить сигнал» в меню\n"
-        "\n"
-        "<b>Уровни:</b>\n"
-        "• Free — 3 OTC-сигнала/день\n"
-        "• Basic ($20+) — 10 сигналов/день\n"
-        "• Pro ($100+) — безлимит\n"
-        "\n"
-        "<i>Не финансовый совет. Торговля бинарными опционами "
-        "сопряжена с высоким риском.</i>"
-    )
+    locale = get_locale(message.from_user)
+    text = t("help.full", locale)
     await message.answer(text, parse_mode=ParseMode.HTML, reply_markup=MAIN_MENU)

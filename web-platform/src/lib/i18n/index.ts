@@ -33,4 +33,11 @@ export async function getLocaleForUser(userId: string): Promise<Locale> {
   return prefs.language === "uk" ? "uk" : "ru";
 }
 
+export async function getLocaleFromCookies(): Promise<Locale> {
+  const { cookies } = await import("next/headers");
+  const c = await cookies();
+  const val = c.get("locale")?.value;
+  return val === "uk" ? "uk" : "ru";
+}
+
 export { type Locale } from "./types";

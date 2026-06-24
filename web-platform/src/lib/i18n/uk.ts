@@ -634,6 +634,7 @@ const dict = {
     logout: "Вийти",
     avatar: "Аватар",
     menu: "Меню",
+    language: "Мова",
   },
 
   telegramBanner: {
@@ -768,8 +769,10 @@ const dict = {
     exp30s: "30 сек",
     exp1m: "1 хв",
     exp2m: "2 хв",
+    exp3m: "3 хв",
     exp5m: "5 хв",
     exp15m: "15 хв",
+    exp30m: "30 хв",
     analysisScanning: "Скануємо ринок",
     analysisIndicators: "Аналізуємо індикатори",
     analysisEntry: "Визначаємо точку входу",
@@ -1226,8 +1229,10 @@ const dict = {
     signals: {
       title: "Сигнали",
       subtitle: "On-demand модель: користувачі запитують сигнали по кнопці.",
+      recentCount: "Останні {n}",
       stats: {
         todayTotal: "Сьогодні всього",
+        exchange: "Біржа",
         uniqueUsers: "Унікальних юзерів",
       },
       history: "Історія сигналів",
@@ -1543,6 +1548,7 @@ const dict = {
     },
 
     botConfig: {
+      errorPrefix: "Помилка",
       sections: {
         welcome: "Привітальне повідомлення бота",
         signalTemplate: "Шаблон повідомлення сигналу",
@@ -1810,6 +1816,7 @@ const dict = {
 
     assets: {
       title: "Активи (PocketOption пари)",
+      errorPrefix: "Помилка",
       headerSummary: "Усього: {n} · {n} активних · OTC: {n} · Реал: {n}",
       buttons: {
         reseed: "Пересіяти зі списку",
@@ -1912,6 +1919,11 @@ const dict = {
         label: "Відкрити Telegram-бот",
         hint: "Керування, налаштування, сповіщення",
       },
+      language: {
+        title: "Мова інтерфейсу",
+        ru: "Російська",
+        uk: "Українська",
+      },
     },
 
     signals: {
@@ -1919,8 +1931,10 @@ const dict = {
         sec30: "30 сек",
         min1: "1 хв",
         min2: "2 хв",
+        min3: "3 хв",
         min5: "5 хв",
         min15: "15 хв",
+        min30: "30 хв",
       },
       bands: {
         otc: "OTC",
@@ -1969,6 +1983,11 @@ const dict = {
         limitExhausted: "Ліміт вичерпано",
         getSignal: "Отримати сигнал",
       },
+    },
+
+    signalChart: {
+      chartLabel: "Графік",
+      entryLine: "вхід {price} {arrow}",
     },
 
     signalDetail: {
@@ -2233,6 +2252,11 @@ const dict = {
         link: "Прив'язати Telegram",
       },
     },
+  },
+  languageSwitcher: {
+    label: "Мова",
+    ru: "Російська",
+    uk: "Українська",
   },
 } as const;
 

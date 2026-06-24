@@ -24,6 +24,7 @@ from aiogram.types import Message
 from aiogram.enums import ParseMode
 
 from config import settings
+from i18n import t
 from database.db import (
     _generate_cuid,
     _get_pool,
@@ -84,39 +85,26 @@ async def _tier_breakdown() -> dict[int, int]:
 @router.message(Command("admin"))
 async def cmd_admin(message: Message) -> None:
     if not _is_admin(message.from_user.id):
-        await message.answer("⛔ Доступ запрещён.")
+        await message.answer(t("admin.access_denied", "ru"))
         return
     total_signals = await get_total_signals()
     total_users = await get_total_users()
     breakdown = await _tier_breakdown()
     tier_lines = "\n".join(
-        f"  T{t}: <b>{breakdown.get(t, 0)}</b>" for t in sorted(breakdown)
+        f"  T{tier}: <b>{breakdown.get(tier, 0)}</b>" for tier in sorted(breakdown)
     )
-    text = (
-        "<b>🛠 Admin panel</b>\n"
-        "\n"
-        f"<b>Users:</b> {total_users:,}\n"
-        f"<b>Signals:</b> {total_signals:,}\n"
-        "\n"
-        f"<b>Tier breakdown:</b>\n{tier_lines}\n"
-        "\n"
-        "Commands:\n"
-        "  <code>/broadcast &lt;text&gt;</code>\n"
-        "  <code>/set_tier &lt;user_id&gt; &lt;T&gt;</code>\n"
-        "  <code>/ban &lt;user_id&gt;</code>\n"
-        "  <code>/unban &lt;user_id&gt;</code>\n"
-        "  <code>/stats_global</code>"
-    )
+    text = t("admin.panel", "ru",
+             total_users=total_users, total_signals=total_signals, tier_lines=tier_lines)
     await message.answer(text, parse_mode=ParseMode.HTML)
 
 
 @router.message(Command("broadcast"))
 async def cmd_broadcast(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
-        await message.answer("⛔ Доступ запрещён.")
+        await message.answer(t("admin.access_denied", "ru"))
         return
-    text = (command.args or "").strip()
-    if not text:
+    broadcast_text = (command.args or "").strip()
+    if not broadcast_text:
         await message.answer("Usage: /broadcast &lt;text&gt;", parse_mode=ParseMode.HTML)
         return
 
@@ -125,13 +113,13 @@ async def cmd_broadcast(message: Message, command: CommandObject) -> None:
     failed = 0
     for uid in user_ids:
         try:
-            await message.bot.send_message(uid, text, parse_mode=ParseMode.HTML)
+            await message.bot.send_message(uid, broadcast_text, parse_mode=ParseMode.HTML)
             sent += 1
         except Exception:  # noqa: BLE001
             failed += 1
         await asyncio.sleep(0.05)
     await message.answer(
-        f"<b>Broadcast done</b>\nsent: {sent}, failed: {failed}",
+        t("admin.broadcast_done", "ru", sent=sent, failed=failed),
         parse_mode=ParseMode.HTML,
     )
 
@@ -139,7 +127,7 @@ async def cmd_broadcast(message: Message, command: CommandObject) -> None:
 @router.message(Command("set_tier"))
 async def cmd_set_tier(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
-        await message.answer("⛔ Доступ запрещён.")
+        await message.answer(t("admin.access_denied", "ru"))
         return
     parts = (command.args or "").split()
     if len(parts) != 2 or not all(p.lstrip("-").isdigit() for p in parts):
@@ -151,22 +139,23 @@ async def cmd_set_tier(message: Message, command: CommandObject) -> None:
     target_id = int(parts[0])
     new_tier = int(parts[1])
     if not (0 <= new_tier <= 4):
-        await message.answer("Tier must be 0..4")
+        await message.answer(t("admin.tier_must_be_0_4", "ru"))
         return
     target = await get_user(target_id)
     if target is None:
-        await message.answer(f"User {target_id} not found")
+        await message.answer(t("admin.user_not_found", "ru", user_id=target_id))
         return
     await set_tier(target_id, new_tier)
     await message.answer(
-        f"User <code>{target_id}</code> → T{new_tier}", parse_mode=ParseMode.HTML
+        t("admin.set_tier_ok", "ru", user_id=target_id, tier=new_tier),
+        parse_mode=ParseMode.HTML,
     )
 
 
 @router.message(Command("ban"))
 async def cmd_ban(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
-        await message.answer("⛔ Доступ запрещён.")
+        await message.answer(t("admin.access_denied", "ru"))
         return
     raw = (command.args or "").strip()
     if not raw.lstrip("-").isdigit():
@@ -175,16 +164,16 @@ async def cmd_ban(message: Message, command: CommandObject) -> None:
     target_id = int(raw)
     target = await get_user(target_id)
     if target is None:
-        await message.answer(f"User {target_id} not found")
+        await message.answer(t("admin.user_not_found", "ru", user_id=target_id))
         return
     await _set_banned(target_id, True)
-    await message.answer(f"User <code>{target_id}</code> banned", parse_mode=ParseMode.HTML)
+    await message.answer(t("admin.banned", "ru", user_id=target_id), parse_mode=ParseMode.HTML)
 
 
 @router.message(Command("unban"))
 async def cmd_unban(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
-        await message.answer("⛔ Доступ запрещён.")
+        await message.answer(t("admin.access_denied", "ru"))
         return
     raw = (command.args or "").strip()
     if not raw.lstrip("-").isdigit():
@@ -193,14 +182,14 @@ async def cmd_unban(message: Message, command: CommandObject) -> None:
     target_id = int(raw)
     await _set_banned(target_id, False)
     await message.answer(
-        f"User <code>{target_id}</code> unbanned", parse_mode=ParseMode.HTML
+        t("admin.unbanned", "ru", user_id=target_id), parse_mode=ParseMode.HTML
     )
 
 
 @router.message(Command("stats_global"))
 async def cmd_stats_global(message: Message) -> None:
     if not _is_admin(message.from_user.id):
-        await message.answer("⛔ Доступ запрещён.")
+        await message.answer(t("admin.access_denied", "ru"))
         return
     total_signals = await get_total_signals()
     total_users = await get_total_users()
@@ -221,20 +210,13 @@ async def cmd_stats_global(message: Message) -> None:
     linked = int(row["linked"])
     total_results = sum_wins + sum_losses
     wr = (sum_wins / total_results * 100) if total_results else 0
-    text = (
-        "<b>📊 Global stats</b>\n"
-        "\n"
-        f"<b>Users:</b> {total_users:,}  ·  Linked PO: {linked:,}\n"
-        f"<b>Signals:</b> {total_signals:,}\n"
-        f"<b>Total deposits (PO):</b> ${sum_dep:,.2f}\n"
-        f"<b>Wins / Losses:</b> {sum_wins:,} / {sum_losses:,}\n"
-        f"<b>Aggregate winrate:</b> {wr:.1f}%\n"
-        "\n"
-        "<b>By tier:</b>\n"
-        + "\n".join(
-            f"  T{t}: <b>{breakdown.get(t, 0):,}</b>" for t in sorted(breakdown)
-        )
+    tier_lines_global = "\n".join(
+        f"  T{tier}: <b>{breakdown.get(tier, 0):,}</b>" for tier in sorted(breakdown)
     )
+    text = t("admin.global_stats", "ru",
+             total_users=total_users, linked=linked, total_signals=total_signals,
+             sum_dep=sum_dep, sum_wins=sum_wins, sum_losses=sum_losses,
+             wr=wr, tier_lines=tier_lines_global)
     await message.answer(text, parse_mode=ParseMode.HTML)
 
 
@@ -248,7 +230,7 @@ async def cmd_test_as(message: Message, command: CommandObject) -> None:
     Usage: /test_as <telegram_id>  →  renders /tier and /stats cards for them.
     """
     if not _is_admin(message.from_user.id):
-        await message.answer("⛔ Доступ запрещён.")
+        await message.answer(t("admin.access_denied", "ru"))
         return
     raw = (command.args or "").strip()
     if not raw.lstrip("-").isdigit():
@@ -258,7 +240,7 @@ async def cmd_test_as(message: Message, command: CommandObject) -> None:
         return
     target = await get_user(int(raw))
     if target is None:
-        await message.answer(f"User {raw} not found")
+        await message.answer(t("admin.user_not_found", "ru", user_id=raw))
         return
 
     # Render cards for the target user
@@ -269,12 +251,14 @@ async def cmd_test_as(message: Message, command: CommandObject) -> None:
     # 3-tier model: T0→T1 at $20, T1→T2 at $100.
     from constants import TIER_DEPOSIT_THRESHOLDS
     next_threshold = TIER_DEPOSIT_THRESHOLDS.get(target.tier + 1)
-    header = (
-        f"<b>👤 Просмотр от лица:</b>\n"
-        f"  <code>{target.telegram_id}</code> @{target.username or '—'}\n"
-        f"  T{target.tier} · ${target.deposit_total:,.0f} · {target.signals_received} сигналов\n"
-        f"  W/L: {target.wins}/{target.losses}"
-    )
+    header = t("admin.test_as_header", "ru",
+                telegram_id=target.telegram_id,
+                username=target.username or "—",
+                tier=target.tier,
+                deposit=target.deposit_total,
+                signals_received=target.signals_received,
+                wins=target.wins,
+                losses=target.losses)
     await message.answer(header, parse_mode=ParseMode.HTML)
     try:
         tc = make_tier_card(target.tier, target.deposit_total, next_threshold)
@@ -308,7 +292,7 @@ async def cmd_demo_signal(message: Message, command: CommandObject) -> None:
       /demo_signal GBP/JPY PUT       → confidence random
     """
     if not _is_admin(message.from_user.id):
-        await message.answer("⛔ Доступ запрещён.")
+        await message.answer(t("admin.access_denied", "ru"))
         return
     parts = (command.args or "").split()
     from random import choice, randint
@@ -340,9 +324,9 @@ async def cmd_demo_signal(message: Message, command: CommandObject) -> None:
         confidence=confidence,
         signal_type="ai",
         tier="otc",
-        analysis="DEMO · Тестовый сигнал (admin /demo_signal)",
+        analysis=t("admin.demo_analysis", "ru"),
     )
-    caption = "<b>🧪 DEMO SIGNAL</b>\n\n" + format_signal(sig, settings.pocket_option_url)
+    caption = t("admin.demo_signal_caption", "ru") + "\n\n" + format_signal(sig, settings.pocket_option_url)
     try:
         png = make_signal_chart(sig)
         await message.answer_photo(
@@ -359,7 +343,7 @@ async def cmd_demo_signal(message: Message, command: CommandObject) -> None:
 async def cmd_reset_my_state(message: Message) -> None:
     """Wipe own wins/losses/signals counter for re-testing achievements."""
     if not _is_admin(message.from_user.id):
-        await message.answer("⛔ Доступ запрещён.")
+        await message.answer(t("admin.access_denied", "ru"))
         return
     pool = _get_pool()
     tg_big = telegram_id_to_bigint(message.from_user.id)
@@ -374,17 +358,14 @@ async def cmd_reset_my_state(message: Message) -> None:
         '(SELECT "id" FROM "users" WHERE "telegramId" = $1)',
         tg_big,
     )
-    await message.answer(
-        "<b>♻️ Сброшено.</b>\nWins/Losses/Signals/Achievements обнулены для тебя.",
-        parse_mode=ParseMode.HTML,
-    )
+    await message.answer(t("admin.reset_ok", "ru"), parse_mode=ParseMode.HTML)
 
 
 @router.message(Command("seed_data"))
 async def cmd_seed_data(message: Message) -> None:
     """Insert 5 fake users with different tiers, for leaderboard / preview testing."""
     if not _is_admin(message.from_user.id):
-        await message.answer("⛔ Доступ запрещён.")
+        await message.answer(t("admin.access_denied", "ru"))
         return
     fakes = [
         (9_000_001, "d1mkas", "Дмитрий", 2, 48411.0, 280, 60),
@@ -422,7 +403,7 @@ async def cmd_seed_data(message: Message) -> None:
         except Exception as exc:  # noqa: BLE001
             logger.warning("seed_data: %s", exc)
     await message.answer(
-        f"<b>🌱 Seed готов.</b>\nДобавлено фейк-юзеров: {inserted} (из {len(fakes)})",
+        t("admin.seed_ok", "ru", inserted=inserted, total=len(fakes)),
         parse_mode=ParseMode.HTML,
     )
 
@@ -435,7 +416,7 @@ async def cmd_preview(message: Message, command: CommandObject, state: FSMContex
       Screens: tier, stats, ref, ach, top, settings, help
     """
     if not _is_admin(message.from_user.id):
-        await message.answer("⛔ Доступ запрещён.")
+        await message.answer(t("admin.access_denied", "ru"))
         return
     screen = (command.args or "").strip().lower()
     valid = {"tier", "stats", "ref", "ach", "top", "settings", "help"}
@@ -453,9 +434,9 @@ async def cmd_preview(message: Message, command: CommandObject, state: FSMContex
     from handlers import menu  # circular-safe at runtime
 
     if screen == "tier":
-        await message.answer("Preview tier: not implemented yet")
+        await message.answer(t("admin.preview_tier_not_impl", "ru"))
     elif screen == "stats":
-        await message.answer("Команда убрана.")
+        await message.answer(t("admin.command_removed", "ru"))
     elif screen == "ref":
         await menu.btn_ref(message, state=state)
     elif screen == "ach":
@@ -463,6 +444,6 @@ async def cmd_preview(message: Message, command: CommandObject, state: FSMContex
     elif screen == "top":
         await menu.cmd_leaderboard(message)
     elif screen == "settings":
-        await message.answer("Команда убрана.")
+        await message.answer(t("admin.command_removed", "ru"))
     elif screen == "help":
         await menu.btn_help(message)

@@ -12,13 +12,14 @@ import { Card } from "@/components/ui/Card";
 import { TelegramDeeplinkButton } from "@/components/auth/TelegramDeeplinkButton";
 import { RegisterForm } from "./_components/RegisterForm";
 import { auth } from "@/lib/auth";
-import { getDictionary, getDictionaryForUser } from "@/lib/i18n";
+import { getDictionary, getDictionaryForUser, getLocaleFromCookies, getLocaleForUser } from "@/lib/i18n";
 
 export default async function RegisterPage() {
   const session = await auth();
-  const t = session?.user?.id
-    ? await getDictionaryForUser(session.user.id)
-    : await getDictionary("ru");
+  const locale = session?.user?.id
+    ? await getLocaleForUser(session.user.id)
+    : await getLocaleFromCookies();
+  const t = await getDictionary(locale);
 
   const register = t.register as {
     title: string;

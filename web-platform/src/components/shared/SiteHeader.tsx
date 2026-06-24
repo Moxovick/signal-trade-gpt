@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { ArrowRight, Menu, X } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { ButtonLink } from "@/components/ui/Button";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 
 // ---------------------------------------------------------------------------
 // Translations shape (subset of Dictionary["nav"] | Dictionary["footer"])
@@ -109,8 +110,10 @@ function HeaderAvatar({
 // ---------------------------------------------------------------------------
 export function SiteHeader({
   translations,
+  locale,
 }: {
   translations?: SiteHeaderTranslations;
+  locale?: "ru" | "uk";
 }) {
   const t = translations ?? DEFAULT_TRANSLATIONS;
   const nav = t.nav;
@@ -147,6 +150,7 @@ export function SiteHeader({
               {n.label}
             </Link>
           ))}
+          <LanguageSwitcher locale={locale} />
           {isLoggedIn ? (
             <Link
               href="/dashboard"
@@ -191,6 +195,7 @@ export function SiteHeader({
               {n.label}
             </Link>
           ))}
+          <LanguageSwitcher locale={locale} />
           {isLoggedIn ? (
             <Link
               href="/dashboard"
@@ -225,9 +230,12 @@ export function SiteHeader({
 // ---------------------------------------------------------------------------
 export function SiteFooter({
   translations,
+  locale,
 }: {
   translations?: SiteHeaderTranslations;
+  locale?: "ru" | "uk";
 }) {
+  void locale;
   const t = (translations ?? DEFAULT_TRANSLATIONS).footer;
   return (
     <footer className="border-t border-[var(--b-soft)] mt-24">

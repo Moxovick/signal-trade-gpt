@@ -653,6 +653,7 @@ const dict = {
     logout: "Выйти",
     avatar: "Аватар",
     menu: "Меню",
+    language: "Язык",
   },
 
   // ---------------------------------------------------------------------------
@@ -813,8 +814,10 @@ const dict = {
     exp30s: "30 сек",
     exp1m: "1 мин",
     exp2m: "2 мин",
+    exp3m: "3 мин",
     exp5m: "5 мин",
     exp15m: "15 мин",
+    exp30m: "30 мин",
     // Analysis steps
     analysisScanning: "Сканируем рынок",
     analysisIndicators: "Анализируем индикаторы",
@@ -1333,8 +1336,10 @@ const dict = {
     signals: {
       title: "Сигналы",
       subtitle: "On-demand модель: пользователи запрашивают сигналы по кнопке.",
+      recentCount: "Последние {n}",
       stats: {
         todayTotal: "Сегодня всего",
+        exchange: "Биржа",
         uniqueUsers: "Уникальных юзеров",
       },
       history: "История сигналов",
@@ -1650,6 +1655,7 @@ const dict = {
     },
 
     botConfig: {
+      errorPrefix: "Ошибка",
       sections: {
         welcome: "Приветственное сообщение бота",
         signalTemplate: "Шаблон сообщения сигнала",
@@ -1917,6 +1923,7 @@ const dict = {
 
     assets: {
       title: "Активы (PocketOption пары)",
+      errorPrefix: "Ошибка",
       headerSummary: "Всего: {n} · {n} активных · OTC: {n} · Реал: {n}",
       buttons: {
         reseed: "Пересеять из списка",
@@ -2022,6 +2029,11 @@ const dict = {
         label: "Открыть Telegram-бот",
         hint: "Управление, настройки, уведомления",
       },
+      language: {
+        title: "Язык интерфейса",
+        ru: "Русский",
+        uk: "Українська",
+      },
     },
 
     signals: {
@@ -2029,8 +2041,10 @@ const dict = {
         sec30: "30 сек",
         min1: "1 мин",
         min2: "2 мин",
+        min3: "3 мин",
         min5: "5 мин",
         min15: "15 мин",
+        min30: "30 мин",
       },
       bands: {
         otc: "OTC",
@@ -2079,6 +2093,11 @@ const dict = {
         limitExhausted: "Лимит исчерпан",
         getSignal: "Получить сигнал",
       },
+    },
+
+    signalChart: {
+      chartLabel: "График",
+      entryLine: "вход {price} {arrow}",
     },
 
     signalDetail: {
@@ -2361,6 +2380,11 @@ const dict = {
         link: "Привязать Telegram",
       },
     },
+  },
+  languageSwitcher: {
+    label: "Язык",
+    ru: "Русский",
+    uk: "Українська",
   },
 } as const;
 

@@ -13,6 +13,7 @@ import { headers } from "next/headers";
 import { Card } from "@/components/ui/Card";
 import { getPoConfigSnapshot } from "@/lib/po-config";
 import { PostbackSetupClient } from "./_components/PostbackSetupClient";
+import { getDictionary } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ async function detectBaseUrl(): Promise<string> {
   return "https://your-domain.example";
 }
 
-const EVENTS: Array<{ key: string; label: string; description: string }> = [
+const EVENTS_FALLBACK: Array<{ key: string; label: string; description: string }> = [
   {
     key: "registration",
     label: "Регистрация",
@@ -92,6 +93,18 @@ const MACROS: Array<{ macro: string; description: string }> = [
 export default async function PostbackSetupPage() {
   const baseUrl = await detectBaseUrl();
   const snap = await getPoConfigSnapshot();
+  const dict = await getDictionary("ru");
+  const ps = (dict?.admin?.postbackSetup ?? {}) as Record<string, Record<string, Record<string, string>>>;
+  const psEvents = ps.events ?? {};
+
+  const EVENTS = EVENTS_FALLBACK.map((ev) => {
+    const evI18n = psEvents[ev.key === "email_confirm" ? "emailConfirm" : ev.key] ?? {};
+    return {
+      key: ev.key,
+      label: (evI18n as Record<string, string>).name ?? ev.label,
+      description: (evI18n as Record<string, string>).description ?? ev.description,
+    };
+  });
 
   return (
     <div className="space-y-6">

@@ -249,6 +249,43 @@ async def set_click_id(telegram_id: int, click_id: str) -> None:
     )
 
 
+async def get_user_locale(telegram_id: int) -> Optional[str]:
+    """Read language from the user's preferences JSON. Returns 'ru'|'uk' or None."""
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        'SELECT preferences FROM "users" WHERE "telegramId" = $1',
+        telegram_id_to_bigint(telegram_id),
+    )
+    if not row or not row["preferences"]:
+        return None
+    prefs = row["preferences"]
+    if isinstance(prefs, str):
+        prefs = json.loads(prefs)
+    return prefs.get("language") if isinstance(prefs, dict) else None
+
+
+async def set_user_locale(telegram_id: int, locale: str) -> None:
+    """Update the language key inside the user's preferences JSON."""
+    pool = _get_pool()
+    tg_id = telegram_id_to_bigint(telegram_id)
+    row = await pool.fetchrow(
+        'SELECT preferences FROM "users" WHERE "telegramId" = $1', tg_id,
+    )
+    prefs: dict = {}
+    if row and row["preferences"]:
+        p = row["preferences"]
+        if isinstance(p, str):
+            prefs = json.loads(p)
+        elif isinstance(p, dict):
+            prefs = p
+    prefs["language"] = locale
+    await pool.execute(
+        'UPDATE "users" SET preferences = $1::jsonb WHERE "telegramId" = $2',
+        json.dumps(prefs),
+        tg_id,
+    )
+
+
 async def set_deposit_total(telegram_id: int, deposit_total: float) -> None:
     pool = _get_pool()
     from decimal import Decimal

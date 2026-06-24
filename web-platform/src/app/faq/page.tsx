@@ -5,7 +5,7 @@ import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { auth } from "@/lib/auth";
-import { getDictionary, getDictionaryForUser } from "@/lib/i18n";
+import { getDictionary, getDictionaryForUser, getLocaleFromCookies, getLocaleForUser } from "@/lib/i18n";
 
 const BOT_URL = process.env["NEXT_PUBLIC_BOT_URL"] ?? "";
 
@@ -13,9 +13,10 @@ export const dynamic = "force-dynamic";
 
 export default async function FaqPage() {
   const session = await auth();
-  const t = session?.user?.id
-    ? await getDictionaryForUser(session.user.id)
-    : await getDictionary("ru");
+  const locale = session?.user?.id
+    ? await getLocaleForUser(session.user.id)
+    : await getLocaleFromCookies();
+  const t = await getDictionary(locale);
 
   const faq = t.faq as {
     badge: string;
@@ -78,7 +79,7 @@ export default async function FaqPage() {
 
   return (
     <>
-      <SiteHeader translations={siteTranslations} />
+      <SiteHeader translations={siteTranslations} locale={locale} />
       <main className="relative">
         <section className="max-w-3xl mx-auto px-6 pt-16 pb-10 text-center">
           <Link
@@ -154,7 +155,7 @@ export default async function FaqPage() {
           </Card>
         </section>
       </main>
-      <SiteFooter translations={siteTranslations} />
+      <SiteFooter translations={siteTranslations} locale={locale} />
     </>
   );
 }

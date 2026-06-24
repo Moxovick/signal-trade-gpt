@@ -16,10 +16,10 @@ const DEFAULTS: GiveawayPrize[] = [
   { place: 3, title: "AirPods 3 Pro" },
 ];
 
-const PLACE_META: Record<number, { icon: typeof Trophy; color: string; label: string }> = {
-  1: { icon: Trophy, color: "var(--brand-gold)", label: "1-е место" },
-  2: { icon: Medal, color: "#c0c0c0", label: "2-е место" },
-  3: { icon: Award, color: "#cd7f32", label: "3-е место" },
+const PLACE_META_BASE: Record<number, { icon: typeof Trophy; color: string; labelKey: string; labelFallback: string }> = {
+  1: { icon: Trophy, color: "var(--brand-gold)", labelKey: "first", labelFallback: "1-е место" },
+  2: { icon: Medal, color: "#c0c0c0", labelKey: "second", labelFallback: "2-е место" },
+  3: { icon: Award, color: "#cd7f32", labelKey: "third", labelFallback: "3-е место" },
 };
 
 export default function AdminGiveawayPage() {
@@ -110,12 +110,13 @@ export default function AdminGiveawayPage() {
       )}
 
       {loading ? (
-        <div className="text-[var(--t-3)] text-center py-12">Загрузка...</div>
+        <div className="text-[var(--t-3)] text-center py-12">{(gw as Record<string, string>).loading ?? "Загрузка..."}</div>
       ) : (
         <div className="grid gap-4">
           {prizes.map((prize) => {
-            const meta = PLACE_META[prize.place];
-            if (!meta) return null;
+            const metaBase = PLACE_META_BASE[prize.place];
+            if (!metaBase) return null;
+            const meta = { ...metaBase, label: gwPlaces[metaBase.labelKey] ?? metaBase.labelFallback };
             const IconComponent = meta.icon;
             return (
               <Card key={prize.place}>
@@ -140,7 +141,7 @@ export default function AdminGiveawayPage() {
                       type="text"
                       value={prize.title}
                       onChange={(e) => updateTitle(prize.place, e.target.value)}
-                      placeholder="Название приза"
+                      placeholder={(gw as Record<string, string>).prizeLabel ?? "Название приза"}
                       className="w-full bg-[var(--bg-0)] border border-[var(--b-soft)] rounded-lg px-3 py-2 text-sm focus:border-[var(--brand-gold)] focus:outline-none"
                     />
                   </div>

@@ -5,15 +5,16 @@ import remarkGfm from "remark-gfm";
 import { prisma } from "@/lib/prisma";
 import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
 import { auth } from "@/lib/auth";
-import { getDictionary, getDictionaryForUser } from "@/lib/i18n";
+import { getDictionary, getDictionaryForUser, getLocaleFromCookies, getLocaleForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function TermsPage() {
   const session = await auth();
-  const t = session?.user?.id
-    ? await getDictionaryForUser(session.user.id)
-    : await getDictionary("ru");
+  const locale = session?.user?.id
+    ? await getLocaleForUser(session.user.id)
+    : await getLocaleFromCookies();
+  const t = await getDictionary(locale);
 
   const terms = t.terms as {
     badge: string;
@@ -54,7 +55,7 @@ export default async function TermsPage() {
   }
   return (
     <>
-      <SiteHeader translations={siteTranslations} />
+      <SiteHeader translations={siteTranslations} locale={locale} />
       <main className="relative">
         <section className="max-w-3xl mx-auto px-6 pt-16 pb-6 text-center">
           <Link
@@ -80,7 +81,7 @@ export default async function TermsPage() {
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{page.body}</ReactMarkdown>
         </article>
       </main>
-      <SiteFooter translations={siteTranslations} />
+      <SiteFooter translations={siteTranslations} locale={locale} />
     </>
   );
 }

@@ -28,16 +28,17 @@ import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
 import { HeroCTA } from "@/components/shared/HeroCTA";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { getDictionary, getDictionaryForUser } from "@/lib/i18n";
+import { getDictionary, getDictionaryForUser, getLocaleFromCookies, getLocaleForUser } from "@/lib/i18n";
 
 const STEP_ICONS = [UserPlus, CircleDollarSign, TrendingUp];
 const FEATURE_ICONS = [Sparkles, Layers, BarChart3, ShieldCheck];
 
 export default async function LandingPage() {
   const session = await auth();
-  const t = session?.user?.id
-    ? await getDictionaryForUser(session.user.id)
-    : await getDictionary("ru");
+  const locale = session?.user?.id
+    ? await getLocaleForUser(session.user.id)
+    : await getLocaleFromCookies();
+  const t = await getDictionary(locale);
 
   const landing = t.landing as {
     partnerBadge: string;
@@ -125,7 +126,7 @@ export default async function LandingPage() {
 
   return (
     <>
-      <SiteHeader translations={siteTranslations} />
+      <SiteHeader translations={siteTranslations} locale={locale} />
 
       <main className="relative">
         {/* Hero */}
@@ -457,7 +458,7 @@ export default async function LandingPage() {
         </section>
       </main>
 
-      <SiteFooter translations={siteTranslations} />
+      <SiteFooter translations={siteTranslations} locale={locale} />
     </>
   );
 }
