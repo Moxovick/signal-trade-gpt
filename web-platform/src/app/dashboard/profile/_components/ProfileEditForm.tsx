@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { CheckCircle2, ImagePlus, Loader2, Save } from "lucide-react";
+import { CheckCircle2, ImagePlus, Loader2, Save, Trash2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/context";
 
 const FIELD =
@@ -140,19 +140,34 @@ export function ProfileEditForm({
               onError={() => setAvatarPreview("")}
             />
           ) : (
-            <div className="w-14 h-14 rounded-full bg-[var(--bg-2)] border border-[var(--b-soft)] flex items-center justify-center text-[var(--t-3)]">
-              <ImagePlus size={20} />
+            <div className="w-14 h-14 rounded-full bg-[var(--brand-gold)] text-[#1a1208] flex items-center justify-center text-xl font-bold select-none border border-[var(--b-soft)]">
+              {(firstName || username || email || "?").charAt(0).toUpperCase()}
             </div>
           )}
           <div className="flex flex-col gap-1.5">
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium bg-[var(--bg-2)] border border-[var(--b-soft)] hover:border-[var(--brand-gold)] transition-colors"
-            >
-              <ImagePlus size={14} />
-              {t.profileEdit.uploadAvatar}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium bg-[var(--bg-2)] border border-[var(--b-soft)] hover:border-[var(--brand-gold)] transition-colors"
+              >
+                <ImagePlus size={14} />
+                {t.profileEdit.uploadAvatar}
+              </button>
+              {avatarPreview ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvatar("");
+                    setAvatarPreview("");
+                  }}
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium bg-[var(--bg-2)] border border-[var(--b-soft)] hover:border-[var(--red)] text-[var(--red)] transition-colors"
+                >
+                  <Trash2 size={14} />
+                  {t.profileEdit.removeAvatar}
+                </button>
+              ) : null}
+            </div>
             <span className="text-[11px] text-[var(--t-3)]">
               {t.profileEdit.avatarHint}
             </span>

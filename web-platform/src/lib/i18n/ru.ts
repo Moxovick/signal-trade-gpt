@@ -726,6 +726,7 @@ const dict = {
     fieldAvatar: "Аватар",
     avatarAlt: "Аватар",
     uploadAvatar: "Загрузить аватар",
+    removeAvatar: "Удалить фото",
     avatarHint: "JPG, PNG или WebP, до 2 МБ",
     fieldEmail: "Email (нельзя изменить)",
     errorFormat: "Допустимые форматы: JPG, PNG, WebP",
