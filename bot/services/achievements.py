@@ -150,11 +150,36 @@ async def _get_user_id(telegram_id: int) -> str | None:
 
 
 async def _get_achievement_id(code: str) -> str | None:
-    """Resolve achievement code → Achievement.id (CUID) in Postgres."""
+    """Resolve achievement code → Achievement.id (CUID) in Postgres.
+
+    If the code doesn't exist yet (bot defines achievements that weren't
+    seeded by the web platform), auto-create the row so _record can link it.
+    """
     pool = _get_pool()
     row = await pool.fetchrow(
         'SELECT id FROM "achievements" WHERE code = $1',
         code,
+    )
+    if row:
+        return row["id"]
+
+    # Auto-seed: find the Achievement definition for metadata
+    defn = next((a for a in ACHIEVEMENTS if a.code == code), None)
+    if not defn:
+        return None
+    from database.db import _generate_cuid
+    new_id = _generate_cuid()
+    await pool.execute(
+        """
+        INSERT INTO "achievements" (id, code, name, description, icon, "minTier", "isActive", "createdAt")
+        VALUES ($1, $2, $3, $4, '🏅', 0, true, NOW())
+        ON CONFLICT (code) DO NOTHING
+        """,
+        new_id, code, defn.title, defn.description,
+    )
+    # Re-fetch in case of race condition
+    row = await pool.fetchrow(
+        'SELECT id FROM "achievements" WHERE code = $1', code,
     )
     return row["id"] if row else None
 
