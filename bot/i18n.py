@@ -372,6 +372,33 @@ _RU: dict[str, str] = {
     "signal_tier.exchange": "📈 Биржевые",
     "signal_tier.elite": "👑 Elite",
 
+    # ── keyboard button aliases (for build_main_menu) ────────────────────────
+    "keyboard.signal": "🎯 Получить сигнал",
+    "keyboard.link": "🔗 Привязать ID",
+
+    # ── signal formatting (locale-aware captions) ────────────────────────────
+    "signal.direction.up": "ВВЕРХ",
+    "signal.direction.down": "ВНИЗ",
+    "signal.header.otc": "OTC СИГНАЛ",
+    "signal.header.exchange": "БИРЖЕВОЙ СИГНАЛ",
+    "signal.header.elite": "ELITE СИГНАЛ",
+    "signal.confidence": "Точность",
+    "signal.entry_time": "Время входа",
+    "signal.volume": "Объём: 1–3% депозита",
+    "signal.payout": "Выплата",
+
+    # ── tier_label aliases ────────────────────────────────────────────────────
+    "tier_label.otc": "🎲 OTC",
+    "tier_label.exchange": "📈 Биржевые",
+    "tier_label.elite": "👑 Elite",
+
+    # ── inline button aliases ────────────────────────────────────────────────
+    "inline.open_po": "💎 Открыть PocketOption",
+    "inline.open_app": "📱 Открыть приложение",
+    "inline.share_link": "📤 Поделиться ссылкой",
+    "inline.register_po": "🚀 Регистрация в PocketOption",
+    "inline.enter_id": "✏️ Я уже зарегистрирован — ввести ID",
+
     # ── link / FSM ────────────────────────────────────────────────────────────
     "link.already_linked": (
         "Аккаунт привязан: <code>{po_trader_id}</code>.\n"
@@ -1076,6 +1103,33 @@ _UK: dict[str, str] = {
     "signal_tier.otc": "🎲 OTC",
     "signal_tier.exchange": "📈 Біржові",
     "signal_tier.elite": "👑 Elite",
+
+    # ── keyboard button aliases (for build_main_menu) ────────────────────────
+    "keyboard.signal": "🎯 Отримати сигнал",
+    "keyboard.link": "🔗 Прив'язати ID",
+
+    # ── signal formatting (locale-aware captions) ────────────────────────────
+    "signal.direction.up": "ВГОРУ",
+    "signal.direction.down": "ВНИЗ",
+    "signal.header.otc": "OTC СИГНАЛ",
+    "signal.header.exchange": "БІРЖОВИЙ СИГНАЛ",
+    "signal.header.elite": "ELITE СИГНАЛ",
+    "signal.confidence": "Точність",
+    "signal.entry_time": "Час входу",
+    "signal.volume": "Об'єм: 1–3% депозиту",
+    "signal.payout": "Виплата",
+
+    # ── tier_label aliases ────────────────────────────────────────────────────
+    "tier_label.otc": "🎲 OTC",
+    "tier_label.exchange": "📈 Біржові",
+    "tier_label.elite": "👑 Elite",
+
+    # ── inline button aliases ────────────────────────────────────────────────
+    "inline.open_po": "💎 Відкрити PocketOption",
+    "inline.open_app": "📱 Відкрити додаток",
+    "inline.share_link": "📤 Поділитися посиланням",
+    "inline.register_po": "🚀 Реєстрація в PocketOption",
+    "inline.enter_id": "✏️ Я вже зареєстрований — ввести ID",
 
     # ── link / FSM ────────────────────────────────────────────────────────────
     "link.already_linked": (

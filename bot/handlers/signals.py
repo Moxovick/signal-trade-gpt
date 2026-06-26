@@ -28,6 +28,8 @@ from constants import (
     TIER_NAMES,
     TIER_SIGNAL_TYPES,
     PairInfo,
+    signal_tier_label,
+    subcategory_label,
 )
 import services.web_sync as web_sync
 from database.db import (
@@ -539,11 +541,11 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
 
             if is_otc:
                 chart_bytes: bytes = make_otc_banner(signal)
-                caption = format_otc_minimal(signal)
+                caption = format_otc_minimal(signal, locale=locale)
             else:
                 real_ohlc = await fetch_ohlc(signal.pair)
                 chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
-                caption = format_pro_signal_caption(signal, settings.pocket_option_url)
+                caption = format_pro_signal_caption(signal, settings.pocket_option_url, locale=locale)
 
             # Activity log (fire-and-forget)
             asyncio.create_task(log_activity(user_id, "signal_request", {
@@ -561,7 +563,7 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
                 caption=caption,
                 parse_mode=ParseMode.HTML,
                 reply_markup=signal_inline(
-                    settings.pocket_option_url, signal.id
+                    settings.pocket_option_url, signal.id, locale=locale
                 ),
             )
 

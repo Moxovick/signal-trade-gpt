@@ -1,6 +1,8 @@
 """Shared constants for the SpaceSignal bot."""
 from typing import TypedDict
 
+from i18n import t
+
 
 # 3-tier model: Free (0), Basic (1), Pro (2).
 TIER_NAMES: dict[int, str] = {0: "Free", 1: "Basic", 2: "Pro"}
@@ -195,12 +197,22 @@ SUBCATEGORY_LABELS: dict[str, str] = {
     "indices": "📈 Индексы",
 }
 
-# Signal-tier display names
+# Signal-tier display names (default Russian, use signal_tier_label() for locale-aware)
 SIGNAL_TIER_LABELS: dict[str, str] = {
     "otc": "🎲 OTC",
     "exchange": "📈 Биржевые",
     "elite": "👑 Elite",
 }
+
+
+def subcategory_label(key: str, locale: str = "ru") -> str:
+    """Return locale-aware subcategory label."""
+    return t(f"subcategory.{key}", locale)
+
+
+def signal_tier_label(key: str, locale: str = "ru") -> str:
+    """Return locale-aware signal tier label."""
+    return t(f"tier_label.{key}", locale)
 
 # Expirations per signal tier
 EXPIRATIONS: dict[str, list[tuple[str, str]]] = {

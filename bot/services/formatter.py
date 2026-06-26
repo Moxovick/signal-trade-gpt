@@ -1,11 +1,31 @@
 from constants import TIER_DAILY_LIMITS, TIER_DEPOSIT_THRESHOLDS, TIER_NAMES, TIER_SIGNAL_TYPES
 from database.models import Signal
+from i18n import t
 from services import web_sync
 
 
 DIRECTION_ARROW = {"CALL": "⬆", "PUT": "⬇"}
 DIRECTION_TAG = {"CALL": "call", "PUT": "put"}
 DIRECTION_WORD = {"CALL": "ВВЕРХ", "PUT": "ВНИЗ"}
+
+
+def direction_word(direction: str, locale: str = "ru") -> str:
+    """Return locale-aware direction word (ВВЕРХ/ВГОРУ etc.)."""
+    if direction == "CALL":
+        return t("signal.direction.up", locale)
+    if direction == "PUT":
+        return t("signal.direction.down", locale)
+    return direction
+
+
+def tier_header(tier: str, locale: str = "ru") -> str:
+    """Return locale-aware tier header like '<b>OTC СИГНАЛ</b>'."""
+    key = f"signal.header.{tier}"
+    raw = t(key, locale)
+    # If key not found, fallback to otc
+    if raw == key:
+        raw = t("signal.header.otc", locale)
+    return f"<b>{raw}</b>"
 
 # Pair-type emoji for signal messages
 PAIR_EMOJI: dict[str, str] = {
@@ -110,12 +130,13 @@ PAIR_PAYOUTS: dict[str, int] = {
 }
 
 
-def _payout_line(pair: str) -> str:
+def _payout_line(pair: str, locale: str = "ru") -> str:
     """Return payout line if we have data for this pair."""
     pct = PAIR_PAYOUTS.get(pair)
     if pct is None:
         return ""
-    return f"Выплата: <b>+{pct}%</b>\n"
+    label = t("signal.payout", locale)
+    return f"{label}: <b>+{pct}%</b>\n"
 
 
 def _render_admin_template(template: str, signal: Signal, entry_price: float | None) -> str:
@@ -176,7 +197,7 @@ USER_TIER_NAMES = TIER_NAMES
 USER_TIER_DEPOSIT_THRESHOLDS = TIER_DEPOSIT_THRESHOLDS
 
 
-def format_otc_minimal(signal: Signal) -> str:
+def format_otc_minimal(signal: Signal, locale: str = "ru") -> str:
     """
     OTC signal caption for Free-tier users.
     Clean and readable: pair, direction, expiry, confidence bar, analysis.
@@ -184,24 +205,24 @@ def format_otc_minimal(signal: Signal) -> str:
     arrow = DIRECTION_ARROW[signal.direction]
     conf_bar_full = round(signal.confidence / 10)
     conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
-    payout = _payout_line(signal.pair)
+    payout = _payout_line(signal.pair, locale)
 
     lines = [
-        "<b>OTC СИГНАЛ</b>",
+        tier_header("otc", locale),
         "",
         f"{_pair_emoji(signal.pair)} <b>{signal.pair}</b>  ·  {arrow} {signal.direction}  ·  {signal.expiration}",
         "",
-        f"Точность: <b>{signal.confidence}%</b>  {conf_bar}",
+        f"{t('signal.confidence', locale)}: <b>{signal.confidence}%</b>  {conf_bar}",
     ]
     if payout:
         lines.append(payout.rstrip("\n"))
     if signal.entry_time:
-        lines.append(f"Время входа: <b>{signal.entry_time}</b>")
+        lines.append(f"{t('signal.entry_time', locale)}: <b>{signal.entry_time}</b>")
     if signal.analysis:
         lines.extend(["", f"<b>Анализ:</b>\n<i>{signal.analysis}</i>"])
     lines.extend([
         "",
-        "Объём: 1–3% депозита",
+        t("signal.volume", locale),
         "#otc #signal",
     ])
     return "\n".join(lines)
@@ -211,6 +232,7 @@ def format_pro_signal_caption(
     signal: Signal,
     pocket_option_url: str,
     entry_price: float | None = None,
+    locale: str = "ru",
 ) -> str:
     """
     Full rich caption for Про users (exchange / elite signals).
@@ -225,30 +247,30 @@ def format_pro_signal_caption(
     pair_tag = signal.pair.replace("/", "").replace(" ", "").lower()
     dir_tag = DIRECTION_TAG[signal.direction]
     tier = signal.tier or "exchange"
-    header = TIER_HEADERS.get(tier, TIER_HEADERS["exchange"])
+    header = tier_header(tier, locale)
     tier_tag = TIER_TAGS.get(tier, "#exchange")
     conf_bar_full = round(signal.confidence / 10)
     conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
 
-    payout = _payout_line(signal.pair)
+    payout = _payout_line(signal.pair, locale)
     lines = [
         f"{header}",
         "",
         f"{_pair_emoji(signal.pair)} <b>{signal.pair}</b>  ·  {arrow} {signal.direction}  ·  {signal.expiration}",
         "",
-        f"Точность: <b>{signal.confidence}%</b>  {conf_bar}",
+        f"{t('signal.confidence', locale)}: <b>{signal.confidence}%</b>  {conf_bar}",
     ]
     if entry_price is not None:
         lines.append(f"Вход: <code>{entry_price:.5f}</code>")
     if payout:
         lines.append(payout.rstrip("\n"))
     if signal.entry_time:
-        lines.append(f"Время входа: <b>{signal.entry_time}</b>")
+        lines.append(f"{t('signal.entry_time', locale)}: <b>{signal.entry_time}</b>")
     if signal.analysis:
         lines.extend(["", f"<i>{signal.analysis}</i>"])
     lines.extend([
         "",
-        "Объём: 1–3% депозита",
+        t("signal.volume", locale),
         f"#{pair_tag} #{dir_tag} {tier_tag} #signal",
     ])
     return "\n".join(lines)
