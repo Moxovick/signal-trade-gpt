@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAccessReport } from "@/lib/access";
 import { TIER_LABELS } from "@/lib/tier";
+import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { buildReferralLink } from "@/lib/pocketoption";
 import { Activity } from "lucide-react";
@@ -18,14 +19,14 @@ import { getDictionaryForUser } from "@/lib/i18n";
 
 export default async function SignalsPage() {
   const session = await auth();
-  if (!session?.user?.id) return null;
+  if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
   const [report, referralUrl] = await Promise.all([
     getAccessReport(userId),
     buildReferralLink(userId),
   ]);
-  if (!report) return null;
+  if (!report) redirect("/login");
   const t = await getDictionaryForUser(userId);
   const tier = report.tier;
   // Fetch user's own signals (on-demand model: each user sees their own)

@@ -8,6 +8,7 @@
  *  - When the referred user makes their first PO deposit, referrer earns 5%
  *  - Funds available 7 days after the referral's first deposit
  */
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
@@ -46,7 +47,7 @@ function daysUntilWithdraw(ftdAt: Date | null): number {
 
 export default async function ReferralsPage() {
   const session = await auth();
-  if (!session?.user?.id) return null;
+  if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
   const [user, referrals] = await Promise.all([
@@ -79,7 +80,7 @@ export default async function ReferralsPage() {
     }),
   ]);
 
-  if (!user) return null;
+  if (!user) redirect("/login");
 
   const t = await getDictionaryForUser(userId);
 

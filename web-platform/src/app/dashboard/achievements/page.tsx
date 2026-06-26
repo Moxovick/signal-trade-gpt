@@ -114,7 +114,7 @@ export default async function DashboardAchievementsPage() {
     prisma.pocketOptionAccount.findUnique({ where: { userId } }),
     getAccessReport(userId),
   ]);
-  if (!user || !report) return null;
+  if (!user || !report) redirect("/login");
 
   const t = await getDictionaryForUser(userId);
 

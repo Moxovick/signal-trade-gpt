@@ -145,12 +145,12 @@ const COMMODITIES: Array<Omit<SeedAsset, "category" | "signalTier" | "provider" 
   twelve?: string;
 }> = [
   { symbol: "Brent Oil OTC", displaySymbol: "Brent Oil", isOtc: true, payoutPct: 80 },
-  { symbol: "WTI Crude Oil OTC", displaySymbol: "WTI Crude Oil", isOtc: true, payoutPct: 80 },
+  { symbol: "WTI Oil OTC", displaySymbol: "WTI Oil", isOtc: true, payoutPct: 80 },
   { symbol: "Silver OTC", displaySymbol: "Silver (XAG)", isOtc: true, payoutPct: 80 },
   { symbol: "Gold OTC", displaySymbol: "Gold (XAU)", isOtc: true, payoutPct: 80 },
   { symbol: "Natural Gas OTC", displaySymbol: "Natural Gas", isOtc: true, payoutPct: 45 },
-  { symbol: "Palladium spot OTC", displaySymbol: "Palladium (XPD)", isOtc: true, payoutPct: 45 },
-  { symbol: "Platinum spot OTC", displaySymbol: "Platinum (XPT)", isOtc: true, payoutPct: 45 },
+  { symbol: "Palladium OTC", displaySymbol: "Palladium (XPD)", isOtc: true, payoutPct: 45 },
+  { symbol: "Platinum OTC", displaySymbol: "Platinum (XPT)", isOtc: true, payoutPct: 45 },
 ];
 
 // ───────────────────────────────────────
@@ -160,25 +160,25 @@ const STOCKS: Array<Omit<SeedAsset, "category" | "signalTier" | "provider" | "pr
   ticker?: string;
 }> = [
   { symbol: "Apple OTC", displaySymbol: "Apple", isOtc: true, payoutPct: 92, ticker: "AAPL" },
-  { symbol: "GameStop Corp OTC", displaySymbol: "GameStop", isOtc: true, payoutPct: 92, ticker: "GME" },
+  { symbol: "GameStop OTC", displaySymbol: "GameStop", isOtc: true, payoutPct: 92, ticker: "GME" },
   { symbol: "VISA OTC", displaySymbol: "Visa", isOtc: true, payoutPct: 92, ticker: "V" },
   { symbol: "American Express OTC", displaySymbol: "American Express", isOtc: true, payoutPct: 90, ticker: "AXP" },
   { symbol: "VIX OTC", displaySymbol: "VIX", isOtc: true, payoutPct: 90, ticker: "VIX" },
-  { symbol: "Pfizer Inc OTC", displaySymbol: "Pfizer", isOtc: true, payoutPct: 87, ticker: "PFE" },
-  { symbol: "Advanced Micro Devices OTC", displaySymbol: "AMD", isOtc: true, payoutPct: 83, ticker: "AMD" },
+  { symbol: "Pfizer OTC", displaySymbol: "Pfizer", isOtc: true, payoutPct: 87, ticker: "PFE" },
+  { symbol: "AMD OTC", displaySymbol: "AMD", isOtc: true, payoutPct: 83, ticker: "AMD" },
   { symbol: "Johnson & Johnson OTC", displaySymbol: "Johnson & Johnson", isOtc: true, payoutPct: 81, ticker: "JNJ" },
-  { symbol: "Marathon Digital Holdings OTC", displaySymbol: "Marathon Digital", isOtc: true, payoutPct: 73, ticker: "MARA" },
+  { symbol: "Marathon Digital OTC", displaySymbol: "Marathon Digital", isOtc: true, payoutPct: 73, ticker: "MARA" },
   { symbol: "Amazon OTC", displaySymbol: "Amazon", isOtc: true, payoutPct: 69, ticker: "AMZN" },
   { symbol: "Netflix OTC", displaySymbol: "Netflix", isOtc: true, payoutPct: 63, ticker: "NFLX" },
   { symbol: "ExxonMobil OTC", displaySymbol: "ExxonMobil", isOtc: true, payoutPct: 60, ticker: "XOM" },
-  { symbol: "Coinbase Global OTC", displaySymbol: "Coinbase", isOtc: true, payoutPct: 59, ticker: "COIN" },
+  { symbol: "Coinbase OTC", displaySymbol: "Coinbase", isOtc: true, payoutPct: 59, ticker: "COIN" },
   { symbol: "Cisco OTC", displaySymbol: "Cisco", isOtc: true, payoutPct: 57, ticker: "CSCO" },
   { symbol: "Alibaba OTC", displaySymbol: "Alibaba", isOtc: true, payoutPct: 52, ticker: "BABA" },
-  { symbol: "Citigroup Inc OTC", displaySymbol: "Citigroup", isOtc: true, payoutPct: 50, ticker: "C" },
+  { symbol: "Citigroup OTC", displaySymbol: "Citigroup", isOtc: true, payoutPct: 50, ticker: "C" },
   { symbol: "FedEx OTC", displaySymbol: "FedEx", isOtc: true, payoutPct: 50, ticker: "FDX" },
-  { symbol: "FACEBOOK INC OTC", displaySymbol: "Meta", isOtc: true, payoutPct: 45, ticker: "META" },
+  { symbol: "Meta OTC", displaySymbol: "Meta", isOtc: true, payoutPct: 45, ticker: "META" },
   { symbol: "Intel OTC", displaySymbol: "Intel", isOtc: true, payoutPct: 36, ticker: "INTC" },
-  { symbol: "Palantir Technologies OTC", displaySymbol: "Palantir", isOtc: true, payoutPct: 34, ticker: "PLTR" },
+  { symbol: "Palantir OTC", displaySymbol: "Palantir", isOtc: true, payoutPct: 34, ticker: "PLTR" },
   { symbol: "McDonald's OTC", displaySymbol: "McDonald's", isOtc: true, payoutPct: 33, ticker: "MCD" },
   { symbol: "Tesla OTC", displaySymbol: "Tesla", isOtc: true, payoutPct: 33, ticker: "TSLA" },
   { symbol: "Microsoft OTC", displaySymbol: "Microsoft", isOtc: true, payoutPct: 31, ticker: "MSFT" },
@@ -191,15 +191,15 @@ const INDICES: Array<Omit<SeedAsset, "category" | "signalTier" | "provider" | "p
   twelve?: string;
 }> = [
   { symbol: "AUS 200 OTC", displaySymbol: "AUS 200", isOtc: true, payoutPct: 67 },
-  { symbol: "100GBP OTC", displaySymbol: "FTSE 100", isOtc: true, payoutPct: 45 },
-  { symbol: "D30EUR OTC", displaySymbol: "DAX 30", isOtc: true, payoutPct: 45 },
-  { symbol: "DJI30 OTC", displaySymbol: "Dow Jones 30", isOtc: true, payoutPct: 45 },
+  { symbol: "FTSE 100 OTC", displaySymbol: "FTSE 100", isOtc: true, payoutPct: 45 },
+  { symbol: "DAX 30 OTC", displaySymbol: "DAX 30", isOtc: true, payoutPct: 45 },
+  { symbol: "Dow Jones OTC", displaySymbol: "Dow Jones", isOtc: true, payoutPct: 45 },
   { symbol: "E35EUR OTC", displaySymbol: "Euro Stoxx 35", isOtc: true, payoutPct: 45 },
   { symbol: "E50EUR OTC", displaySymbol: "Euro Stoxx 50", isOtc: true, payoutPct: 45 },
-  { symbol: "F40EUR OTC", displaySymbol: "CAC 40", isOtc: true, payoutPct: 45 },
-  { symbol: "JPN225 OTC", displaySymbol: "Nikkei 225", isOtc: true, payoutPct: 45 },
-  { symbol: "US100 OTC", displaySymbol: "NASDAQ 100", isOtc: true, payoutPct: 45 },
-  { symbol: "SP500 OTC", displaySymbol: "S&P 500", isOtc: true, payoutPct: 45 },
+  { symbol: "CAC 40 OTC", displaySymbol: "CAC 40", isOtc: true, payoutPct: 45 },
+  { symbol: "Nikkei 225 OTC", displaySymbol: "Nikkei 225", isOtc: true, payoutPct: 45 },
+  { symbol: "NASDAQ 100 OTC", displaySymbol: "NASDAQ 100", isOtc: true, payoutPct: 45 },
+  { symbol: "S&P 500 OTC", displaySymbol: "S&P 500", isOtc: true, payoutPct: 45 },
 ];
 
 // ───────────────────────────────────────
@@ -255,7 +255,7 @@ export const SEED_ASSETS: SeedAsset[] = [
     const { twelve, ...rest } = a;
     const symbolMap: Record<string, string> = {
       "Brent Oil OTC": "BRENT",
-      "WTI Crude Oil OTC": "WTI",
+      "WTI Oil OTC": "WTI",
       "Silver OTC": "XAG/USD",
       "Gold OTC": "XAU/USD",
     };
