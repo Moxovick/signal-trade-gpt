@@ -8,12 +8,14 @@ import { prisma } from "@/lib/prisma";
 import { parseBotConfig } from "@/lib/bot-config";
 import { BotConfigForm } from "./_components/BotConfigForm";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function BotConfigPage() {
   const session = await auth();
+  if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") redirect("/login");
   const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
   const tbc = t?.admin?.botConfig ?? {};
 

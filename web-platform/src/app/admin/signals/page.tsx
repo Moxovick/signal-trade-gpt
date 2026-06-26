@@ -10,6 +10,7 @@ import type { Signal, SignalDirection } from "@/generated/prisma/client";
 import { SignalRowActions } from "./_components/SignalRowActions";
 import { TierSignalSettings } from "./_components/TierSignalSettings";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ const TIER_BADGE: Record<string, { label: string; color: string }> = {
 
 export default async function AdminSignalsPage() {
   const session = await auth();
+  if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") redirect("/login");
   const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
   const ts = t?.admin?.signals ?? {};
 

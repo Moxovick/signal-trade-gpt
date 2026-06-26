@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { getDictionaryForUser } from "@/lib/i18n";
 
 export default async function AdminDepositsPage() {
   const session = await auth();
+  if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") redirect("/login");
   const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
   const td = t?.admin?.deposits ?? {};
   const [deposits, stats] = await Promise.all([

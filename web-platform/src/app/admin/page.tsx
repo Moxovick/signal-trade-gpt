@@ -22,12 +22,14 @@ import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
   const session = await auth();
+  if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") redirect("/login");
   const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
   const ta = t?.admin ?? {};
   // eslint-disable-next-line react-hooks/purity -- server component, request-scoped

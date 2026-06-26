@@ -11,12 +11,14 @@ import { prisma } from "@/lib/prisma";
 import { ReseedButton } from "./_components/ReseedButton";
 import { Trophy } from "lucide-react";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAchievementsPage() {
   const session = await auth();
+  if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") redirect("/login");
   const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
   const ta = t?.admin?.achievements ?? {};
 

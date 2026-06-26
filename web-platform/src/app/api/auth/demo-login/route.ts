@@ -16,10 +16,10 @@ import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 const isProd = process.env["NODE_ENV"] === "production";
-const explicitlyEnabled = process.env["ENABLE_DEMO_LOGIN"] === "1";
 
 export async function POST() {
-  if (isProd && !explicitlyEnabled) {
+  // S2: Always block in production, regardless of ENABLE_DEMO_LOGIN flag.
+  if (isProd) {
     return NextResponse.json(
       { error: "Demo login disabled in production" },
       { status: 403 },

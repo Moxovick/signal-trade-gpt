@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
 import { BindUnmatched } from "./_components/BindUnmatched";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,7 @@ const EVENT_COLOR: Record<string, { bg: string; fg: string }> = {
 
 export default async function PostbacksPage() {
   const session = await auth();
+  if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") redirect("/login");
   const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
   const tp = t?.admin?.postbacks ?? {};
 

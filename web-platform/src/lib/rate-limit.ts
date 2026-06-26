@@ -66,6 +66,11 @@ export function rateLimit(
 
 /**
  * Extract a client IP from common headers for rate-limiting purposes.
+ *
+ * Security note: This trusts X-Forwarded-For, which is safe on Vercel/reverse-proxy
+ * deployments where the platform overwrites the header. If deployed behind a load
+ * balancer that does NOT strip/overwrite X-Forwarded-For, clients can spoof their IP
+ * and bypass rate limits. Ensure the deployment platform sets this header reliably.
  */
 export function clientIp(req: Request): string {
   return (

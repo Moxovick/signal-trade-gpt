@@ -163,7 +163,8 @@ function parseWithdrawalStatus(raw: string | null | undefined): WithdrawalStatus
 
 function hashDedupe(parts: Array<string | number | null | undefined>): string {
   const input = parts.map((p) => (p == null ? "" : String(p))).join("|");
-  return createHmac("sha256", "ss-dedupe").update(input).digest("hex");
+  const secret = process.env["POCKETOPTION_POSTBACK_SECRET"] ?? "ss-dedupe-fallback";
+  return createHmac("sha256", secret).update(input).digest("hex");
 }
 
 /** Read either a URLSearchParams or a plain Record<string,string>. */

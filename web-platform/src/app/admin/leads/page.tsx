@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { getDictionaryForUser } from "@/lib/i18n";
 
 export default async function AdminLeadsPage() {
   const session = await auth();
+  if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") redirect("/login");
   const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
   const tl = t?.admin?.leads ?? {};
 
