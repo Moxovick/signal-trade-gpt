@@ -519,6 +519,11 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
             sid = await save_signal(signal, telegram_id=user_id)
             signal.id = sid
 
+            # Increment counters early — before chart/send so limit is
+            # enforced even if later steps fail.
+            await increment_daily_signal(user.telegram_id)
+            await increment_signals_received(user.telegram_id)
+
             # Mirror to web platform for cross-platform history
             asyncio.create_task(_mirror_signal_to_web(user_id, pair_symbol, exp_code))
 
@@ -537,16 +542,6 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
             else:
                 real_ohlc = await fetch_ohlc(signal.pair)
                 chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
-
-            # Build caption
-            if is_otc:
-                caption = format_otc_minimal(signal)
-            else:
-                caption = format_pro_signal_caption(signal, settings.pocket_option_url)
-
-            # Increment counters
-            await increment_daily_signal(user.telegram_id)
-            await increment_signals_received(user.telegram_id)
 
             # Activity log (fire-and-forget)
             asyncio.create_task(log_activity(user_id, "signal_request", {
