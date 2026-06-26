@@ -539,9 +539,11 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
 
             if is_otc:
                 chart_bytes: bytes = make_otc_banner(signal)
+                caption = format_otc_minimal(signal)
             else:
                 real_ohlc = await fetch_ohlc(signal.pair)
                 chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
+                caption = format_pro_signal_caption(signal, settings.pocket_option_url)
 
             # Activity log (fire-and-forget)
             asyncio.create_task(log_activity(user_id, "signal_request", {
