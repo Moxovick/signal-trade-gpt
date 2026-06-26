@@ -56,7 +56,7 @@ function Profile({ user }: { user: TmaUser }) {
           <div className="text-sm font-bold" style={{ color: levelColor }}>{level}</div>
           {hasNextTier ? (
             <div className="text-[10px] text-[var(--brand-gold)] mt-0.5">
-              До {TIER_LABELS[nextTierKey] ?? `Tier ${nextTierKey}`}: ${neededForNext}
+              {t.tma.profile.untilTier} {TIER_LABELS[nextTierKey] ?? `Tier ${nextTierKey}`}: ${neededForNext}
             </div>
           ) : user.tier >= 2 ? (
             <div className="text-[10px] text-[var(--green)] mt-0.5">{t.tma.profile.maxLevel}</div>
@@ -67,7 +67,7 @@ function Profile({ user }: { user: TmaUser }) {
       {/* Stats row */}
       <section className="grid grid-cols-3 gap-2">
         <Stat label={t.tma.profile.signals} value={String(user.signalsReceived)} icon={Activity} />
-        <Stat label={t.tma.profile.streak} value={`${user.streakDays} дн`} icon={Flame} />
+        <Stat label={t.tma.profile.streak} value={`${user.streakDays} ${t.tma.profile.daysShort}`} icon={Flame} />
         <Stat label={t.tma.profile.referrals} value={String(user.referralsCount)} icon={Users} />
       </section>
 

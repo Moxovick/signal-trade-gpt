@@ -1920,6 +1920,8 @@ const dict = {
         label: "Відкрити Telegram-бот",
         hint: "Керування, налаштування, сповіщення",
       },
+      untilTier: "До",
+      daysShort: "дн",
       language: {
         title: "Мова інтерфейсу",
         ru: "Російська",

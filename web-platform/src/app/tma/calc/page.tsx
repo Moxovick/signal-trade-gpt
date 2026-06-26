@@ -86,12 +86,9 @@ function Calc() {
         </div>
 
         <div className="text-center text-xs text-[var(--t-3)]">
-          R/R = <span className="font-bold text-[var(--t-1)]">{rr.toFixed(2)}</span>
-          {" · "}
-          {"Безубыток при "}
-          <span className="font-bold text-[var(--t-1)]">
-            {Math.ceil((1 / (1 + rr)) * 100)}% лосс-рейт
-          </span>
+          {t.tma.calc.rrBreakeven
+            .replace("{n}", rr.toFixed(2))
+            .replace("{n}", String(Math.ceil((1 / (1 + rr)) * 100)))}
         </div>
       </div>
 

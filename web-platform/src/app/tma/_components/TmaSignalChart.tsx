@@ -7,7 +7,7 @@
  * with a directional arrow.
  */
 import { useEffect, useState } from "react";
-import { useI18n } from "@/lib/i18n/context";
+import { useI18n, useLocale } from "@/lib/i18n/context";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -32,6 +32,8 @@ type Props = {
 
 export function TmaSignalChart({ pair, providerSymbol, entryPrice, direction }: Props) {
   const { t } = useI18n();
+  const locale = useLocale();
+  const bcp47 = locale === "uk" ? "uk-UA" : bcp47;
   const sc = t?.tma?.signalChart ?? {};
   const [data, setData] = useState<Candle[]>([]);
   const [source, setSource] = useState<ChartSource>("synthetic");
@@ -109,7 +111,7 @@ export function TmaSignalChart({ pair, providerSymbol, entryPrice, direction }: 
             <XAxis
               dataKey="t"
               tickFormatter={(t: number) =>
-                new Date(t * 1000).toLocaleTimeString("ru-RU", {
+                new Date(t * 1000).toLocaleTimeString(bcp47, {
                   hour: "2-digit",
                   minute: "2-digit",
                 })
@@ -138,7 +140,7 @@ export function TmaSignalChart({ pair, providerSymbol, entryPrice, direction }: 
                 fontSize: 11,
               }}
               labelFormatter={(t) =>
-                typeof t === "number" ? new Date(t * 1000).toLocaleString("ru-RU") : ""
+                typeof t === "number" ? new Date(t * 1000).toLocaleString(bcp47) : ""
               }
               formatter={(v) => (typeof v === "number" ? v.toFixed(4) : String(v))}
             />

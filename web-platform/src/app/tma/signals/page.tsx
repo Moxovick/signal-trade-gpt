@@ -227,7 +227,13 @@ const CATEGORIES: { key: PairCategory | "all"; catKey: "all" | "forex" | "crypto
 
 const CURRENCY_FLAG: Record<string, string> = {
   EUR: "eu", USD: "us", GBP: "gb", JPY: "jp", AUD: "au",
-  CAD: "ca", CHF: "ch", NZD: "nz",
+  CAD: "ca", CHF: "ch", NZD: "nz", NOK: "no",
+  AED: "ae", OMR: "om", CNH: "cn", CNY: "cn", MYR: "my", PHP: "ph",
+  SGD: "sg", YER: "ye", ARS: "ar", PKR: "pk", CLP: "cl", LBP: "lb",
+  THB: "th", NGN: "ng", QAR: "qa", BHD: "bh", INR: "in", HUF: "hu",
+  MAD: "ma", EGP: "eg", ZAR: "za", BRL: "br", BDT: "bd", KES: "ke",
+  COP: "co", VND: "vn", JOD: "jo", TND: "tn", IDR: "id",
+  DZD: "dz", UAH: "ua", MXN: "mx", TRY: "tr", SAR: "sa",
 };
 
 const CRYPTO_IMG: Record<string, string> = {
@@ -262,6 +268,21 @@ const STOCK_ICON: Record<string, string> = {
   Netflix: "https://cdn.simpleicons.org/netflix/ffffff",
   NVDA: "https://cdn.simpleicons.org/nvidia/ffffff",
   NVIDIA: "https://cdn.simpleicons.org/nvidia/ffffff",
+  Intel: "https://cdn.simpleicons.org/intel/ffffff",
+  Cisco: "https://cdn.simpleicons.org/cisco/ffffff",
+  Alibaba: "https://cdn.simpleicons.org/alibabadotcom/ffffff",
+  Coinbase: "https://cdn.simpleicons.org/coinbase/ffffff",
+  AMD: "https://cdn.simpleicons.org/amd/ffffff",
+  "McDonald's": "https://cdn.simpleicons.org/mcdonalds/ffffff",
+  GameStop: "https://cdn.simpleicons.org/gamestop/ffffff",
+  Visa: "https://cdn.simpleicons.org/visa/ffffff",
+  AmEx: "https://cdn.simpleicons.org/americanexpress/ffffff",
+  Pfizer: "https://cdn.simpleicons.org/pfizer/ffffff",
+  MARA: "https://cdn.simpleicons.org/marathon/ffffff",
+  Exxon: "https://cdn.simpleicons.org/exxonmobil/ffffff",
+  Citigroup: "https://cdn.simpleicons.org/citigroup/ffffff",
+  FedEx: "https://cdn.simpleicons.org/fedex/ffffff",
+  Palantir: "https://cdn.simpleicons.org/palantir/ffffff",
 };
 
 const COMMODITY_COLORS: Record<string, { bg: string; color: string; label: string }> = {
@@ -269,12 +290,22 @@ const COMMODITY_COLORS: Record<string, { bg: string; color: string; label: strin
   Silver: { bg: "#a0a0a0", color: "#1a1a1a", label: "AG" },
   "Brent Oil": { bg: "#3a6b35", color: "#fff", label: "OIL" },
   "WTI Oil": { bg: "#4a7b45", color: "#fff", label: "WTI" },
+  "Natural Gas": { bg: "#5a8b55", color: "#fff", label: "NGAS" },
+  Palladium: { bg: "#8a8a8a", color: "#1a1a1a", label: "PALL" },
+  Platinum: { bg: "#b0b0b0", color: "#1a1a1a", label: "PLAT" },
 };
 
 const INDEX_COLORS: Record<string, { bg: string; color: string; label: string }> = {
   "S&P 500": { bg: "#1a3c6e", color: "#fff", label: "S&P" },
   NASDAQ: { bg: "#0096d6", color: "#fff", label: "NDQ" },
   "Dow Jones": { bg: "#1a3c6e", color: "#fff", label: "DJI" },
+  "AUS 200": { bg: "#1a3c6e", color: "#fff", label: "AUS" },
+  "FTSE 100": { bg: "#1a3c6e", color: "#fff", label: "FTSE" },
+  "DAX 30": { bg: "#1a3c6e", color: "#fff", label: "DAX" },
+  "Euro Stoxx 35": { bg: "#1a3c6e", color: "#fff", label: "E35" },
+  "Euro Stoxx 50": { bg: "#1a3c6e", color: "#fff", label: "E50" },
+  "CAC 40": { bg: "#1a3c6e", color: "#fff", label: "CAC" },
+  "Nikkei 225": { bg: "#1a3c6e", color: "#fff", label: "NKI" },
 };
 
 function PairIconSmall({ display, size = 32 }: { display: string; size?: number }) {
