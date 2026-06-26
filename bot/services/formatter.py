@@ -47,31 +47,66 @@ def _pair_emoji(pair: str) -> str:
     clean = pair.replace(" (OTC)", "")
     return PAIR_EMOJI.get(pair, PAIR_EMOJI.get(clean, ""))
 
-# Payout percentages per pair (from PocketOption)
+# Payout percentages per pair (from PocketOption — synced with constants.py)
 PAIR_PAYOUTS: dict[str, int] = {
-    "EUR/USD (OTC)": 76, "GBP/USD (OTC)": 92, "USD/JPY (OTC)": 33,
-    "AUD/USD (OTC)": 56, "EUR/GBP (OTC)": 32, "USD/CHF (OTC)": 85,
-    "NZD/USD (OTC)": 92, "EUR/JPY (OTC)": 49, "AUD/CHF (OTC)": 72,
-    "AUD/NZD (OTC)": 69, "EUR/CHF (OTC)": 57, "GBP/JPY (OTC)": 49,
-    "USD/CAD (OTC)": 82, "CAD/JPY (OTC)": 65, "GBP/AUD (OTC)": 92,
-    "EUR/NZD (OTC)": 47,
-    "Bitcoin ETF (OTC)": 92, "Bitcoin (OTC)": 92, "Litecoin (OTC)": 92,
-    "Dogecoin (OTC)": 83, "Polygon (OTC)": 83,
-    "Cardano (OTC)": 74, "Polkadot (OTC)": 74,
-    "Chainlink (OTC)": 71, "BNB (OTC)": 69,
-    "Avalanche (OTC)": 53, "Solana (OTC)": 49,
-    "TRON (OTC)": 44, "Ethereum (OTC)": 37, "Toncoin (OTC)": 20,
+    # OTC Forex
+    "AED/CNY (OTC)": 92, "AUD/CAD (OTC)": 92, "CAD/JPY (OTC)": 92,
+    "EUR/GBP (OTC)": 92, "EUR/JPY (OTC)": 92, "GBP/JPY (OTC)": 92,
+    "NZD/USD (OTC)": 92, "OMR/CNY (OTC)": 92, "USD/CNH (OTC)": 92,
+    "USD/MYR (OTC)": 92, "USD/PHP (OTC)": 92, "USD/SGD (OTC)": 92,
+    "YER/USD (OTC)": 92, "USD/ARS (OTC)": 91, "USD/PKR (OTC)": 91,
+    "EUR/NZD (OTC)": 90, "AUD/NZD (OTC)": 89, "USD/CLP (OTC)": 88,
+    "CHF/JPY (OTC)": 87, "LBP/USD (OTC)": 86, "USD/THB (OTC)": 86,
+    "AUD/USD (OTC)": 83, "AUD/JPY (OTC)": 82, "NGN/USD (OTC)": 81,
+    "QAR/CNY (OTC)": 74, "BHD/CNY (OTC)": 71, "USD/JPY (OTC)": 70,
+    "NZD/JPY (OTC)": 68, "USD/INR (OTC)": 67, "EUR/HUF (OTC)": 65,
+    "MAD/USD (OTC)": 65, "CAD/CHF (OTC)": 64, "USD/EGP (OTC)": 63,
+    "ZAR/USD (OTC)": 63, "EUR/USD (OTC)": 61, "GBP/USD (OTC)": 59,
+    "AUD/CHF (OTC)": 58, "USD/BRL (OTC)": 58, "USD/BDT (OTC)": 57,
+    "EUR/CHF (OTC)": 52, "KES/USD (OTC)": 52, "USD/COP (OTC)": 51,
+    "CHF/NOK (OTC)": 50, "USD/VND (OTC)": 50, "JOD/CNY (OTC)": 46,
+    "TND/USD (OTC)": 45, "USD/IDR (OTC)": 43, "USD/DZD (OTC)": 36,
+    "UAH/USD (OTC)": 33, "USD/MXN (OTC)": 32, "GBP/AUD (OTC)": 30,
+    "USD/CHF (OTC)": 30, "EUR/TRY (OTC)": 29, "USD/CAD (OTC)": 24,
+    "SAR/CNY (OTC)": 20,
+    # OTC Crypto
+    "Bitcoin ETF (OTC)": 92, "BNB (OTC)": 92, "Polkadot (OTC)": 92,
+    "Litecoin (OTC)": 92, "Toncoin (OTC)": 92,
+    "Ethereum (OTC)": 86, "Avalanche (OTC)": 80,
+    "Chainlink (OTC)": 77, "Polygon (OTC)": 73,
+    "Bitcoin (OTC)": 68, "Cardano (OTC)": 67,
+    "TRON (OTC)": 50, "Solana (OTC)": 48, "Dogecoin (OTC)": 38,
+    # OTC Commodities
     "Gold (OTC)": 80, "Silver (OTC)": 80, "Brent Oil (OTC)": 80, "WTI Oil (OTC)": 80,
-    "Apple (OTC)": 92, "Tesla (OTC)": 88, "Amazon (OTC)": 84,
-    "Microsoft (OTC)": 55, "Meta (OTC)": 66, "Netflix (OTC)": 62,
+    "Natural Gas (OTC)": 45, "Palladium (OTC)": 45, "Platinum (OTC)": 45,
+    # OTC Stocks
+    "Apple (OTC)": 92, "GameStop (OTC)": 92, "VISA (OTC)": 92,
+    "American Express (OTC)": 90, "VIX (OTC)": 90, "Pfizer (OTC)": 87,
+    "AMD (OTC)": 83, "Johnson & Johnson (OTC)": 81,
+    "Marathon Digital (OTC)": 73, "Amazon (OTC)": 69,
+    "Netflix (OTC)": 63, "ExxonMobil (OTC)": 60,
+    "Coinbase (OTC)": 59, "Cisco (OTC)": 57,
+    "Alibaba (OTC)": 52, "Citigroup (OTC)": 50, "FedEx (OTC)": 50,
+    "Meta (OTC)": 45, "Intel (OTC)": 36, "Palantir (OTC)": 34,
+    "McDonald's (OTC)": 33, "Tesla (OTC)": 33, "Microsoft (OTC)": 31,
+    # OTC Indices
     "S&P 500 (OTC)": 45, "NASDAQ 100 (OTC)": 45, "Dow Jones (OTC)": 45,
-    "EUR/USD": 82, "GBP/USD": 85, "USD/JPY": 43, "AUD/USD": 38,
-    "EUR/GBP": 58, "USD/CHF": 75, "USD/CAD": 87, "EUR/JPY": 77,
-    "GBP/JPY": 83, "EUR/CHF": 85, "AUD/CAD": 62, "EUR/AUD": 32,
-    "GBP/AUD": 77, "AUD/JPY": 45, "CAD/JPY": 72, "CHF/JPY": 76,
-    "AAPL": 92, "TSLA": 88, "AMZN": 84, "MSFT": 55, "META": 66,
-    "NFLX": 62, "NVDA": 80, "GOLD": 80, "SILVER": 80,
-    "BTC/USD": 15, "ETH/USD": 80, "SOL/USD": 80, "SP500": 45, "US100": 45,
+    "AUS 200 (OTC)": 67, "FTSE 100 (OTC)": 45, "DAX 30 (OTC)": 45,
+    "E35EUR (OTC)": 45, "E50EUR (OTC)": 45, "CAC 40 (OTC)": 45,
+    "Nikkei 225 (OTC)": 45,
+    # Exchange Forex
+    "CHF/JPY": 88, "EUR/CAD": 88, "AUD/JPY": 86, "CAD/JPY": 80,
+    "AUD/CHF": 78, "EUR/USD": 78, "EUR/CHF": 75, "AUD/CAD": 74,
+    "EUR/AUD": 73, "GBP/JPY": 72, "USD/JPY": 68, "EUR/JPY": 61,
+    "EUR/GBP": 60, "GBP/USD": 55, "GBP/CAD": 48, "USD/CAD": 44,
+    "GBP/CHF": 42, "AUD/USD": 40, "USD/CHF": 35, "CAD/CHF": 26,
+    "GBP/AUD": 24,
+    # Exchange Crypto
+    "BTC/USD": 15,
+    # Ticker aliases
+    "AAPL": 92, "TSLA": 33, "AMZN": 69, "MSFT": 31, "META": 45,
+    "NFLX": 63, "NVDA": 80, "GOLD": 80, "SILVER": 80,
+    "ETH/USD": 80, "SOL/USD": 80, "SP500": 45, "US100": 45,
 }
 
 

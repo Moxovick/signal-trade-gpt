@@ -53,7 +53,7 @@ export async function PUT(req: Request) {
   if (avatar !== undefined && avatar !== null) {
     if (typeof avatar !== "string" || avatar.length > MAX_AVATAR_BYTES) {
       return NextResponse.json(
-        { error: "avatar must be a data URL under 500 KB" },
+        { error: "avatar must be a data URL under 2 MB" },
         { status: 400 },
       );
     }

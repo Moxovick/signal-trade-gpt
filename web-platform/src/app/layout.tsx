@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope, JetBrains_Mono, Bebas_Neue } from "next/font/google";
+import { cookies } from "next/headers";
 import Script from "next/script";
 import "./globals.css";
 import { AnimatedBackground } from "@/components/effects/AnimatedBackground";
@@ -31,14 +32,15 @@ export const metadata: Metadata = {
     "Сигналы для PocketOption. Открывай аккаунт по нашей ссылке — получи доступ к боту в Telegram. Чем выше депозит, тем сильнее перки.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = (await cookies()).get("locale")?.value === "uk" ? "uk" : "ru";
   return (
     <html
-      lang="ru"
+      lang={locale}
       data-scroll-behavior="smooth"
       data-theme="dark"
       className={`${manrope.variable} ${jetbrains.variable} ${bebas.variable} h-full`}
