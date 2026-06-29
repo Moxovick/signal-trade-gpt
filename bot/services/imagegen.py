@@ -211,6 +211,7 @@ def make_signal_chart(
     signal: Signal,
     *,
     ohlc: list[tuple[float, float, float, float]] | None = None,
+    locale: str = "ru",
 ) -> bytes:
     """
     Render a 1280x720 candle chart for a signal with direction badge.
@@ -287,7 +288,9 @@ def make_signal_chart(
     )
 
     # Header bar
-    title = f"  {pair}   ·   {direction}   ·   conf {signal.confidence}%   ·   exp {signal.expiration}"
+    conf_label = t("imagegen.chart_conf", locale)
+    exp_label = t("imagegen.chart_exp", locale)
+    title = f"  {pair}   ·   {direction}   ·   {conf_label} {signal.confidence}%   ·   {exp_label} {signal.expiration}"
     ax.set_title(title, color=GOLD, fontsize=18, fontweight="bold", loc="left", pad=18)
 
     # Brand watermark bottom-right
@@ -370,6 +373,7 @@ def make_signal_chart_advanced(
     signal: Signal,
     *,
     ohlc: list[tuple[float, float, float, float]] | None = None,
+    locale: str = "ru",
 ) -> bytes:
     """
     Tier-2+ chart: candlestick + RSI + MACD + volume in a single 4-row figure.
@@ -454,7 +458,9 @@ def make_signal_chart_advanced(
     ax_price.set_xlim(-1, n)
     pad = span * 0.25
     ax_price.set_ylim(closes.min() - pad, closes.max() + pad)
-    title = f"  {pair}   ·   {direction}   ·   conf {signal.confidence}%   ·   exp {signal.expiration}"
+    conf_label = t("imagegen.chart_conf", locale)
+    exp_label = t("imagegen.chart_exp", locale)
+    title = f"  {pair}   ·   {direction}   ·   {conf_label} {signal.confidence}%   ·   {exp_label} {signal.expiration}"
     ax_price.set_title(title, color=GOLD, fontsize=16, fontweight="bold", loc="left", pad=14)
     ax_price.legend(loc="upper left", facecolor=BG_1, edgecolor=BG_2, labelcolor=TEXT_2, fontsize=8)
 
@@ -499,7 +505,7 @@ def make_signal_chart_advanced(
     return buf.getvalue()
 
 
-def make_otc_banner(signal: Signal) -> bytes:
+def make_otc_banner(signal: Signal, locale: str = "ru") -> bytes:
     """
     Branded static 1280x720 banner for OTC signals — no candlestick chart.
 
@@ -593,7 +599,7 @@ def make_otc_banner(signal: Signal) -> bytes:
     d.text((badge_x + badge_pad_x, badge_y + badge_pad_y), badge_text, font=f_badge, fill=GOLD)
 
     # ── expiration + confidence ───────────────────────────────────────────────
-    meta_text = f"Exp: {signal.expiration}   ·   Conf: {signal.confidence}%"
+    meta_text = f"{t('imagegen.chart_exp', locale)}: {signal.expiration}   ·   {t('imagegen.chart_conf', locale)}: {signal.confidence}%"
     d.text((px, py + 76), meta_text, font=f_meta, fill=TEXT_2)
 
     # ── watermark ─────────────────────────────────────────────────────────────

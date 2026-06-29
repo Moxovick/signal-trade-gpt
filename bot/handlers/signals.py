@@ -20,10 +20,9 @@ from config import settings
 from i18n import t
 from i18n_helpers import get_locale
 from constants import (
-    EXPIRATIONS,
     PAIRS_BY_TIER,
+    get_expirations,
     SIGNAL_TIER_LABELS,
-    SUBCATEGORY_LABELS,
     TIER_DAILY_LIMITS,
     TIER_NAMES,
     TIER_SIGNAL_TYPES,
@@ -243,12 +242,12 @@ async def cb_signal_category(query: CallbackQuery) -> None:
 
     builder = InlineKeyboardBuilder()
     for cat in categories:
-        label = SUBCATEGORY_LABELS.get(cat, cat.title())
+        label = subcategory_label(cat, locale)
         builder.button(text=label, callback_data=f"sig_sub:{sig_tier}:{cat}")
     builder.button(text=t("keyboard.back", locale), callback_data="sig_back_to_cat")
     builder.adjust(2)
 
-    tier_label = SIGNAL_TIER_LABELS.get(sig_tier, sig_tier.upper())
+    tier_label = signal_tier_label(sig_tier, locale)
     choose_cat = t("signal.choose_category", locale)
     try:
         await query.message.edit_text(
@@ -324,7 +323,7 @@ async def cb_signal_subcategory(query: CallbackQuery) -> None:
     builder.button(text=t("keyboard.back", locale), callback_data=f"sig_cat:{sig_tier}")
     builder.adjust(2)
 
-    cat_label = SUBCATEGORY_LABELS.get(subcategory, subcategory.title())
+    cat_label = subcategory_label(subcategory, locale)
     choose_pair = t("signal.choose_pair", locale)
     try:
         await query.message.edit_text(
@@ -362,7 +361,7 @@ async def cb_signal_pair(query: CallbackQuery) -> None:
         await query.message.answer(t("signal.pair_not_found", locale))
         return
 
-    expirations = EXPIRATIONS.get(sig_tier, EXPIRATIONS["otc"])
+    expirations = get_expirations(sig_tier, locale)
     builder = InlineKeyboardBuilder()
     for label, code in expirations:
         builder.button(
@@ -517,7 +516,7 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
             )
 
             # Generate signal
-            signal = generate_signal_for_pair(sig_tier, pair_symbol, exp_code)
+            signal = generate_signal_for_pair(sig_tier, pair_symbol, exp_code, locale)
             sid = await save_signal(signal, telegram_id=user_id)
             signal.id = sid
 
@@ -540,11 +539,11 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
             is_otc = tier_str in {"otc", "demo"}
 
             if is_otc:
-                chart_bytes: bytes = make_otc_banner(signal)
+                chart_bytes: bytes = make_otc_banner(signal, locale=locale)
                 caption = format_otc_minimal(signal, locale=locale)
             else:
                 real_ohlc = await fetch_ohlc(signal.pair)
-                chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
+                chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc, locale=locale)
                 caption = format_pro_signal_caption(signal, settings.pocket_option_url, locale=locale)
 
             # Activity log (fire-and-forget)
@@ -664,7 +663,7 @@ async def _generate_signal_data(
                 is_otc = tier_str in {"otc", "demo"}
 
                 if is_otc:
-                    chart_bytes: bytes = make_otc_banner(signal)
+                    chart_bytes: bytes = make_otc_banner(signal, locale=locale)
                 else:
                     chart_data = api_resp.get("signal", {}).get("chartData")
                     if chart_data and isinstance(chart_data, dict):
@@ -680,7 +679,7 @@ async def _generate_signal_data(
                         ] if candles else None
                     else:
                         real_ohlc = await fetch_ohlc(signal.pair)
-                    chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
+                    chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc, locale=locale)
 
                 return None, signal, chart_bytes, api_resp
 
@@ -707,7 +706,7 @@ async def _generate_signal_data(
     allowed_types = web_sync.get_allowed_types(user.tier) or TIER_SIGNAL_TYPES.get(user.tier, ["otc"])
     signal_tier = random.choice(allowed_types)
 
-    signal = generate_signal(signal_tier)
+    signal = generate_signal(signal_tier, locale)
     sid = await save_signal(signal)
     signal.id = sid
 
@@ -715,10 +714,10 @@ async def _generate_signal_data(
     is_otc = tier_str in {"otc", "demo"}
 
     if is_otc:
-        chart_bytes = make_otc_banner(signal)
+        chart_bytes = make_otc_banner(signal, locale=locale)
     else:
         real_ohlc = await fetch_ohlc(signal.pair)
-        chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc)
+        chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc, locale=locale)
 
     return None, signal, chart_bytes, None
 

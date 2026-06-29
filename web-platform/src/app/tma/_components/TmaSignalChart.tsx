@@ -33,7 +33,7 @@ type Props = {
 export function TmaSignalChart({ pair, providerSymbol, entryPrice, direction }: Props) {
   const { t } = useI18n();
   const locale = useLocale();
-  const bcp47 = locale === "uk" ? "uk-UA" : bcp47;
+  const bcp47 = locale === "uk" ? "uk-UA" : "ru-RU";
   const sc = t?.tma?.signalChart ?? {};
   const [data, setData] = useState<Candle[]>([]);
   const [source, setSource] = useState<ChartSource>("synthetic");

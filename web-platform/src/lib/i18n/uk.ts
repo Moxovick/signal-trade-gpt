@@ -786,6 +786,7 @@ const dict = {
     entry: "Вхід:",
     getNewSignal: "Отримати новий сигнал",
     errorFetch: "Не вдалося отримати сигнал. Спробуйте пізніше.",
+    error: "Помилка",
   },
 
   tierHero: {
@@ -2042,6 +2043,7 @@ const dict = {
       subtitle: "Калькулятор",
       deposit: "Депозит",
       tradeSize: "Розмір угоди",
+      payout: "Виплата",
       result: "Результат",
       profit: "Прибуток (WIN)",
       loss: "Збиток (LOSS)",

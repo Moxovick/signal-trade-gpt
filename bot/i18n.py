@@ -731,6 +731,8 @@ _RU: dict[str, str] = {
     "formatter.tier_to_pro": "<i>До уровня Pro: депозит ≥ $100 на PocketOption.</i>",
 
     # ── imagegen card strings ─────────────────────────────────────────────────
+    "imagegen.chart_conf": "увер.",
+    "imagegen.chart_exp": "эксп.",
     "imagegen.deposit_label": "Депозит: ${deposit:,.0f}",
     "imagegen.to_next_tier": "До {next_name}: ещё ${remaining:,}",
     "imagegen.full_access": "Полный доступ открыт",
@@ -1462,6 +1464,8 @@ _UK: dict[str, str] = {
     "formatter.tier_to_pro": "<i>До рівня Pro: депозит ≥ $100 на PocketOption.</i>",
 
     # ── imagegen card strings ─────────────────────────────────────────────────
+    "imagegen.chart_conf": "впевн.",
+    "imagegen.chart_exp": "експ.",
     "imagegen.deposit_label": "Депозит: ${deposit:,.0f}",
     "imagegen.to_next_tier": "До {next_name}: ще ${remaining:,}",
     "imagegen.full_access": "Повний доступ відкрито",

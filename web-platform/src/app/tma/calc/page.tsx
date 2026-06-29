@@ -51,7 +51,7 @@ function Calc() {
           onChange={setPct}
         />
         <SliderField
-          label="Payout"
+          label={t.tma.calc.payout}
           value={payout}
           min={60}
           max={95}

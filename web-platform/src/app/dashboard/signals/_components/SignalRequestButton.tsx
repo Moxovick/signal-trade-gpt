@@ -567,10 +567,10 @@ export function SignalRequestButton({
     "30s": t.signalRequest.exp30s,
     "60s": t.signalRequest.exp1m,
     "2m": t.signalRequest.exp2m,
-    "3m": t.signalRequest.exp3m ?? "3 мин",
+    "3m": t.signalRequest.exp3m,
     "5m": t.signalRequest.exp5m,
     "15m": t.signalRequest.exp15m,
-    "30m": t.signalRequest.exp30m ?? "30 мин",
+    "30m": t.signalRequest.exp30m,
   };
 
   const EXPIRATIONS: Record<PairBand, { value: string; label: string }[]> = {
@@ -676,7 +676,7 @@ export function SignalRequestButton({
       setProgress(100);
 
       if (!res.ok) {
-        setError(res.data.error ?? `Ошибка ${res.status}`);
+        setError(res.data.error ?? `${t.signalRequest.error} ${res.status}`);
         setStep("pair");
       } else {
         setLastSignal(res.data.signal);

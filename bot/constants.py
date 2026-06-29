@@ -214,19 +214,55 @@ def signal_tier_label(key: str, locale: str = "ru") -> str:
     """Return locale-aware signal tier label."""
     return t(f"tier_label.{key}", locale)
 
-# Expirations per signal tier
-EXPIRATIONS: dict[str, list[tuple[str, str]]] = {
-    "otc": [("30 сек", "30s"), ("1 мин", "60s"), ("2 мин", "2m"), ("3 мин", "3m"), ("5 мин", "5m"), ("30 мин", "30m")],
-    "exchange": [("2 мин", "2m"), ("3 мин", "3m"), ("5 мин", "5m"), ("30 мин", "30m")],
-    "elite": [("2 мин", "2m"), ("3 мин", "3m"), ("5 мин", "5m"), ("30 мин", "30m")],
+# Expirations per signal tier (locale-aware)
+_EXPIRATIONS_I18N: dict[str, dict[str, list[tuple[str, str]]]] = {
+    "ru": {
+        "otc": [("30 сек", "30s"), ("1 мин", "60s"), ("2 мин", "2m"), ("3 мин", "3m"), ("5 мин", "5m"), ("30 мин", "30m")],
+        "exchange": [("2 мин", "2m"), ("3 мин", "3m"), ("5 мин", "5m"), ("30 мин", "30m")],
+        "elite": [("2 мин", "2m"), ("3 мин", "3m"), ("5 мин", "5m"), ("30 мин", "30m")],
+    },
+    "uk": {
+        "otc": [("30 сек", "30s"), ("1 хв", "60s"), ("2 хв", "2m"), ("3 хв", "3m"), ("5 хв", "5m"), ("30 хв", "30m")],
+        "exchange": [("2 хв", "2m"), ("3 хв", "3m"), ("5 хв", "5m"), ("30 хв", "30m")],
+        "elite": [("2 хв", "2m"), ("3 хв", "3m"), ("5 хв", "5m"), ("30 хв", "30m")],
+    },
 }
 
-# Expiration code → display label (for signal messages)
-EXPIRATION_LABELS: dict[str, str] = {
-    "30s": "30 сек",
-    "60s": "1 мин",
-    "2m": "2 мин",
-    "3m": "3 мин",
-    "5m": "5 мин",
-    "30m": "30 мин",
+# Default (backward-compatible)
+EXPIRATIONS: dict[str, list[tuple[str, str]]] = _EXPIRATIONS_I18N["ru"]
+
+
+def get_expirations(tier: str, locale: str = "ru") -> list[tuple[str, str]]:
+    """Return expiration options for a tier in the given locale."""
+    loc = locale if locale in _EXPIRATIONS_I18N else "ru"
+    return _EXPIRATIONS_I18N[loc].get(tier, _EXPIRATIONS_I18N[loc]["otc"])
+
+
+# Expiration code → display label (locale-aware)
+_EXPIRATION_LABELS_I18N: dict[str, dict[str, str]] = {
+    "ru": {
+        "30s": "30 сек",
+        "60s": "1 мин",
+        "2m": "2 мин",
+        "3m": "3 мин",
+        "5m": "5 мин",
+        "30m": "30 мин",
+    },
+    "uk": {
+        "30s": "30 сек",
+        "60s": "1 хв",
+        "2m": "2 хв",
+        "3m": "3 хв",
+        "5m": "5 хв",
+        "30m": "30 хв",
+    },
 }
+
+# Default (backward-compatible)
+EXPIRATION_LABELS: dict[str, str] = _EXPIRATION_LABELS_I18N["ru"]
+
+
+def get_expiration_label(code: str, locale: str = "ru") -> str:
+    """Return display label for an expiration code in the given locale."""
+    loc = locale if locale in _EXPIRATION_LABELS_I18N else "ru"
+    return _EXPIRATION_LABELS_I18N[loc].get(code, code)
