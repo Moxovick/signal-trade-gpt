@@ -34,6 +34,7 @@ export async function GET(
       role: true,
       status: true,
       tier: true,
+      tierOverride: true,
       depositTotal: true,
       signalsReceived: true,
       wins: true,

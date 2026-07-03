@@ -126,6 +126,9 @@ model User {
   status                UserStatus       @default(active)
   /// Current tier 0..4, recomputed on every PocketOption postback.
   tier                  Int              @default(0)
+  /// Admin-set tier floor. When set, tier = max(computed, tierOverride).
+  /// Prevents tier from dropping below admin-assigned level.
+  tierOverride          Int?
   referralCode          String           @unique
   referredById          String?
   referredBy            User?            @relation("Referrals", fields: [referredById], references: [id])

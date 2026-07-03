@@ -333,7 +333,10 @@ export async function recomputeUserTier(userId: string): Promise<number> {
   // так что "нет аккаунта" сюда обычно не доходит, но обрабатываем безопасно.
   const hasAccount = user.poAccount != null;
   const total = user.poAccount?.totalDeposit ?? 0;
-  const tier = computeTier(total, hasAccount, thresholds);
+  const computed = computeTier(total, hasAccount, thresholds);
+
+  // Admin override acts as a floor — tier never drops below it.
+  const tier = Math.max(computed, user.tierOverride ?? 0);
 
   if (tier !== user.tier) {
     await prisma.user.update({ where: { id: userId }, data: { tier } });

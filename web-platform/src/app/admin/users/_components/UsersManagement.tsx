@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   ChevronDown,
@@ -87,6 +88,7 @@ interface UserDetail extends UserRow {
   dailySignalsUsed: number;
   streakDays: number;
   referralCode: string;
+  tierOverride: number | null;
   poAccount: POAccountDetail | null;
   activityLogs: ActivityLogEntry[];
   loginEvents: LoginEventEntry[];
@@ -335,6 +337,79 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof UserIcon; label: s
   );
 }
 
+function TierOverrideControl({ userId, currentTier, tierOverride: initialOverride }: { userId: string; currentTier: number; tierOverride: number | null }) {
+  const [override, setOverride] = useState<number | null>(initialOverride);
+  const [saving, setSaving] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const router = useRouter();
+
+  const TIERS = [
+    { value: null, label: "Авто (по депозиту)" },
+    { value: 0, label: "Free" },
+    { value: 1, label: "Basic" },
+    { value: 2, label: "Pro" },
+  ] as const;
+
+  async function save(newVal: number | null) {
+    setOverride(newVal);
+    setSaving(true);
+    setResult(null);
+    try {
+      const r = await fetch(`/api/admin/users/${userId}/tier-override`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tier: newVal }),
+      });
+      const data = (await r.json()) as { ok: boolean; newTier?: number };
+      if (data.ok) {
+        setResult(`Тир → ${data.newTier}`);
+        router.refresh();
+      } else {
+        setResult("Ошибка");
+      }
+    } catch {
+      setResult("Сетевая ошибка");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 p-3 rounded-xl border border-[var(--b-soft)] bg-[var(--bg-2)]">
+      <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-2">
+        Ручное управление тиром
+      </div>
+      <div className="flex items-center gap-2 flex-wrap">
+        {TIERS.map((tier) => {
+          const isActive = override === tier.value;
+          return (
+            <button
+              key={String(tier.value)}
+              type="button"
+              disabled={saving}
+              onClick={() => save(tier.value)}
+              className="text-xs px-3 py-1.5 rounded-lg font-medium transition-all disabled:opacity-50"
+              style={{
+                background: isActive ? "rgba(212,160,23,0.15)" : "var(--bg-1)",
+                color: isActive ? "var(--brand-gold)" : "var(--t-2)",
+                border: `1px solid ${isActive ? "rgba(212,160,23,0.3)" : "var(--b-soft)"}`,
+              }}
+            >
+              {tier.label}
+            </button>
+          );
+        })}
+        {result && (
+          <span className="text-[11px] text-[var(--green)] ml-1">{result}</span>
+        )}
+      </div>
+      <div className="text-[10px] text-[var(--t-3)] mt-1.5">
+        Текущий тир: {currentTier} {override != null ? `(override: ${override})` : "(авто)"}
+      </div>
+    </div>
+  );
+}
+
 function ProfileTab({ detail }: { detail: UserDetail }) {
   const wr = winRate(detail.wins, detail.losses);
   const { t } = useI18n();
@@ -356,6 +431,7 @@ function ProfileTab({ detail }: { detail: UserDetail }) {
           <InfoRow icon={Clock} label={pr.lastLogin ?? "Последний вход"} value={formatDateTime(detail.lastLogin)} />
           <InfoRow icon={Hash} label={pr.referralCode ?? "Реф. код"} value={detail.referralCode} />
         </div>
+        <TierOverrideControl userId={detail.id} currentTier={detail.tier} tierOverride={detail.tierOverride} />
       </div>
 
       <div>
