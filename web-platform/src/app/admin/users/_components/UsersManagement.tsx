@@ -852,24 +852,29 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
                   </span>
                 </div>
 
-                {/* PO status */}
+                {/* PO status + trader ID */}
                 <div>
                   {u.poAccount ? (
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
-                      style={{
-                        background:
-                          u.poAccount.status === "verified"
-                            ? "rgba(76,195,138,0.1)"
-                            : "rgba(200,165,92,0.1)",
-                        color:
-                          u.poAccount.status === "verified"
-                            ? "var(--green, #00e5a0)"
-                            : "var(--brand-gold, #C8A55C)",
-                      }}
-                    >
-                      {umPoStatus[u.poAccount.status] ?? PO_STATUS_LABEL[u.poAccount.status] ?? u.poAccount.status}
-                    </span>
+                    <div className="space-y-0.5">
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                        style={{
+                          background:
+                            u.poAccount.status === "verified"
+                              ? "rgba(76,195,138,0.1)"
+                              : "rgba(200,165,92,0.1)",
+                          color:
+                            u.poAccount.status === "verified"
+                              ? "var(--green, #00e5a0)"
+                              : "var(--brand-gold, #C8A55C)",
+                        }}
+                      >
+                        {umPoStatus[u.poAccount.status] ?? PO_STATUS_LABEL[u.poAccount.status] ?? u.poAccount.status}
+                      </span>
+                      <div className="text-[10px] text-[var(--t-3)] truncate" style={{ fontFamily: "var(--font-jetbrains)" }}>
+                        #{u.poAccount.poTraderId}
+                      </div>
+                    </div>
                   ) : (
                     <span className="text-xs text-[var(--t-3)]">—</span>
                   )}

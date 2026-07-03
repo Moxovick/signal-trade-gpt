@@ -121,6 +121,14 @@ function nonEmpty(s: string | null | undefined): string | null {
   return t.length > 0 ? t : null;
 }
 
+/** Reject unresolved PO macro placeholders like {trader_id}, {click_id}. */
+function filterMacro(s: string | null): string | null {
+  if (s == null) return null;
+  if (/^\{[^}]+\}$/.test(s)) return null;
+  if (/^%[^%]+%$/.test(s)) return null;
+  return s;
+}
+
 function parseAmount(...candidates: Array<string | null | undefined>): number | null {
   for (const raw of candidates) {
     if (raw == null) continue;
@@ -214,8 +222,8 @@ export function parsePostbackQuery(params: PostbackParamsLike): ParsedPostback |
   const event = normaliseEvent(eventRaw);
   if (!event) return null;
 
-  const clickId = nonEmpty(readParam(params, "click_id", "clickid", "subid", "sub_id"));
-  const poTraderId = nonEmpty(readParam(params, "trader_id", "traderid", "user_id", "userid"));
+  const clickId = filterMacro(nonEmpty(readParam(params, "click_id", "clickid", "subid", "sub_id")));
+  const poTraderId = filterMacro(nonEmpty(readParam(params, "trader_id", "traderid", "user_id", "userid")));
 
   // PocketOption sends DIFFERENT amount macros depending on event:
   //  - ftd / redeposit → {sumdep}
