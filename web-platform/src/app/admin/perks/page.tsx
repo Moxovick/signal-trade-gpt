@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Save, X, Power } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
+import { useI18n } from "@/lib/i18n/context";
 
 type Perk = {
   id: string;
@@ -43,6 +44,9 @@ const EMPTY: Draft = {
 };
 
 export default function AdminPerksPage() {
+  const { t } = useI18n();
+  const tp = t?.admin?.perks ?? {};
+
   const [perks, setPerks] = useState<Perk[]>([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -137,22 +141,22 @@ export default function AdminPerksPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Перки бота</h1>
+          <h1 className="text-2xl font-bold">{tp.title ?? "Перки бота"}</h1>
           <p className="text-sm text-[var(--t-3)] mt-1">
-            Всего: {perks.length} · {perks.filter((p) => p.isActive).length} активных
+            Всего: {perks.length} · {perks.filter((p) => p.isActive).length} {tp.active ?? "активных"}
           </p>
         </div>
         <button
           onClick={openCreate}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--brand-gold)] text-[#1a1208] font-semibold hover:bg-[var(--brand-gold-bright)]"
         >
-          <Plus size={16} /> Создать перк
+          <Plus size={16} /> {tp.create ?? "Создать перк"}
         </button>
       </div>
 
       {loading ? (
         <Card padding="lg">
-          <div className="text-[var(--t-3)] text-sm">Загружаем…</div>
+          <div className="text-[var(--t-3)] text-sm">{tp.loading ?? "Загружаем…"}</div>
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
@@ -209,8 +213,7 @@ export default function AdminPerksPage() {
           {perks.length === 0 ? (
             <Card padding="lg" className="md:col-span-2 text-center">
               <div className="text-[var(--t-3)] text-sm py-6">
-                Перков пока нет. Нажми «Создать перк» — опубликуй привилегии,
-                которые откроет тир.
+                {tp.empty ?? "Перков пока нет. Нажми «Создать перк» — опубликуй привилегии, которые откроет тир."}
               </div>
             </Card>
           ) : null}
@@ -225,6 +228,7 @@ export default function AdminPerksPage() {
           onClose={() => setDraft(null)}
           busy={busy}
           error={error}
+          tp={tp}
         />
       ) : null}
     </div>
@@ -238,6 +242,7 @@ function PerkEditor({
   onClose,
   busy,
   error,
+  tp,
 }: {
   draft: Draft;
   setDraft: (d: Draft) => void;
@@ -245,13 +250,16 @@ function PerkEditor({
   onClose: () => void;
   busy: boolean;
   error: string | null;
+  tp: Record<string, unknown>;
 }) {
+  const fields = (tp.fields ?? {}) as Record<string, string>;
+  const buttons = (tp.buttons ?? {}) as Record<string, string>;
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-12 px-4 overflow-y-auto">
       <div className="w-full max-w-2xl bg-[var(--bg-1)] border border-[var(--b-soft)] rounded-2xl shadow-2xl p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">
-            {draft.id ? "Редактировать перк" : "Новый перк"}
+            {draft.id ? String(tp.editTitle ?? "Редактировать перк") : String(tp.newTitle ?? "Новый перк")}
           </h2>
           <button onClick={onClose} className="text-[var(--t-3)] hover:text-[var(--t-1)]">
             <X size={20} />
@@ -259,7 +267,7 @@ function PerkEditor({
         </div>
 
         <div className="grid md:grid-cols-2 gap-3">
-          <Field label="Код (уникальный, A-Z_-)">
+          <Field label={fields.code ?? "Код (уникальный, A-Z_-)"}>
             <input
               type="text"
               value={draft.code}
@@ -268,7 +276,7 @@ function PerkEditor({
               className={INPUT}
             />
           </Field>
-          <Field label="Минимальный тир">
+          <Field label={fields.minTier ?? "Минимальный тир"}>
             <select
               value={draft.minTier}
               onChange={(e) => setDraft({ ...draft, minTier: Number(e.target.value) })}
@@ -283,7 +291,7 @@ function PerkEditor({
           </Field>
         </div>
 
-        <Field label="Название">
+        <Field label={fields.name ?? "Название"}>
           <input
             type="text"
             value={draft.name}
@@ -293,7 +301,7 @@ function PerkEditor({
           />
         </Field>
 
-        <Field label="Описание">
+        <Field label={fields.description ?? "Описание"}>
           <textarea
             value={draft.description}
             onChange={(e) => setDraft({ ...draft, description: e.target.value })}

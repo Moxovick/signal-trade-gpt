@@ -1,10 +1,36 @@
 /**
  * Tier engine — единственный источник истины о доступе пользователя к перкам.
  *
- * Tier рассчитывается из суммы депозита на PocketOption + факта, что аккаунт
- * привязан и верифицирован. Пороги хранятся в SiteSettings (key="tier_thresholds")
- * и редактируются в админке без релиза.
+ * Модель доступа (3 тира):
+ *   T0 (Free)  — PocketOption-аккаунт привязан (любой статус), депозит $0.
+ *                3 OTC-сигнала в день, доступ к кабинету и боту.
+ *   T1 (Basic) — Привязан + общий депозит ≥ $20.
+ *                10 сигналов в день, OTC + биржевые.
+ *   T2 (Pro)   — Привязан + общий депозит ≥ $100.
+ *                Безлимит сигналов, все типы (OTC + биржа + Elite).
+ *
+ * Доступ к /dashboard гейтится отдельно (см. `app/dashboard/layout.tsx`):
+ * пользователи без привязанного PO-аккаунта попадают на `/onboarding/po-id`.
+ *
+ * Старшие тиры (T3/T4) на текущем этапе НЕ используются, но поля в
+ * `TierThresholds` оставлены для backward-compat: их можно поднять выше
+ * MAX_SAFE_INTEGER чтобы они никогда не срабатывали. Если потом понадобится
+ * расширить модель — достаточно поменять пороги через `/admin/settings`.
  */
+
+// Re-export client-safe constants so existing server-side imports keep working.
+export {
+  type TierThresholds,
+  DEFAULT_TIER_THRESHOLDS,
+  type SignalBand,
+  TIER_ACCESS,
+  TIER_LABELS,
+  TIER_LABELS_EN,
+} from "@/lib/tier-constants";
+
+import type { TierThresholds } from "@/lib/tier-constants";
+import { DEFAULT_TIER_THRESHOLDS } from "@/lib/tier-constants";
+
 /**
  * Duck-typed Decimal: anything with `toNumber()` works (covers Prisma.Decimal,
  * decimal.js, and our own wrappers in tests).
@@ -13,22 +39,22 @@ interface DecimalLike {
   toNumber(): number;
 }
 
-export type TierThresholds = {
-  /** Депозит, при котором открывается T1, T2, T3, T4 (USD). */
-  1: number;
-  2: number;
-  3: number;
-  4: number;
-};
-
-export const DEFAULT_TIER_THRESHOLDS: TierThresholds = {
-  1: 100,
-  2: 1000,
-  3: 5000,
-  4: 10000,
-};
-
 export const SITE_SETTING_TIER_THRESHOLDS = "tier_thresholds";
+
+import { prisma } from "@/lib/prisma";
+
+/**
+ * Load tier thresholds from SiteSettings (DB), falling back to defaults.
+ */
+export async function getTierThresholds(): Promise<TierThresholds> {
+  const setting = await prisma.siteSettings.findUnique({
+    where: { key: SITE_SETTING_TIER_THRESHOLDS },
+  });
+  if (!setting) return DEFAULT_TIER_THRESHOLDS;
+  const v = setting.value as unknown;
+  if (typeof v !== "object" || v === null) return DEFAULT_TIER_THRESHOLDS;
+  return v as TierThresholds;
+}
 
 type DepositLike = DecimalLike | number | string;
 
@@ -39,20 +65,26 @@ function toNumber(value: DepositLike): number {
 }
 
 /**
- * Compute tier 0..4 for a user.
+ * Compute the user's tier.
  *
- * - 0 — PocketOption account not yet attached/verified.
- * - 1..4 — by deposit amount.
+ * @param depositTotal     Сумма депозитов на PO (USD).
+ * @param hasPoAccount     Привязан ли PO-аккаунт (любой статус).
+ *                         Без привязки пользователь не должен попадать в
+ *                         /dashboard вообще (см. dashboard/layout.tsx), но
+ *                         для устойчивости движка считаем такого юзера T0.
+ * @param thresholds       Пороги (берутся из `SiteSettings.tier_thresholds`).
  *
- * T0 пользователи могут получить ограниченный набор демо-сигналов
- * (см. perk `signals_demo`).
+ * Возврат:
+ *   0 — нет PO-аккаунта ИЛИ депо < tier_thresholds[1].
+ *   1 — Basic (депо ≥ $20), 2 — Pro (депо ≥ $100).
+ *   3..4 — зарезервированы, пороги выставлены недостижимыми.
  */
 export function computeTier(
   depositTotal: DepositLike,
-  hasVerifiedPoAccount: boolean,
+  hasPoAccount: boolean,
   thresholds: TierThresholds = DEFAULT_TIER_THRESHOLDS,
 ): number {
-  if (!hasVerifiedPoAccount) return 0;
+  if (!hasPoAccount) return 0;
   const total = toNumber(depositTotal);
   if (total >= thresholds[4]) return 4;
   if (total >= thresholds[3]) return 3;
@@ -63,7 +95,7 @@ export function computeTier(
 
 /**
  * Сколько ещё нужно довнести до следующего уровня.
- * Возвращает null, если уже T4 (максимум).
+ * Возвращает null, если выше уже некуда (тир ≥ максимальный достижимый).
  */
 export function distanceToNextTier(
   depositTotal: DepositLike,
@@ -72,14 +104,10 @@ export function distanceToNextTier(
 ): { nextTier: number; needed: number } | null {
   if (currentTier >= 4) return null;
   const next = (currentTier + 1) as 1 | 2 | 3 | 4;
+  const cap = thresholds[next];
+  // Скрываем тиры, у которых порог выставлен недостижимым.
+  if (cap >= Number.MAX_SAFE_INTEGER) return null;
   const total = toNumber(depositTotal);
-  return { nextTier: next, needed: Math.max(0, thresholds[next] - total) };
+  return { nextTier: next, needed: Math.max(0, cap - total) };
 }
 
-export const TIER_LABELS: Record<number, string> = {
-  0: "Демо",
-  1: "Базовый",
-  2: "Трейдер",
-  3: "Pro",
-  4: "Elite",
-};

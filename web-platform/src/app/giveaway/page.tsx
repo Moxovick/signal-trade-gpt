@@ -1,26 +1,128 @@
+/**
+ * Public — Бонусная программа.
+ *
+ * Explains the deposit-based reward tiers. Logged-in users see their progress.
+ */
 import Link from "next/link";
-import { ArrowRight, Trophy, Gift, Sparkles, ShieldCheck } from "lucide-react";
+import { ArrowRight, Gift, Zap, TrendingUp, Star, CheckCircle2, Lock, Laptop, Smartphone, Headphones, Watch } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { SiteHeader, SiteFooter } from "@/components/shared/SiteHeader";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
-import { TierBadge } from "@/components/ui/TierBadge";
+import { getDictionary, getDictionaryForUser, getLocaleFromCookies, getLocaleForUser } from "@/lib/i18n";
 
-const BOT_URL =
-  process.env["NEXT_PUBLIC_BOT_URL"] ?? "https://t.me/traitsignaltsest_bot";
+const BOT_URL = process.env["NEXT_PUBLIC_BOT_URL"] ?? "";
 
 export const dynamic = "force-dynamic";
 
-const TIER_NAME: Record<number, string> = {
-  1: "Starter",
-  2: "Active",
-  3: "Pro",
-  4: "VIP",
-};
+/** Map common prize keywords to Lucide icons for visual appeal. */
+function PrizeIcon({ title }: { title: string }) {
+  const tl = title.toLowerCase();
+  if (tl.includes("macbook") || tl.includes("ноутбук") || tl.includes("laptop")) {
+    return (
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
+        style={{ background: "rgba(212,160,23,0.10)", border: "1px solid rgba(212,160,23,0.15)" }}>
+        <Laptop size={28} className="text-[var(--brand-gold)]" />
+      </div>
+    );
+  }
+  if (tl.includes("iphone") || tl.includes("телефон") || tl.includes("смартфон") || tl.includes("phone")) {
+    return (
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
+        style={{ background: "rgba(136,136,255,0.10)", border: "1px solid rgba(136,136,255,0.15)" }}>
+        <Smartphone size={28} style={{ color: "#8888ff" }} />
+      </div>
+    );
+  }
+  if (tl.includes("airpods") || tl.includes("наушники") || tl.includes("headphone")) {
+    return (
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
+        style={{ background: "rgba(76,195,138,0.10)", border: "1px solid rgba(76,195,138,0.15)" }}>
+        <Headphones size={28} style={{ color: "#8ee06b" }} />
+      </div>
+    );
+  }
+  if (tl.includes("watch") || tl.includes("часы")) {
+    return (
+      <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
+        style={{ background: "rgba(212,160,23,0.10)", border: "1px solid rgba(212,160,23,0.15)" }}>
+        <Watch size={28} className="text-[var(--brand-gold)]" />
+      </div>
+    );
+  }
+  return null;
+}
 
-export default async function GiveawayPage() {
+export default async function BonusProgramPage() {
   const session = await auth();
+  const locale = session?.user?.id
+    ? await getLocaleForUser(session.user.id)
+    : await getLocaleFromCookies();
+  const t = await getDictionary(locale);
+
+  const giveaway = t.giveaway as {
+    heroTitle: string;
+    heroSubtitle: string;
+    progressLabel: string;
+    depositLabel: string;
+    maxLevelReached: string;
+    tiersTitle: string;
+    tiersSubtitle: string;
+    prizesLabel: string;
+    tierUnlocked: string;
+    tierLocked: string;
+    tierStart: string;
+    howItWorksTitle: string;
+    howItWorksSteps: Array<{ num: string; title: string; desc: string }>;
+    ctaTitle: string;
+    ctaSubtitle: string;
+    ctaOpenBot: string;
+    ctaDashboard: string;
+    tiers: Array<{
+      tier: number;
+      name: string;
+      deposit: string;
+      perks: string[];
+    }>;
+  };
+
+  const siteTranslations = {
+    nav: t.nav as {
+      howItWorks: string;
+      aboutUs: string;
+      login: string;
+      register: string;
+      closeMenu: string;
+      openMenu: string;
+      cabinetFallback: string;
+      avatarAlt: string;
+    },
+    footer: t.footer as {
+      disclaimer: string;
+      sectionPlatform: string;
+      sectionSupport: string;
+      links: {
+        howItWorks: string;
+        aboutUs: string;
+        register: string;
+        login: string;
+        faq: string;
+        terms: string;
+        privacy: string;
+        dashboard: string;
+      };
+    },
+  };
+
+  const TIERS_CONFIG = [
+    { color: "#b6a586", bg: "rgba(110,96,76,0.12)", icon: Zap },
+    { color: "#8888ff", bg: "rgba(136,136,255,0.10)", icon: TrendingUp },
+    { color: "#d4a017", bg: "rgba(212,160,23,0.10)", icon: Star },
+  ];
+
+  const THRESHOLDS: Record<number, number> = { 0: 0, 1: 20, 2: 100 };
+
   const [prizes, userAccount] = await Promise.all([
     prisma.prize.findMany({
       where: { isActive: true },
@@ -32,103 +134,85 @@ export default async function GiveawayPage() {
   ]);
 
   const userDeposit = userAccount?.totalDeposit ? Number(userAccount.totalDeposit) : 0;
+  const userTier = userDeposit >= 100 ? 2 : userDeposit >= 20 ? 1 : 0;
 
+  // Group prizes by tier
   const grouped = new Map<number, typeof prizes>();
   for (const p of prizes) {
-    if (!grouped.has(p.tier)) grouped.set(p.tier, []);
-    grouped.get(p.tier)!.push(p);
+    const tier = Math.min(p.tier, 2);
+    if (!grouped.has(tier)) grouped.set(tier, []);
+    grouped.get(tier)!.push(p);
   }
-  const tiers = [...grouped.keys()].sort((a, b) => a - b);
-
-  // Find current tier user qualifies for
-  const eligibleTiers = tiers.filter((t) =>
-    grouped.get(t)!.some((p) => userDeposit >= Number(p.minDeposit)),
-  );
-  const currentTier = eligibleTiers[eligibleTiers.length - 1] ?? 0;
-  const nextTier = tiers.find((t) => t > currentTier);
-  const nextThreshold = nextTier
-    ? Math.min(...grouped.get(nextTier)!.map((p) => Number(p.minDeposit)))
-    : null;
-  const progressPct = nextThreshold
-    ? Math.min(100, Math.round((userDeposit / nextThreshold) * 100))
-    : 100;
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader translations={siteTranslations} locale={locale} />
       <main className="relative">
         {/* Hero */}
-        <section className="max-w-5xl mx-auto px-6 pt-16 pb-10 text-center">
+        <section className="max-w-5xl mx-auto px-6 pt-16 pb-12 text-center">
           <Link
             href="/"
             className="text-xs uppercase tracking-widest text-[var(--t-3)] hover:text-[var(--brand-gold)] transition-colors"
           >
-            ← На главную
+            {(t.common as { backToHome: string }).backToHome}
           </Link>
-          <div className="inline-flex items-center gap-2 px-3 h-8 mt-8 rounded-full text-xs uppercase tracking-widest border border-[var(--b-soft)] text-[var(--brand-gold)] bg-[var(--bg-1)]">
-            <Trophy size={12} /> Розыгрыш месяца
-          </div>
-          <h1 className="mt-6 text-5xl md:text-7xl font-bold leading-[1.05] text-shimmer">
-            Чем больше депозит —
-            <br />
-            тем выше приз
+          <h1 className="mt-8 text-4xl md:text-6xl font-bold leading-[1.1]">
+            {giveaway.heroTitle}
           </h1>
-          <p className="mt-6 text-[var(--t-2)] max-w-2xl mx-auto text-lg">
-            Каждый месяц мы разыгрываем призы среди активных трейдеров. Твой тир
-            определяет к каким наградам у тебя доступ. От кешбэка $10 до MacBook Pro и
-            $2&nbsp;000 на счёт.
+          <p className="mt-5 text-[var(--t-2)] max-w-2xl mx-auto text-lg leading-relaxed">
+            {giveaway.heroSubtitle}
           </p>
         </section>
 
-        {/* Personal progress (if logged in) */}
+        {/* User progress (if logged in) */}
         {session?.user && (
           <section className="max-w-4xl mx-auto px-6 pb-10">
             <Card variant="highlight" padding="lg">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div className="flex flex-col md:flex-row md:items-center gap-6">
                 <div className="flex-1">
                   <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-2">
-                    Твой прогресс
+                    {giveaway.progressLabel}
                   </div>
-                  <div className="flex items-center gap-3 mb-3">
-                    {currentTier > 0 ? (
-                      <>
-                        <TierBadge tier={currentTier} size="sm" />
-                        <span className="text-[var(--t-2)] text-sm">
-                          ты участвуешь в розыгрыше {TIER_NAME[currentTier]}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-[var(--t-2)] text-sm">
-                        Внеси первый депозит чтобы попасть в розыгрыш
-                      </span>
-                    )}
+                  <div className="flex items-center gap-3 mb-2">
+                    <span
+                      className="text-sm font-semibold px-2.5 py-1 rounded-lg"
+                      style={{
+                        background: TIERS_CONFIG[userTier].bg,
+                        color: TIERS_CONFIG[userTier].color,
+                      }}
+                    >
+                      {giveaway.tiers[userTier]?.name ?? ""}
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold" style={{ fontFamily: "var(--font-jetbrains)" }}>
+                  <div
+                    className="text-2xl font-bold"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
                     ${userDeposit.toLocaleString()}
-                    <span className="text-sm font-normal text-[var(--t-3)] ml-2">депозит</span>
+                    <span className="text-sm font-normal text-[var(--t-3)] ml-2">{giveaway.depositLabel}</span>
                   </div>
                 </div>
-                {nextThreshold && (
-                  <div className="md:w-72 w-full">
-                    <div className="flex items-center justify-between text-xs text-[var(--t-3)] mb-2">
-                      <span>До следующей лиги</span>
-                      <span className="text-[var(--brand-gold)] font-semibold">
-                        {progressPct}%
-                      </span>
+                {userTier < 2 && (
+                  <div className="md:w-64 w-full">
+                    <div className="text-xs text-[var(--t-3)] mb-2">
+                      {giveaway.tierLocked
+                        .replace("{deposit}", `$${Math.max(0, THRESHOLDS[userTier + 1] - userDeposit)}`)
+                        .replace("{nextTierName}", giveaway.tiers[userTier + 1]?.name ?? "")}
                     </div>
                     <div className="h-2 rounded-full bg-[var(--bg-2)] overflow-hidden">
                       <div
-                        className="h-full bg-[var(--brand-gold)] rounded-full transition-all"
-                        style={{ width: `${progressPct}%` }}
+                        className="h-full rounded-full bg-[var(--brand-gold)]"
+                        style={{
+                          width: `${Math.min(100, (userDeposit / THRESHOLDS[userTier + 1]) * 100)}%`,
+                        }}
                       />
                     </div>
-                    <div className="mt-2 text-xs text-[var(--t-3)]">
-                      Осталось внести{" "}
-                      <span className="text-[var(--t-1)] font-semibold">
-                        ${(nextThreshold - userDeposit).toLocaleString()}
-                      </span>{" "}
-                      → {TIER_NAME[nextTier!]} {grouped.get(nextTier!)![0].title}
-                    </div>
+                  </div>
+                )}
+                {userTier >= 2 && (
+                  <div className="flex items-center gap-2 text-sm text-[var(--green)]">
+                    <CheckCircle2 size={16} />
+                    {giveaway.maxLevelReached}
                   </div>
                 )}
               </div>
@@ -136,115 +220,135 @@ export default async function GiveawayPage() {
           </section>
         )}
 
-        {/* Prize tiers */}
-        <section className="max-w-6xl mx-auto px-6 pb-16 space-y-12">
-          {tiers.map((tier) => {
-            const tierPrizes = grouped.get(tier)!;
-            const minDeposit = Math.min(...tierPrizes.map((p) => Number(p.minDeposit)));
-            const eligible = userDeposit >= minDeposit;
-            return (
-              <div key={tier}>
-                <div className="flex items-center gap-4 mb-6">
-                  <TierBadge tier={tier} size="md" />
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-bold">{TIER_NAME[tier]}</h2>
-                    <div className="text-sm text-[var(--t-3)] mt-0.5">
-                      от ${minDeposit.toLocaleString()} депозита
-                    </div>
-                  </div>
-                  {session?.user && (
-                    <div
-                      className={`ml-auto text-xs px-3 py-1 rounded-full font-semibold ${
-                        eligible
-                          ? "bg-[rgba(142,224,107,0.12)] text-[#8ee06b]"
-                          : "bg-[var(--bg-2)] text-[var(--t-3)]"
-                      }`}
-                    >
-                      {eligible ? "Ты участвуешь" : "Заблокировано"}
-                    </div>
-                  )}
-                </div>
-                <div className="grid md:grid-cols-2 gap-5">
-                  {tierPrizes.map((p) => (
-                    <Card
-                      key={p.id}
-                      variant={tier === 4 ? "highlight" : "default"}
-                      padding="lg"
-                      hover
-                      className="flex flex-col"
-                    >
-                      <div className="flex items-start justify-between gap-4 mb-4">
-                        <div
-                          className="flex items-center justify-center w-12 h-12 rounded-xl shrink-0"
-                          style={{
-                            background: "rgba(212, 160, 23, 0.08)",
-                            border: "1px solid var(--b-soft)",
-                          }}
-                        >
-                          <Gift size={22} className="text-[var(--brand-gold)]" />
-                        </div>
-                        <div
-                          className="text-2xl font-bold text-[var(--brand-gold)]"
-                          style={{ fontFamily: "var(--font-jetbrains)" }}
-                        >
-                          {p.valueLabel}
-                        </div>
-                      </div>
-                      <h3 className="text-xl font-semibold mb-2">{p.title}</h3>
-                      <p className="text-[var(--t-2)] leading-relaxed flex-1">
-                        {p.description}
-                      </p>
-                      <div className="mt-5 pt-4 border-t border-[var(--b-soft)] flex items-center justify-between text-sm">
-                        <span className="text-[var(--t-3)]">Минимальный депозит</span>
-                        <span
-                          className="font-bold text-[var(--t-1)]"
-                          style={{ fontFamily: "var(--font-jetbrains)" }}
-                        >
-                          ${Number(p.minDeposit).toLocaleString()}
-                        </span>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
+        {/* Tier comparison */}
+        <section className="max-w-6xl mx-auto px-6 pb-16">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold">{giveaway.tiersTitle}</h2>
+            <p className="mt-3 text-[var(--t-2)]">
+              {giveaway.tiersSubtitle}
+            </p>
+          </div>
 
-          {prizes.length === 0 && (
-            <div className="text-center py-20 text-[var(--t-3)]">
-              Призы скоро появятся.
-            </div>
-          )}
+          <div className="grid md:grid-cols-3 gap-5">
+            {giveaway.tiers.map((tierData) => {
+              const config = TIERS_CONFIG[tierData.tier] ?? TIERS_CONFIG[0];
+              const isUnlocked = session?.user ? userTier >= tierData.tier : false;
+              const tierPrizes = grouped.get(tierData.tier) ?? [];
+              const TierIcon = config.icon;
+
+              return (
+                <div
+                  key={tierData.tier}
+                  className="rounded-2xl border overflow-hidden flex flex-col"
+                  style={{
+                    borderColor: tierData.tier === 2 ? `${config.color}50` : "var(--b-soft)",
+                    background: "var(--bg-1)",
+                  }}
+                >
+                  {/* Tier header */}
+                  <div
+                    className="px-6 py-6 text-center"
+                    style={{ background: config.bg }}
+                  >
+                    <div
+                      className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                      style={{
+                        background: `${config.color}20`,
+                        color: config.color,
+                      }}
+                    >
+                      <TierIcon size={24} />
+                    </div>
+                    <h3 className="text-xl font-bold" style={{ color: config.color }}>
+                      {tierData.name}
+                    </h3>
+                    <div className="text-sm text-[var(--t-2)] mt-1">{tierData.deposit}</div>
+                  </div>
+
+                  {/* Perks */}
+                  <div className="px-6 py-5 flex-1 space-y-2.5">
+                    {tierData.perks.map((perk) => (
+                      <div key={perk} className="flex items-start gap-2.5">
+                        <CheckCircle2 size={14} className="mt-0.5 shrink-0" style={{ color: config.color }} />
+                        <span className="text-sm text-[var(--t-2)]">{perk}</span>
+                      </div>
+                    ))}
+
+                    {/* Prizes from DB */}
+                    {tierPrizes.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-[var(--b-soft)] space-y-3">
+                        <div className="text-[10px] uppercase tracking-widest text-[var(--brand-gold)] font-semibold">
+                          {giveaway.prizesLabel}
+                        </div>
+                        {tierPrizes.map((p) => (
+                          <div key={p.id} className="text-center">
+                            <PrizeIcon title={p.title} />
+                            <div className="flex items-center justify-center gap-2">
+                              <Gift size={14} className="shrink-0 text-[var(--brand-gold)]" />
+                              <span className="text-sm text-[var(--t-1)] font-medium">{p.title}</span>
+                            </div>
+                            {p.valueLabel && (
+                              <span
+                                className="text-xs font-semibold block mt-0.5"
+                                style={{ color: "var(--brand-gold)", fontFamily: "var(--font-jetbrains)" }}
+                              >
+                                {p.valueLabel}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Status / CTA */}
+                  <div className="px-6 py-4 border-t border-[var(--b-soft)]">
+                    {session?.user ? (
+                      isUnlocked ? (
+                        <div className="flex items-center justify-center gap-2 text-sm text-[var(--green)]">
+                          <CheckCircle2 size={14} />
+                          {giveaway.tierUnlocked}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-2 text-sm text-[var(--t-3)]">
+                          <Lock size={14} />
+                          {tierData.deposit} {giveaway.tierLocked.split("{deposit}")[1]?.split("{nextTierName}")[0] ?? "для доступа"}
+                        </div>
+                      )
+                    ) : (
+                      <Link
+                        href="/register"
+                        className="flex items-center justify-center gap-2 text-sm font-semibold transition-colors"
+                        style={{ color: config.color }}
+                      >
+                        {giveaway.tierStart}
+                        <ArrowRight size={14} />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
 
         {/* How it works */}
-        <section className="max-w-5xl mx-auto px-6 py-16">
-          <div className="text-center mb-12">
-            <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-3">
-              Как это работает
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold">3 шага до приза</h2>
+        <section className="max-w-4xl mx-auto px-6 py-16">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold">{giveaway.howItWorksTitle}</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-5">
-            {[
-              {
-                icon: Sparkles,
-                title: "Привяжи аккаунт",
-                desc: "Зарегистрируйся на PocketOption по нашей ссылке или привяжи существующий ID в боте.",
-              },
-              {
-                icon: Trophy,
-                title: "Активно торгуй",
-                desc: "Минимум 5 сделок за 30 дней. Винрейт не важен — мы хотим видеть активность.",
-              },
-              {
-                icon: ShieldCheck,
-                title: "Жди розыгрыша",
-                desc: "Победители определяются 1-го числа каждого месяца. Уведомление приходит в бот.",
-              },
-            ].map((s) => (
-              <Card key={s.title} padding="lg" hover>
-                <s.icon size={28} className="text-[var(--brand-gold)] mb-4" />
+            {giveaway.howItWorksSteps.map((s) => (
+              <Card key={s.num} padding="lg" hover>
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 text-lg font-bold"
+                  style={{
+                    background: "rgba(212,160,23,0.12)",
+                    color: "var(--brand-gold)",
+                  }}
+                >
+                  {s.num}
+                </div>
                 <h3 className="text-lg font-semibold mb-2">{s.title}</h3>
                 <p className="text-sm text-[var(--t-2)] leading-relaxed">{s.desc}</p>
               </Card>
@@ -256,23 +360,23 @@ export default async function GiveawayPage() {
         <section className="max-w-4xl mx-auto px-6 py-16">
           <Card variant="highlight" padding="lg">
             <div className="text-center">
-              <h2 className="text-3xl md:text-4xl font-bold">Хочешь поднять свой приз?</h2>
-              <p className="mt-4 text-[var(--t-2)]">
-                Чем выше депозит — тем выше тир и тем дороже призы в розыгрыше.
+              <h2 className="text-3xl md:text-4xl font-bold">{giveaway.ctaTitle}</h2>
+              <p className="mt-4 text-[var(--t-2)] max-w-lg mx-auto">
+                {giveaway.ctaSubtitle}
               </p>
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
                 <ButtonLink href={BOT_URL} external size="lg" iconRight={<ArrowRight size={18} />}>
-                  Открыть бота
+                  {giveaway.ctaOpenBot}
                 </ButtonLink>
                 <ButtonLink href="/dashboard" variant="secondary" size="lg">
-                  Личный кабинет
+                  {giveaway.ctaDashboard}
                 </ButtonLink>
               </div>
             </div>
           </Card>
         </section>
       </main>
-      <SiteFooter />
+      <SiteFooter translations={siteTranslations} locale={locale} />
     </>
   );
 }

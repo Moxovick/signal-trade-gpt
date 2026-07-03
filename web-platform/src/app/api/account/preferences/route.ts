@@ -20,5 +20,9 @@ export async function PUT(req: Request): Promise<Response> {
     return NextResponse.json({ error: "bad_body" }, { status: 400 });
   }
   const next = await setPreferences(session.user.id, body);
-  return NextResponse.json({ ok: true, preferences: next });
+  const res = NextResponse.json({ ok: true, preferences: next });
+  if (typeof body.language === "string" && (body.language === "ru" || body.language === "uk")) {
+    res.cookies.set("locale", body.language, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  }
+  return res;
 }

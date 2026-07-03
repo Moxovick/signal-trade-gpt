@@ -10,10 +10,18 @@ import { Stat } from "@/components/ui/Stat";
 import { prisma } from "@/lib/prisma";
 import { ReseedButton } from "./_components/ReseedButton";
 import { Trophy } from "lucide-react";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminAchievementsPage() {
+  const session = await auth();
+  if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") redirect("/login");
+  const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
+  const ta = t?.admin?.achievements ?? {};
+
   const catalogue = await prisma.achievement.findMany({
     orderBy: { minTier: "asc" },
   });
@@ -29,29 +37,25 @@ export default async function AdminAchievementsPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-bold mb-1">Достижения</h1>
+        <h1 className="text-2xl font-bold mb-1">{ta.title ?? "Достижения"}</h1>
         <p className="text-sm text-[var(--t-3)]">
-          Каталог бейджей задан в коде (
-          <code className="text-[var(--brand-gold)]">
-            lib/achievements.ts
-          </code>
-          ). Если изменил список в коде — нажми «Пересеять».
+          {ta.description ?? "Каталог бейджей задан в коде (lib/achievements.ts). Если изменил список в коде — нажми «Пересеять»."}
         </p>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
         <Stat
-          label="Всего бейджей"
+          label={ta.stats?.totalBadges ?? "Всего бейджей"}
           value={catalogue.length}
           icon={<Trophy size={18} />}
         />
-        <Stat label="Выдано пользователям" value={total} />
-        <Stat label="Всего юзеров" value={users} />
+        <Stat label={ta.stats?.issuedToUsers ?? "Выдано пользователям"} value={total} />
+        <Stat label={ta.stats?.totalUsers ?? "Всего юзеров"} value={users} />
       </div>
 
       <Card padding="lg">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Каталог</h2>
+          <h2 className="text-lg font-semibold">{ta.catalogue ?? "Каталог"}</h2>
           <ReseedButton />
         </div>
         <div className="divide-y divide-[var(--b-soft)]">

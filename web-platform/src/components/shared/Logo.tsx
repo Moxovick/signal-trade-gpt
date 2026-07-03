@@ -6,12 +6,12 @@ import { Logo as NewLogo } from "@/components/ui/Logo";
 
 export function Logo({
   size = "md",
-  glow = false,
 }: {
   size?: "sm" | "md" | "lg";
+  /** @deprecated glow effect removed in redesign */
   glow?: boolean;
 }) {
-  return <NewLogo size={size} className={glow ? "logo-glow" : undefined} />;
+  return <NewLogo size={size} />;
 }
 
 export { Logo as LogoMark } from "@/components/ui/Logo";

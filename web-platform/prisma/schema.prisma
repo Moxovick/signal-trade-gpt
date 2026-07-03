@@ -95,6 +95,16 @@ enum PostbackEvent {
   ftd
   redeposit
   commission
+  withdrawal
+}
+
+/// Status of a withdrawal postback (PocketOption {status} macro).
+/// new = withdrawal initiated / not yet processed; processed = paid out;
+/// cancelled = rejected/cancelled by PO compliance.
+enum WithdrawalStatus {
+  new
+  processed
+  cancelled
 }
 
 // ═══════════════════════════════════════
@@ -107,28 +117,19 @@ model User {
   /// DEPRECATED v2: registration is now Telegram OAuth only.
   passwordHash          String?
   telegramId            BigInt?          @unique
-  username              String?
+  username              String?          @unique
   firstName             String?
   lastName              String?
   phone                 String?
   avatar                String?
   role                  Role             @default(user)
   status                UserStatus       @default(active)
-  /// DEPRECATED v2: monetization moved to PocketOption RevShare; see User.tier.
-  subscriptionPlan      SubscriptionPlan @default(free)
-  /// DEPRECATED v2.
-  subscriptionExpiresAt DateTime?
-  /// DEPRECATED v2.
-  trialExpiresAt        DateTime?
   /// Current tier 0..4, recomputed on every PocketOption postback.
   tier                  Int              @default(0)
   referralCode          String           @unique
   referredById          String?
   referredBy            User?            @relation("Referrals", fields: [referredById], references: [id])
   referrals             User[]           @relation("Referrals")
-  /// DEPRECATED v2.
-  promoCodeUsedId       String?
-  promoCodeUsed         PromoCode?       @relation("PromoUsedBy", fields: [promoCodeUsedId], references: [id])
   notificationSettings  Json             @default("{}")
   /// Free-form user preferences: theme, language, timezone, favorite pairs,
   /// mutedPairs, notification channel toggles. Reading/writing through
@@ -141,6 +142,16 @@ model User {
   lastSignalAt          DateTime?
   streakDays            Int              @default(0)
   lastActivityDay       DateTime?
+  /// Bot: win count from signal feedback
+  wins              Int       @default(0)
+  /// Bot: loss count from signal feedback
+  losses            Int       @default(0)
+  /// Bot: daily signal counter (resets every 24h)
+  dailySignalsUsed  Int       @default(0)
+  /// Bot: when the daily counter was last reset
+  dailySignalsResetAt DateTime?
+  /// Bot: PocketOption click_id for postback attribution
+  clickId           String?
   createdAt             DateTime         @default(now())
   lastLogin             DateTime?
   utmSource             String?
@@ -164,7 +175,6 @@ model User {
   achievements       UserAchievement[]
 
   @@index([tier])
-  @@index([subscriptionPlan])
   @@index([createdAt])
   @@index([referralCode])
   @@map("users")
@@ -185,6 +195,7 @@ model Signal {
   reasoning   String?
   chartData   Json?
   isActive    Boolean         @default(true)
+  scheduledAt DateTime?       // null = published immediately; future = queued for bot to activate
   createdAt   DateTime        @default(now())
   closedAt    DateTime?
   createdById String?
@@ -193,6 +204,10 @@ model Signal {
   @@index([tier])
   @@index([createdAt])
   @@index([result])
+  @@index([scheduledAt])
+  @@index([createdById])
+  @@index([isActive])
+  @@index([pair])
   @@map("signals")
 }
 
@@ -267,6 +282,7 @@ model Referral {
   level        Int          @default(1)
 
   @@index([referrerId])
+  @@index([referredId])
   @@map("referrals")
 }
 
@@ -283,7 +299,6 @@ model PromoCode {
   expiresAt       DateTime?
   createdAt       DateTime  @default(now())
 
-  usedBy User[] @relation("PromoUsedBy")
 
   @@map("promo_codes")
 }
@@ -309,6 +324,7 @@ model Review {
 
   @@index([status])
   @@index([isPublic, isFeatured, position])
+  @@index([userId])
   @@map("reviews")
 }
 
@@ -338,6 +354,7 @@ model LeaderboardEntry {
   calculatedAt DateTime @default(now())
 
   @@index([period, rank])
+  @@index([userId])
   @@map("leaderboard_entries")
 }
 
@@ -392,6 +409,7 @@ model ActivityLog {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+  @@index([userId, action, createdAt])
   @@map("activity_logs")
 }
 
@@ -467,11 +485,46 @@ model Postback {
   /// Idempotency key to deduplicate replays: hash(eventType + traderId + amount + receivedAt-rounded).
   dedupeKey   String               @unique
 
+  // PocketOption macro fields — captured for attribution and analytics.
+  // PO Partners sends these as URL query params on every postback.
+  /// {site_id} — partner-defined traffic source ID (free-form).
+  siteId       String?
+  /// {cid} — PocketOption campaign ID.
+  campaignId   String?
+  /// {ac} — PocketOption campaign display name.
+  campaignName String?
+  /// {sub_id1..5} — free-form partner sub-trackers.
+  subId1       String?
+  subId2       String?
+  subId3       String?
+  subId4       String?
+  subId5       String?
+  /// {country} — trader country code (e.g. "PL", "BR").
+  country      String?
+  /// {device_type} — mobile | desktop | tablet.
+  deviceType   String?
+  /// {os_version} — iOS, Android, Windows, MacOS, …
+  osVersion    String?
+  /// {browser} — Chrome, Safari, Firefox, …
+  browser      String?
+  /// {promo} — PocketOption promo code applied by the trader (if any).
+  promo        String?
+  /// {link_type} — landing page slug used by the trader.
+  linkType     String?
+  /// {date_time} — event datetime as reported by PO (raw string preserved).
+  eventDate    String?
+  /// {status} — withdrawal status, only populated for `withdrawal` events.
+  withdrawalStatus WithdrawalStatus?
+
   deposit Deposit?
 
+  @@index([poAccountId])
   @@index([poTraderId])
   @@index([receivedAt])
   @@index([eventType])
+  @@index([clickId])
+  @@index([campaignId])
+  @@index([siteId])
   @@map("postbacks")
 }
 
@@ -621,4 +674,66 @@ model UserAchievement {
 
   @@unique([userId, achievementId])
   @@map("user_achievements")
+}
+
+// ═══════════════════════════════════════
+// V4 — ASSET WHITELIST (PocketOption pairs)
+// ═══════════════════════════════════════
+
+enum AssetCategory {
+  currency
+  crypto
+  commodity
+  stock
+  index
+}
+
+/// Whitelist of tradable pairs. Editable in /admin/assets. Drives the
+/// signal publisher (admin selects from this list, no free-form input)
+/// and the per-pair behaviour (OTC = no chart, real = chart from provider).
+model Asset {
+  id              String        @id @default(cuid())
+  /// Normalised key, e.g. "EUR/USD" or "EUR/USD OTC". Unique.
+  symbol          String        @unique
+  /// What the user sees, e.g. "EUR/USD" (we strip the OTC suffix in UI).
+  displaySymbol   String
+  category        AssetCategory
+  isOtc           Boolean       @default(false)
+  /// Payout percent at PocketOption (e.g. 92 for "+92%"). Shown to users.
+  payoutPct       Int           @default(0)
+  /// Which Signal.tier this asset belongs to. Drives access control.
+  signalTier      SignalTier    @default(otc)
+  /// For NON-OTC assets only. "twelvedata" | "binance" | "yahoo" | "none".
+  provider        String        @default("none")
+  /// Provider-specific symbol, e.g. "BTCUSDT" for binance, "EUR/USD" for twelvedata.
+  providerSymbol  String?
+  /// Display order in admin/UI lists.
+  position        Int           @default(0)
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([category, isActive])
+  @@index([signalTier, isActive])
+  @@map("assets")
+}
+
+/// One-shot token issued by the web app, redeemed by the bot to link a
+/// website account to a Telegram account via deep-link `/start link_<token>`.
+/// Tokens expire after 10 minutes and are single-use.
+model TelegramLinkToken {
+  token       String    @id
+  /// "link" — userId is set, token redeemed -> User.telegramId is updated.
+  /// "login" — userId starts null; bot redemption either matches an existing
+  /// user by telegramId or creates a fresh user, then attaches the userId.
+  purpose     String    @default("link")
+  userId      String?
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  telegramId  BigInt?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("telegram_link_tokens")
 }

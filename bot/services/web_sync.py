@@ -37,6 +37,7 @@ class WebSyncState:
 
 
 _state = WebSyncState()
+_state_lock = asyncio.Lock()
 
 
 def state() -> WebSyncState:
@@ -74,21 +75,33 @@ def get_daily_limit(tier: int) -> int | None:
     return None
 
 
+def get_allowed_types(tier: int) -> list[str] | None:
+    """Return allowed signal types for given tier from admin config, or None."""
+    types = _state.config.get("allowedTypes")
+    if not isinstance(types, dict):
+        return None
+    val = types.get(str(tier))
+    if isinstance(val, list) and all(isinstance(t, str) for t in val):
+        return val
+    return None
+
+
 def get_tier_features(tier: int) -> dict[str, Any]:
     """
     Return per-tier feature flags from admin config.
 
-    Falls back to sensible defaults: T2+ get chart indicators, T3+ get 60s
-    early access, T4 gets elite pairs. Bot consumes:
+    3-tier defaults: T0 — demo only, T1 — Basic (indicators, no elite),
+    T2+ — Pro (indicators + early-access + elite pairs).
+    Keys T3/T4 duplicate T2 for forward-compat. Бот использует:
       - chartIndicators: bool — render chart with RSI/MACD/volume overlay
       - earlyAccessSeconds: int — seconds of early access vs public release
       - elitePairs: bool — may receive 'elite' band signals
     """
     defaults: dict[str, dict[str, Any]] = {
         "0": {"chartIndicators": False, "earlyAccessSeconds": 0, "elitePairs": False},
-        "1": {"chartIndicators": False, "earlyAccessSeconds": 0, "elitePairs": False},
-        "2": {"chartIndicators": True, "earlyAccessSeconds": 0, "elitePairs": False},
-        "3": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": False},
+        "1": {"chartIndicators": True, "earlyAccessSeconds": 0, "elitePairs": False},
+        "2": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": True},
+        "3": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": True},
         "4": {"chartIndicators": True, "earlyAccessSeconds": 60, "elitePairs": True},
     }
     features = _state.config.get("tierFeatures")
@@ -106,8 +119,14 @@ def get_tier_features(tier: int) -> dict[str, Any]:
 
 
 def get_tier_thresholds() -> dict[str, int]:
-    """Return tier deposit thresholds from admin config (USD)."""
-    defaults = {"1": 100, "2": 1000, "3": 5000, "4": 10000}
+    """Return tier deposit thresholds from admin config (USD).
+
+    3-tier defaults: T1 = $20, T2 = $100, T3/T4 = unreachable.
+    Matches web-platform/src/lib/tier.ts DEFAULT_TIER_THRESHOLDS.
+    """
+    # 2**53 - 1, как Number.MAX_SAFE_INTEGER в JS — эффективно отключает T3-T4.
+    _UNREACHABLE = 9_007_199_254_740_991
+    defaults = {"1": 20, "2": 100, "3": _UNREACHABLE, "4": _UNREACHABLE}
     thresholds = _state.config.get("tierThresholds")
     if not isinstance(thresholds, dict):
         return defaults
@@ -127,24 +146,55 @@ def get_price_source() -> dict[str, Any]:
     return {"provider": "off"}
 
 
-def next_pending_admin_signal(allowed_tiers: list[str]) -> dict[str, Any] | None:
+async def next_pending_admin_signal(allowed_tiers: list[str]) -> dict[str, Any] | None:
     """
     Return the most recent pending admin-published signal whose tier is in
     `allowed_tiers`. Marks the signal as consumed so each user only gets it
     once per bot session (the web side still tracks the canonical state).
     """
-    for sig in _state.signals:
-        if sig["id"] in _state.consumed_signal_ids:
-            continue
-        if not sig.get("isActive"):
-            continue
-        if sig.get("result") != "pending":
-            continue
-        if sig.get("tier") not in allowed_tiers:
-            continue
-        _state.consumed_signal_ids.add(sig["id"])
-        return sig
-    return None
+    async with _state_lock:
+        for sig in _state.signals:
+            if sig["id"] in _state.consumed_signal_ids:
+                continue
+            if not sig.get("isActive"):
+                continue
+            if sig.get("result") != "pending":
+                continue
+            if sig.get("tier") not in allowed_tiers:
+                continue
+            _state.consumed_signal_ids.add(sig["id"])
+            return sig
+        return None
+
+
+async def get_due_scheduled_signals() -> list[dict[str, Any]]:
+    """
+    Return scheduled (isActive=False) signals whose scheduledAt is now or in
+    the past, and that haven't been consumed yet. These should be published
+    immediately by the scheduled_signal_loop.
+    """
+    from datetime import datetime, timezone  # local import to avoid cycles
+    now_iso = datetime.now(timezone.utc).isoformat()
+    due: list[dict[str, Any]] = []
+    async with _state_lock:
+        for sig in _state.signals:
+            if sig.get("isActive"):
+                continue
+            scheduled_at = sig.get("scheduledAt")
+            if not scheduled_at:
+                continue
+            if scheduled_at > now_iso:
+                continue
+            if sig["id"] in _state.consumed_signal_ids:
+                continue
+            due.append(sig)
+    return due
+
+
+async def mark_scheduled_consumed(signal_id: str) -> None:
+    """Mark a scheduled signal as consumed so we don't re-publish it."""
+    async with _state_lock:
+        _state.consumed_signal_ids.add(signal_id)
 
 
 async def _fetch() -> dict[str, Any] | None:
@@ -152,7 +202,7 @@ async def _fetch() -> dict[str, Any] | None:
         return None
     url = f"{settings.platform_api_url.rstrip('/')}/api/bot/sync"
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
             resp = await client.get(
                 url, headers={"X-Bot-Secret": settings.bot_sync_secret}
             )
@@ -167,20 +217,29 @@ async def _fetch() -> dict[str, Any] | None:
         return None
 
 
-def _apply(body: dict[str, Any]) -> None:
-    _state.accounts = list(body.get("accounts") or [])
-    new_signals = list(body.get("signals") or [])
-    # Drop consumed-ids that no longer exist (signal was deleted server-side).
-    visible = {s["id"] for s in new_signals}
-    _state.consumed_signal_ids &= visible
-    _state.signals = new_signals
-    cfg = body.get("config")
-    if isinstance(cfg, dict):
-        _state.config = cfg
-    thr = body.get("tierThresholds")
-    if isinstance(thr, dict):
-        _state.tier_thresholds = thr
-    _state.last_fetched_ts = int(body.get("ts") or 0)
+async def _apply(body: dict[str, Any]) -> None:
+    async with _state_lock:
+        _state.accounts = list(body.get("accounts") or [])
+        new_signals = list(body.get("signals") or [])
+        # Drop consumed-ids that no longer exist (signal was deleted server-side).
+        visible = {s["id"] for s in new_signals}
+        _state.consumed_signal_ids &= visible
+        _state.signals = new_signals
+        cfg = body.get("config")
+        if isinstance(cfg, dict):
+            _state.config = cfg
+        # Merge onDemandConfig (dailyLimits, allowedTypes) into _state.config so
+        # get_daily_limit() / get_allowed_types() can read them transparently.
+        on_demand = body.get("onDemandConfig")
+        if isinstance(on_demand, dict):
+            if "dailyLimits" in on_demand:
+                _state.config["dailyLimits"] = on_demand["dailyLimits"]
+            if "allowedTypes" in on_demand:
+                _state.config["allowedTypes"] = on_demand["allowedTypes"]
+        thr = body.get("tierThresholds")
+        if isinstance(thr, dict):
+            _state.tier_thresholds = thr
+        _state.last_fetched_ts = int(body.get("ts") or 0)
 
 
 async def refresh_now() -> bool:
@@ -188,7 +247,7 @@ async def refresh_now() -> bool:
     body = await _fetch()
     if body is None:
         return False
-    _apply(body)
+    await _apply(body)
     return True
 
 

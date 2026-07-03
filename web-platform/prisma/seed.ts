@@ -74,7 +74,7 @@ const SETTINGS: Array<{ key: string; value: unknown; label: string }> = [
   },
   {
     key: "po_referral_link_template",
-    value: "https://po.cash/smart/aff?click_id={click_id}",
+    value: "https://po-ru4.click/register?utm_campaign=825519&utm_source=affiliate&utm_medium=sr&a=Be8CXM52oc4EOp&al=1769855&ac=signal&cid={click_id}&code=WELCOME50",
     label: "Шаблон реферальной ссылки PocketOption (поддерживает {click_id})",
   },
   {
@@ -85,7 +85,7 @@ const SETTINGS: Array<{ key: string; value: unknown; label: string }> = [
   {
     key: "site_disclaimer",
     value:
-      "Signal Trade GPT не является финансовым советником. Все сигналы " +
+      "SpaceSignal не является финансовым советником. Все сигналы " +
       "предоставляются в информационных целях. Торговля бинарными опционами " +
       "сопряжена с высоким риском потери средств. Прошлые результаты не " +
       "гарантируют будущей доходности.",

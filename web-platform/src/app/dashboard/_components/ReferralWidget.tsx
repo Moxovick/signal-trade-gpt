@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Copy, Check, Users } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { useI18n } from "@/lib/i18n/context";
 
 export function ReferralWidget({
   code,
@@ -13,6 +14,7 @@ export function ReferralWidget({
   count: number;
   baseUrl: string;
 }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const refUrl = `${baseUrl}/r/${code}`;
 
@@ -27,9 +29,9 @@ export function ReferralWidget({
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>
           <div className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-1">
-            Реф-программа
+            {t.referralWidget.program}
           </div>
-          <div className="text-lg font-semibold">Зови трейдеров — получай 5%</div>
+          <div className="text-lg font-semibold">{t.referralWidget.invite}</div>
         </div>
         <div
           className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold"
@@ -47,7 +49,7 @@ export function ReferralWidget({
           <QRCodeSVG value={refUrl} size={88} bgColor="#ffffff" fgColor="#0a0a0a" level="M" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-xs text-[var(--t-3)] mb-1">Твоя ссылка</div>
+          <div className="text-xs text-[var(--t-3)] mb-1">{t.referralWidget.yourLink}</div>
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--bg-2)] border border-[var(--b-soft)]">
             <code
               className="text-xs flex-1 truncate text-[var(--t-1)]"
@@ -59,15 +61,13 @@ export function ReferralWidget({
             <button
               onClick={copy}
               className="text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] shrink-0"
-              aria-label="Скопировать"
+              aria-label={t.referralWidget.copyLabel}
             >
               {copied ? <Check size={14} /> : <Copy size={14} />}
             </button>
           </div>
           <div className="mt-3 text-xs text-[var(--t-2)] leading-relaxed">
-            Реферал депонирует — ты получаешь{" "}
-            <span className="text-[var(--brand-gold)] font-semibold">5%</span> от его
-            оборота, без потолка.
+            {t.referralWidget.desc}
           </div>
         </div>
       </div>

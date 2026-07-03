@@ -1,0 +1,52 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Activity, Calculator, Target, Trophy, User, Users } from "lucide-react";
+import { useI18n } from "@/lib/i18n/context";
+
+type Item = {
+  href: string;
+  labelKey: keyof { home: string; signals: string; leaders: string; referrals: string; calc: string; profile: string };
+  icon: typeof Activity;
+  exact?: boolean;
+};
+
+const ITEMS: readonly Item[] = [
+  { href: "/tma",          labelKey: "home",      icon: Activity,    exact: true },
+  { href: "/tma/signals",  labelKey: "signals",   icon: Target },
+  { href: "/tma/leaders",  labelKey: "leaders",   icon: Trophy },
+  { href: "/tma/ref",      labelKey: "referrals", icon: Users },
+  { href: "/tma/calc",     labelKey: "calc",      icon: Calculator },
+  { href: "/tma/profile",  labelKey: "profile",   icon: User },
+];
+
+export function BottomNav() {
+  const pathname = usePathname();
+  const { t } = useI18n();
+  return (
+    <nav
+      className="fixed bottom-0 inset-x-0 border-t border-[var(--b-soft)] bg-[var(--bg-0)]/90 backdrop-blur-xl z-30"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0)" }}
+    >
+      <div className="grid grid-cols-6 max-w-md mx-auto">
+        {ITEMS.map((it) => {
+          const Icon = it.icon;
+          const active = it.exact ? pathname === it.href : pathname?.startsWith(it.href);
+          return (
+            <Link
+              key={it.href}
+              href={it.href}
+              className={`flex flex-col items-center gap-1 py-3 transition-colors ${
+                active ? "text-[var(--brand-gold)]" : "text-[var(--t-3)] hover:text-[var(--t-2)]"
+              }`}
+            >
+              <Icon size={19} />
+              <span className="text-[10px] uppercase tracking-wider leading-none">{t.tma.bottomNav[it.labelKey]}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}

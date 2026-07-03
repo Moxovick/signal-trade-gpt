@@ -6,30 +6,46 @@ export const authConfig: NextAuthConfig = {
     Credentials({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        login: { label: "Login", type: "text" },
         password: { label: "Password", type: "password" },
       },
       authorize: () => null,
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id ?? "";
         token.role = user.role ?? "user";
-        token.subscriptionPlan = user.subscriptionPlan;
         token.tier = user.tier;
+        token.tierRefreshedAt = Date.now();
+      }
+      // Refresh tier from DB every 60 seconds so postback upgrades are reflected
+      if (
+        token.id &&
+        trigger !== "signIn" &&
+        (typeof token.tierRefreshedAt !== "number" || Date.now() - token.tierRefreshedAt > 300_000)
+      ) {
+        try {
+          const { prisma } = await import("@/lib/prisma");
+          const freshUser = await prisma.user.findUnique({
+            where: { id: String(token.id) },
+            select: { tier: true, role: true },
+          });
+          if (freshUser) {
+            token.tier = freshUser.tier;
+            token.role = freshUser.role;
+          }
+        } catch {
+          // Edge runtime or DB unavailable — keep cached tier
+        }
+        token.tierRefreshedAt = Date.now();
       }
       return token;
     },
     session({ session, token }) {
       session.user.id = String(token.id ?? "");
       session.user.role = (token.role as "user" | "admin") ?? "user";
-      session.user.subscriptionPlan = token.subscriptionPlan as
-        | "free"
-        | "premium"
-        | "vip"
-        | undefined;
       session.user.tier = (token.tier as number | undefined) ?? 0;
       return session;
     },
@@ -56,5 +72,5 @@ export const authConfig: NextAuthConfig = {
     signIn: "/login",
     error: "/login",
   },
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
 };

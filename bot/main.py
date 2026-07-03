@@ -7,11 +7,13 @@ from pathlib import Path
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.types import MenuButtonWebApp, WebAppInfo
 
 from config import settings
-from database.db import init_db
-from handlers import admin, link, menu, onboarding, signals, start, stats
-from services.scheduler import daily_brief_loop, signal_loop
+from database.db import init_db, close_db
+from handlers import admin, lang, link, menu, onboarding, signals, start, stats
+from middlewares import BannedUserMiddleware
+from services.scheduler import daily_brief_loop
 from services.tier_sync import tier_sync_loop
 from services.web_sync import web_sync_loop
 
@@ -49,7 +51,7 @@ def check_single_instance() -> None:
 
 async def main() -> None:
     check_single_instance()
-    await init_db()
+    await init_db(settings.database_url)
 
     bot = Bot(
         token=settings.bot_token,
@@ -57,33 +59,61 @@ async def main() -> None:
     )
     dp = Dispatcher()
 
+    dp.message.middleware(BannedUserMiddleware())
+    dp.callback_query.middleware(BannedUserMiddleware())
+
     # Order matters: specific command routers first, generic menu/text last.
     dp.include_router(admin.router)
     dp.include_router(start.router)
     dp.include_router(onboarding.router)
     dp.include_router(signals.router)
+    dp.include_router(lang.router)
     dp.include_router(link.router)
     dp.include_router(stats.router)
     dp.include_router(menu.router)
 
-    # Start background loops (signal cadence + tier-sync + daily brief +
-    # web-sync to pull bot config & admin signals from the platform).
-    loop_task = asyncio.create_task(signal_loop(bot))
+    # Background loops — signal delivery is now on-demand (no scheduled loops).
     sync_task = asyncio.create_task(tier_sync_loop(bot))
     brief_task = asyncio.create_task(daily_brief_loop(bot))
     web_sync_task = asyncio.create_task(web_sync_loop())
 
     # Drop any active webhook so polling works without conflict
     await bot.delete_webhook(drop_pending_updates=True)
+
+    # Set the chat MenuButton (the blue button next to the input field)
+    # to launch the Telegram Mini App, if WEBAPP_URL is configured.
+    if settings.webapp_url:
+        try:
+            await bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(
+                    text="Открыть приложение",
+                    web_app=WebAppInfo(url=settings.webapp_url),
+                )
+            )
+            logger.info("MenuButton bound to Mini App: %s", settings.webapp_url)
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed to set Mini App MenuButton")
+
+    # Diagnostic: log whether PO API credentials are available
+    po_token_set = bool((settings.pocketoption_api_token or "").strip())
+    po_partner_set = bool((settings.pocketoption_partner_id or "").strip())
+    logger.info(
+        "PO API credentials: token=%s, partner_id=%s",
+        "SET" if po_token_set else "MISSING",
+        settings.pocketoption_partner_id if po_partner_set else "MISSING",
+    )
     logger.info("Webhook cleared. Bot starting (polling mode), PID=%s", os.getpid())
     try:
         await dp.start_polling(bot)
     finally:
-        loop_task.cancel()
-        sync_task.cancel()
-        brief_task.cancel()
-        web_sync_task.cancel()
+        for task in (sync_task, brief_task, web_sync_task):
+            task.cancel()
+        await asyncio.gather(
+            sync_task, brief_task, web_sync_task,
+            return_exceptions=True,
+        )
         await bot.session.close()
+        await close_db()
         if PID_FILE.exists():
             PID_FILE.unlink()
 

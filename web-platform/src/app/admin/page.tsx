@@ -12,15 +12,26 @@ import {
   CircleDollarSign,
   Activity,
   ArrowRight,
+  UserPlus,
+  Mail,
+  Wallet,
+  Crown,
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
 import { Stat } from "@/components/ui/Stat";
 import { TierBadge } from "@/components/ui/TierBadge";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
+  const session = await auth();
+  if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") redirect("/login");
+  const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
+  const ta = t?.admin ?? {};
   // eslint-disable-next-line react-hooks/purity -- server component, request-scoped
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -29,6 +40,9 @@ export default async function AdminDashboard() {
     totalSignals,
     poAccounts,
     poVerified,
+    poEmailConfirmed,
+    poRegistered,
+    poProUsers,
     revShareAggregate,
     postbacksLast24,
     tierDist,
@@ -38,6 +52,13 @@ export default async function AdminDashboard() {
     prisma.signal.count(),
     prisma.pocketOptionAccount.count(),
     prisma.pocketOptionAccount.count({ where: { status: "verified" } }),
+    prisma.pocketOptionAccount.count({
+      where: { emailConfirmedAt: { not: null } },
+    }),
+    prisma.pocketOptionAccount.count({
+      where: { registeredAt: { not: null } },
+    }),
+    prisma.user.count({ where: { tier: { gte: 1 } } }),
     prisma.pocketOptionAccount.aggregate({
       _sum: { totalRevShare: true, totalDeposit: true },
     }),
@@ -63,13 +84,13 @@ export default async function AdminDashboard() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-bold">Admin · Обзор</h1>
+      <h1 className="text-2xl font-bold">{ta.dashboard?.title ?? "Admin · Обзор"}</h1>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Stat icon={<Users size={18} />} label="Пользователей" value={totalUsers.toString()} />
+        <Stat icon={<Users size={18} />} label={ta.dashboard?.stats?.users ?? "Пользователей"} value={totalUsers.toString()} />
         <Stat
           icon={<Layers size={18} />}
-          label="PO-аккаунтов"
+          label={ta.dashboard?.stats?.poAccounts ?? "PO-аккаунтов"}
           value={`${poAccounts}`}
           delta={{ value: `${poVerified} verified`, positive: true }}
         />
@@ -80,14 +101,103 @@ export default async function AdminDashboard() {
         />
         <Stat
           icon={<Activity size={18} />}
-          label="Postback-ов / 24ч"
+          label={ta.dashboard?.stats?.postbacks24h ?? "Postback-ов / 24ч"}
           value={postbacksLast24.toString()}
         />
       </div>
 
+      <Card padding="lg">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold">{ta.dashboard?.funnel?.title ?? "Воронка PocketOption"}</h2>
+          <span className="text-xs text-[var(--t-3)]">
+            {ta.dashboard?.funnel?.subtitle ?? "от лида до Pro"}
+          </span>
+        </div>
+        {(() => {
+          const stages: Array<{
+            label: string;
+            icon: typeof UserPlus;
+            count: number;
+          }> = [
+            { label: ta.dashboard?.funnel?.stages?.leads ?? "Лидов всего", icon: Users, count: totalUsers },
+            { label: ta.dashboard?.funnel?.stages?.poRegistration ?? "Регистрация в PO", icon: UserPlus, count: poRegistered },
+            { label: ta.dashboard?.funnel?.stages?.emailConfirmed ?? "Подтвердили email", icon: Mail, count: poEmailConfirmed },
+            { label: ta.dashboard?.funnel?.stages?.ftd ?? "Первый депозит", icon: Wallet, count: poVerified },
+            { label: ta.dashboard?.funnel?.stages?.basicPlus ?? "Тир Basic+ (T1+)", icon: Crown, count: poProUsers },
+          ];
+          const max = stages.reduce((m, s) => Math.max(m, s.count), 0);
+          return (
+            <div className="space-y-2">
+              {stages.map((stage, i) => {
+                const prev = i === 0 ? null : stages[i - 1];
+                const conv =
+                  prev && prev.count > 0
+                    ? Math.round((stage.count / prev.count) * 100)
+                    : null;
+                const pct = max > 0 ? (stage.count / max) * 100 : 0;
+                const Icon = stage.icon;
+                return (
+                  <div key={stage.label} className="flex items-center gap-3">
+                    <div className="w-44 shrink-0 flex items-center gap-2 text-sm text-[var(--t-2)]">
+                      <Icon
+                        size={14}
+                        className="text-[var(--brand-gold)] shrink-0"
+                      />
+                      <span className="truncate">{stage.label}</span>
+                    </div>
+                    <div className="flex-1 h-6 rounded-lg bg-[var(--bg-2)] overflow-hidden relative">
+                      <div
+                        className="h-full transition-all duration-500"
+                        style={{
+                          width: `${pct}%`,
+                          background:
+                            "var(--brand-gold)",
+                          opacity: 0.85,
+                        }}
+                      />
+                      <div className="absolute inset-0 flex items-center justify-end pr-3">
+                        <span
+                          className="text-xs font-semibold tabular-nums text-[var(--t-1)] mix-blend-screen"
+                          style={{ fontFamily: "var(--font-jetbrains)" }}
+                        >
+                          {stage.count}
+                        </span>
+                      </div>
+                    </div>
+                    <div
+                      className="w-14 shrink-0 text-right text-xs tabular-nums"
+                      style={{ fontFamily: "var(--font-jetbrains)" }}
+                    >
+                      {conv != null ? (
+                        <span
+                          className={
+                            conv >= 50
+                              ? "text-[var(--green)]"
+                              : conv >= 20
+                              ? "text-[var(--brand-gold)]"
+                              : "text-[var(--t-3)]"
+                          }
+                        >
+                          {conv}%
+                        </span>
+                      ) : (
+                        <span className="text-[var(--t-3)]">—</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <p className="text-[11px] text-[var(--t-3)] pt-2">
+                {ta.dashboard?.funnel?.hint ?? "Конверсия — отношение к предыдущему шагу. Шаги PO заполняются по приходу постбэков (registration → email_confirm → ftd)."}
+              </p>
+            </div>
+          );
+        })()}
+      </Card>
+
       <div className="grid md:grid-cols-2 gap-4">
         <Card padding="lg">
-          <h2 className="font-semibold mb-4">Распределение по тирам</h2>
+          <h2 className="font-semibold mb-4">{ta.dashboard?.tierDistribution ?? "Распределение по тирам"}</h2>
           <div className="space-y-2">
             {[0, 1, 2, 3, 4].map((t) => {
               const row = tierDist.find((r) => r.tier === t);
@@ -101,7 +211,7 @@ export default async function AdminDashboard() {
                       className="h-full"
                       style={{
                         width: `${pct}%`,
-                        background: "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold))",
+                        background: "var(--brand-gold)",
                       }}
                     />
                   </div>
@@ -118,10 +228,10 @@ export default async function AdminDashboard() {
         </Card>
 
         <Card padding="lg">
-          <h2 className="font-semibold mb-4">RevShare статистика</h2>
+          <h2 className="font-semibold mb-4">{ta.dashboard?.revshare?.title ?? "RevShare статистика"}</h2>
           <div className="space-y-3">
             <div className="flex justify-between items-baseline">
-              <span className="text-sm text-[var(--t-2)]">Заработано (всего)</span>
+              <span className="text-sm text-[var(--t-2)]">{ta.dashboard?.revshare?.earned ?? "Заработано (всего)"}</span>
               <span
                 className="text-2xl font-bold text-[var(--brand-gold)]"
                 style={{ fontFamily: "var(--font-jetbrains)" }}
@@ -130,13 +240,13 @@ export default async function AdminDashboard() {
               </span>
             </div>
             <div className="flex justify-between items-baseline">
-              <span className="text-sm text-[var(--t-2)]">Средний депозит на трейдера</span>
+              <span className="text-sm text-[var(--t-2)]">{ta.dashboard?.revshare?.avgDeposit ?? "Средний депозит на трейдера"}</span>
               <span style={{ fontFamily: "var(--font-jetbrains)" }}>
                 ${poVerified > 0 ? Math.round(totalDeposit / poVerified) : 0}
               </span>
             </div>
             <div className="flex justify-between items-baseline">
-              <span className="text-sm text-[var(--t-2)]">Сигналов выдано</span>
+              <span className="text-sm text-[var(--t-2)]">{ta.dashboard?.revshare?.signalsIssued ?? "Сигналов выдано"}</span>
               <span style={{ fontFamily: "var(--font-jetbrains)" }}>{totalSignals}</span>
             </div>
           </div>
@@ -144,7 +254,7 @@ export default async function AdminDashboard() {
             href="/admin/po-accounts"
             className="mt-6 inline-flex items-center gap-1.5 text-sm text-[var(--brand-gold)] hover:gap-2 transition-all"
           >
-            Все PO-аккаунты
+            {ta.dashboard?.poAccounts?.all ?? "Все PO-аккаунты"}
             <ArrowRight size={14} />
           </Link>
         </Card>
@@ -152,18 +262,18 @@ export default async function AdminDashboard() {
 
       <Card padding="none">
         <div className="px-5 py-4 border-b border-[var(--b-soft)] flex items-center justify-between">
-          <h2 className="font-semibold">Последние PO-аккаунты</h2>
+          <h2 className="font-semibold">{ta.dashboard?.poAccounts?.recent ?? "Последние PO-аккаунты"}</h2>
           <Link
             href="/admin/po-accounts"
             className="text-xs text-[var(--brand-gold)] hover:underline inline-flex items-center gap-1"
           >
-            Все <ArrowRight size={12} />
+            {ta.dashboard?.poAccounts?.all ?? "Все"} <ArrowRight size={12} />
           </Link>
         </div>
         <div className="divide-y divide-[var(--b-soft)]">
           {recentAccounts.length === 0 && (
             <div className="px-5 py-8 text-sm text-[var(--t-3)] text-center">
-              Пока нет привязанных PO-аккаунтов.
+              {ta.dashboard?.poAccounts?.empty ?? "Пока нет привязанных PO-аккаунтов."}
             </div>
           )}
           {recentAccounts.map((a) => {
@@ -187,7 +297,7 @@ export default async function AdminDashboard() {
                     style={{
                       background:
                         a.status === "verified"
-                          ? "rgba(142,224,107,0.10)"
+                          ? "rgba(76,195,138,0.10)"
                           : "rgba(212,160,23,0.10)",
                       color: a.status === "verified" ? "var(--green)" : "var(--brand-gold)",
                     }}

@@ -14,33 +14,40 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import random
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+logger = logging.getLogger(__name__)
+
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from constants import TIER_NAMES
 from database.models import Signal
+from i18n import t, DEFAULT_LOCALE
 
 
-# ── palette (must mirror web/globals.css) ────────────────────────────────────
+# ── palette (must mirror web/globals.css — Variant A) ────────────────────────
 GOLD = "#d4a017"
 GOLD_SOFT = "#b88c14"
-BG_0 = "#08060a"
-BG_1 = "#100c10"
-BG_2 = "#181218"
-TEXT_1 = "#f5ecd9"
-TEXT_2 = "#b6a586"
-GREEN = "#8ee06b"
-RED = "#ff6b3d"
+BG_0 = "#0C0A09"
+BG_1 = "#15110E"
+BG_2 = "#1C1611"
+TEXT_1 = "#F4ECDD"
+TEXT_2 = "#A99A82"
+TEXT_3 = "#6F6353"
+GREEN = "#4CC38A"
+RED = "#E8623A"
 
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+FONTS_DIR = ASSETS_DIR / "fonts"
 
 LOGO_CARD = ASSETS_DIR / "brand_card.png"
 
@@ -54,11 +61,18 @@ def _try_font(*candidates: str, size: int) -> ImageFont.ImageFont:
             return ImageFont.truetype(path, size=size)
         except (OSError, IOError):
             continue
+    logger.warning(
+        "No Cyrillic-capable font found (tried: %s). "
+        "Falling back to PIL default bitmap font — Cyrillic text will render as blank squares. "
+        "Install fonts-dejavu-core or place DejaVuSans*.ttf into bot/assets/fonts/.",
+        ", ".join(candidates),
+    )
     return ImageFont.load_default()
 
 
 def _font_bold(size: int) -> ImageFont.ImageFont:
     return _try_font(
+        str(FONTS_DIR / "DejaVuSans-Bold.ttf"),
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
         "/Library/Fonts/Arial Bold.ttf",
         "C:/Windows/Fonts/arialbd.ttf",
@@ -68,6 +82,7 @@ def _font_bold(size: int) -> ImageFont.ImageFont:
 
 def _font_regular(size: int) -> ImageFont.ImageFont:
     return _try_font(
+        str(FONTS_DIR / "DejaVuSans.ttf"),
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/Library/Fonts/Arial.ttf",
         "C:/Windows/Fonts/arial.ttf",
@@ -134,7 +149,7 @@ def _generate_brand_card() -> Path:
     # Brand wordmark
     title_font = _font_bold(96)
     sub_font = _font_regular(28)
-    title = "SIGNAL · TRADE · GPT"
+    title = "SPACESIGNAL"
     tw = draw.textlength(title, font=title_font)
     draw.text(
         ((w - tw) // 2, cy + 130),
@@ -144,7 +159,7 @@ def _generate_brand_card() -> Path:
         stroke_width=0,
     )
     # tagline
-    tag = "AI · POCKETOPTION · REVSHARE"
+    tag = "AI · SPACESIGNAL · POCKETOPTION"
     tw2 = draw.textlength(tag, font=sub_font)
     draw.text(
         ((w - tw2) // 2, cy + 240),
@@ -193,17 +208,27 @@ def _seeded_walk(seed: str, n: int = 60, vol: float = 0.0008) -> np.ndarray:
     return np.column_stack([opens, highs, lows, closes_arr])
 
 
-def make_signal_chart(signal: Signal) -> bytes:
+def make_signal_chart(
+    signal: Signal,
+    *,
+    ohlc: list[tuple[float, float, float, float]] | None = None,
+    locale: str = "ru",
+) -> bytes:
     """
     Render a 1280x720 candle chart for a signal with direction badge.
 
-    Returns PNG bytes ready for BufferedInputFile.
+    If `ohlc` is provided and non-empty, real OHLC data is used instead of
+    the synthetic seeded walk.  Returns PNG bytes ready for BufferedInputFile.
     """
     pair = signal.pair
     direction = signal.direction
     is_call = direction == "CALL"
 
-    ohlc = _seeded_walk(pair + str(signal.confidence), n=60)
+    if ohlc:
+        ohlc_arr = np.array(ohlc, dtype=float)
+    else:
+        ohlc_arr = _seeded_walk(pair + str(signal.confidence), n=60)
+    ohlc = ohlc_arr  # type: ignore[assignment]
     n = ohlc.shape[0]
 
     fig, ax = plt.subplots(figsize=(12.8, 7.2), dpi=100)
@@ -264,14 +289,16 @@ def make_signal_chart(signal: Signal) -> bytes:
     )
 
     # Header bar
-    title = f"  {pair}   ·   {direction}   ·   conf {signal.confidence}%   ·   exp {signal.expiration}"
+    conf_label = t("imagegen.chart_conf", locale)
+    exp_label = t("imagegen.chart_exp", locale)
+    title = f"  {pair}   ·   {direction}   ·   {conf_label} {signal.confidence}%   ·   {exp_label} {signal.expiration}"
     ax.set_title(title, color=GOLD, fontsize=18, fontweight="bold", loc="left", pad=18)
 
     # Brand watermark bottom-right
     fig.text(
         0.985,
         0.025,
-        "SIGNAL · TRADE · GPT",
+        "SPACESIGNAL",
         color=GOLD_SOFT,
         fontsize=10,
         ha="right",
@@ -343,19 +370,28 @@ def _synthetic_volume(seed: str, n: int) -> np.ndarray:
     return np.array([abs(rnd.gauss(1.0, 0.4)) for _ in range(n)])
 
 
-def make_signal_chart_advanced(signal: Signal) -> bytes:
+def make_signal_chart_advanced(
+    signal: Signal,
+    *,
+    ohlc: list[tuple[float, float, float, float]] | None = None,
+    locale: str = "ru",
+) -> bytes:
     """
     Tier-2+ chart: candlestick + RSI + MACD + volume in a single 4-row figure.
 
-    Same input data as `make_signal_chart` but with three extra technical
-    panels stacked underneath. Returns PNG bytes.
+    If `ohlc` is provided and non-empty, real OHLC data is used instead of
+    the synthetic seeded walk.  Returns PNG bytes.
     """
     pair = signal.pair
     direction = signal.direction
     is_call = direction == "CALL"
 
     seed = pair + str(signal.confidence)
-    ohlc = _seeded_walk(seed, n=80)
+    if ohlc:
+        ohlc_arr = np.array(ohlc, dtype=float)
+    else:
+        ohlc_arr = _seeded_walk(seed, n=80)
+    ohlc = ohlc_arr  # type: ignore[assignment]
     n = ohlc.shape[0]
     closes = ohlc[:, 3]
 
@@ -423,7 +459,9 @@ def make_signal_chart_advanced(signal: Signal) -> bytes:
     ax_price.set_xlim(-1, n)
     pad = span * 0.25
     ax_price.set_ylim(closes.min() - pad, closes.max() + pad)
-    title = f"  {pair}   ·   {direction}   ·   conf {signal.confidence}%   ·   exp {signal.expiration}"
+    conf_label = t("imagegen.chart_conf", locale)
+    exp_label = t("imagegen.chart_exp", locale)
+    title = f"  {pair}   ·   {direction}   ·   {conf_label} {signal.confidence}%   ·   {exp_label} {signal.expiration}"
     ax_price.set_title(title, color=GOLD, fontsize=16, fontweight="bold", loc="left", pad=14)
     ax_price.legend(loc="upper left", facecolor=BG_1, edgecolor=BG_2, labelcolor=TEXT_2, fontsize=8)
 
@@ -454,7 +492,7 @@ def make_signal_chart_advanced(signal: Signal) -> bytes:
     fig.text(
         0.985,
         0.012,
-        "SIGNAL · TRADE · GPT  ·  PRO ANALYSIS",
+        "SPACESIGNAL  ·  PRO ANALYSIS",
         color=GOLD_SOFT,
         fontsize=9,
         ha="right",
@@ -468,14 +506,118 @@ def make_signal_chart_advanced(signal: Signal) -> bytes:
     return buf.getvalue()
 
 
-def make_tier_card(tier: int, deposit: float, next_threshold: int | None) -> bytes:
+def make_otc_banner(signal: Signal, locale: str = "ru") -> bytes:
+    """
+    Branded static 1280x720 banner for OTC signals — no candlestick chart.
+
+    Layout:
+    - Dark gradient background with gold orb glow.
+    - Abstract multi-wave polyline across the middle (gold, varying alpha).
+    - Large direction arrow ("▲" / "▼") centred on the canvas.
+    - Pair name + OTC badge (top-left area).
+    - Expiration and confidence on a second line below.
+    - "SPACESIGNAL" watermark bottom-right.
+    """
+    import math
+
+    w, h = 1280, 720
+    img = _frame(w, h, accent_x=w - 260)
+    d = ImageDraw.Draw(img)
+
+    # ── wave pattern ─────────────────────────────────────────────────────────
+    # Three overlapping sine waves drawn as polylines with slight offsets and
+    # alpha variation to give a live-market feel without actual data.
+    wave_overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    wd = ImageDraw.Draw(wave_overlay)
+    mid_y = h // 2 + 40
+    amplitude = 80
+    freq = 2.5
+    wave_specs = [
+        # (y_offset, amplitude_scale, alpha, line_width)
+        (0, 1.0, 200, 3),
+        (18, 0.65, 110, 2),
+        (-22, 0.45, 70, 2),
+        (8, 0.30, 50, 1),
+    ]
+    steps = 400
+    gold_rgb = _hex(GOLD)
+    for y_off, amp_scale, alpha, lw in wave_specs:
+        pts: list[tuple[float, float]] = []
+        for step in range(steps + 1):
+            t = step / steps
+            x = t * w
+            y = mid_y + y_off + math.sin(t * math.pi * 2 * freq) * amplitude * amp_scale
+            pts.append((x, y))
+        wd.line(pts, fill=(*gold_rgb, alpha), width=lw)
+    wave_overlay = wave_overlay.filter(ImageFilter.GaussianBlur(radius=1))
+    img = Image.alpha_composite(img.convert("RGBA"), wave_overlay).convert("RGB")
+    d = ImageDraw.Draw(img)
+
+    # ── direction arrow ───────────────────────────────────────────────────────
+    is_call = signal.direction == "CALL"
+    arrow_char = "▲" if is_call else "▼"
+    arrow_color = GREEN if is_call else RED
+    f_arrow = _font_bold(220)
+    aw = d.textlength(arrow_char, font=f_arrow)
+    # vertical centre, slightly above centre for visual balance
+    d.text(
+        ((w - aw) // 2, h // 2 - 140),
+        arrow_char,
+        font=f_arrow,
+        fill=arrow_color,
+    )
+
+    # ── direction label ───────────────────────────────────────────────────────
+    f_dir = _font_bold(52)
+    dir_lbl = signal.direction
+    dlw = d.textlength(dir_lbl, font=f_dir)
+    d.text(((w - dlw) // 2, h // 2 + 100), dir_lbl, font=f_dir, fill=arrow_color)
+
+    # ── pair + OTC badge (top-left) ───────────────────────────────────────────
+    f_pair = _font_bold(64)
+    f_badge = _font_bold(26)
+    f_meta = _font_regular(28)
+
+    pair_text = signal.pair
+    pw = d.textlength(pair_text, font=f_pair)
+    px, py = 60, 52
+
+    d.text((px, py), pair_text, font=f_pair, fill=GOLD)
+
+    # OTC badge: rounded rect with gold border, sits to the right of pair name
+    badge_text = "OTC"
+    bw_text = int(d.textlength(badge_text, font=f_badge))
+    badge_pad_x, badge_pad_y = 14, 8
+    badge_x = px + int(pw) + 20
+    badge_y = py + 10
+    badge_rect = [
+        badge_x,
+        badge_y,
+        badge_x + bw_text + badge_pad_x * 2,
+        badge_y + int(d.textlength("M", font=f_badge)) + badge_pad_y * 2,
+    ]
+    d.rounded_rectangle(badge_rect, radius=10, outline=_hex(GOLD), width=2)
+    d.text((badge_x + badge_pad_x, badge_y + badge_pad_y), badge_text, font=f_badge, fill=GOLD)
+
+    # ── expiration + confidence ───────────────────────────────────────────────
+    meta_text = f"{t('imagegen.chart_exp', locale)}: {signal.expiration}   ·   {t('imagegen.chart_conf', locale)}: {signal.confidence}%"
+    d.text((px, py + 76), meta_text, font=f_meta, fill=TEXT_2)
+
+    # ── watermark ─────────────────────────────────────────────────────────────
+    _watermark(d, w, h)
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+def make_tier_card(tier: int, deposit: float, next_threshold: int | None, locale: str = DEFAULT_LOCALE) -> bytes:
     """A small horizontal progress card image for /tier responses."""
     w, h = 1100, 380
     img = _gradient_bg(w, h)
     draw = ImageDraw.Draw(img)
 
-    tier_names = {0: "DEMO", 1: "STARTER", 2: "ACTIVE", 3: "PRO", 4: "VIP"}
-    name = tier_names.get(tier, "—")
+    name = TIER_NAMES.get(tier, "—").upper()
 
     # Big tier label
     title_f = _font_bold(140)
@@ -503,17 +645,18 @@ def make_tier_card(tier: int, deposit: float, next_threshold: int | None) -> byt
     )
 
     # Stats
-    draw.text((bar_x, bar_y - 50), f"Депозит: ${deposit:,.0f}", font=txt_f, fill=TEXT_1)
+    draw.text((bar_x, bar_y - 50), t("imagegen.deposit_label", locale, deposit=deposit), font=txt_f, fill=TEXT_1)
     if next_threshold:
         remaining = max(0, next_threshold - int(deposit))
+        next_name = {0: "Basic", 1: "Pro"}.get(tier, f"T{tier + 1}")
         draw.text(
             (bar_x, bar_y + 30),
-            f"До T{tier + 1}: ещё ${remaining:,}",
+            t("imagegen.to_next_tier", locale, next_name=next_name, remaining=remaining),
             font=txt_f,
             fill=TEXT_2,
         )
     else:
-        draw.text((bar_x, bar_y + 30), "Максимальный уровень", font=txt_f, fill=GOLD_SOFT)
+        draw.text((bar_x, bar_y + 30), t("imagegen.full_access", locale), font=txt_f, fill=GOLD_SOFT)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG", optimize=True)
@@ -543,7 +686,7 @@ def _frame(w: int, h: int, accent_x: int | None = None) -> Image.Image:
 
 def _watermark(draw: ImageDraw.ImageDraw, w: int, h: int) -> None:
     f = _font_bold(18)
-    draw.text((w - 280, h - 32), "SIGNAL · TRADE · GPT", font=f, fill=GOLD_SOFT)
+    draw.text((w - 280, h - 32), "SPACESIGNAL", font=f, fill=GOLD_SOFT)
 
 
 def make_stats_card(
@@ -554,6 +697,7 @@ def make_stats_card(
     signals_received: int,
     wins: int,
     losses: int,
+    locale: str = DEFAULT_LOCALE,
 ) -> bytes:
     """Personal stats dashboard card."""
     w, h = 1100, 620
@@ -565,19 +709,15 @@ def make_stats_card(
     f_label = _font_regular(20)
     f_val = _font_bold(58)
 
-    d.text((60, 50), "Личный кабинет", font=f_sub, fill=TEXT_2)
+    d.text((60, 50), t("imagegen.personal_cabinet", locale), font=f_sub, fill=TEXT_2)
     d.text((60, 80), name, font=f_title, fill=GOLD)
 
-    total = wins + losses
-    winrate = (wins / total * 100) if total else 0.0
-
     cards = [
-        (f"T{tier}", "ТИР", GOLD),
-        (f"${deposit:,.0f}", "ДЕПОЗИТ", TEXT_1),
-        (f"{winrate:.1f}%", "ВИНРЕЙТ", GREEN if winrate >= 55 else RED if winrate < 45 else GOLD),
-        (str(signals_received), "СИГНАЛОВ", TEXT_1),
+        (f"T{tier}", t("imagegen.tier_label", locale), GOLD),
+        (f"${deposit:,.0f}", t("imagegen.deposit_stat_label", locale), TEXT_1),
+        (str(signals_received), t("imagegen.signals_label", locale), TEXT_1),
     ]
-    card_w = (w - 60 * 2 - 30 * 3) // 4
+    card_w = (w - 60 * 2 - 30 * 2) // 3
     card_h = 180
     y = 200
     for i, (val, label, color) in enumerate(cards):
@@ -591,26 +731,6 @@ def make_stats_card(
         lw = d.textlength(label, font=f_label)
         d.text((x + (card_w - lw) // 2, y + 120), label, font=f_label, fill=TEXT_2)
 
-    # Win/Loss bar
-    bar_y = 460
-    bar_h = 28
-    bar_x = 60
-    bar_w = w - 120
-    d.rounded_rectangle(
-        [bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], radius=14, fill=_hex(BG_2)
-    )
-    if total:
-        wpx = int(bar_w * (wins / total))
-        d.rounded_rectangle(
-            [bar_x, bar_y, bar_x + wpx, bar_y + bar_h], radius=14, fill=_hex(GREEN)
-        )
-        d.rounded_rectangle(
-            [bar_x + wpx, bar_y, bar_x + bar_w, bar_y + bar_h], radius=14, fill=_hex(RED)
-        )
-    d.text((bar_x, bar_y - 36), f"Wins: {wins}", font=f_label, fill=GREEN)
-    losses_label = f"Losses: {losses}"
-    lw = d.textlength(losses_label, font=f_label)
-    d.text((bar_x + bar_w - lw, bar_y - 36), losses_label, font=f_label, fill=RED)
 
     _watermark(d, w, h)
     buf = io.BytesIO()
@@ -651,6 +771,7 @@ def make_referral_card(
     referral_code: str,
     deep_link: str,
     invited_count: int,
+    locale: str = DEFAULT_LOCALE,
 ) -> bytes:
     """Card with QR + ref link + headline reward."""
     w, h = 1100, 620
@@ -664,9 +785,9 @@ def make_referral_card(
     f_stat = _font_bold(56)
     f_label = _font_regular(20)
 
-    d.text((60, 60), "РЕФ-ПРОГРАММА", font=f_eyebrow, fill=GOLD_SOFT)
-    d.text((60, 92), "5% sub-affiliate", font=f_title, fill=GOLD)
-    d.text((60, 180), "От FTD каждого приглашённого. Без потолка.", font=f_body, fill=TEXT_1)
+    d.text((60, 60), t("imagegen.ref_program", locale), font=f_eyebrow, fill=GOLD_SOFT)
+    d.text((60, 92), t("imagegen.sub_affiliate", locale), font=f_title, fill=GOLD)
+    d.text((60, 180), t("imagegen.ref_from_ftd", locale), font=f_body, fill=TEXT_1)
 
     # QR right side
     qr_size = 280
@@ -676,15 +797,15 @@ def make_referral_card(
 
     # Code box
     box_y = 280
-    d.text((60, box_y), "Твой реф-код", font=f_label, fill=TEXT_2)
+    d.text((60, box_y), t("imagegen.your_ref_code", locale), font=f_label, fill=TEXT_2)
     d.text((60, box_y + 24), referral_code.upper(), font=f_code, fill=GOLD)
 
     # invited stat
     d.text((60, 410), str(invited_count), font=f_stat, fill=TEXT_1)
-    d.text((60, 480), "приглашено всего", font=f_label, fill=TEXT_2)
+    d.text((60, 480), t("imagegen.invited_total", locale), font=f_label, fill=TEXT_2)
 
     # name footer
-    name_label = f"для {name}"
+    name_label = t("imagegen.for_name", locale, name=name)
     nw = d.textlength(name_label, font=f_label)
     d.text((qr_x + qr_size - nw, qr_y + qr_size + 16), name_label, font=f_label, fill=TEXT_2)
 
@@ -694,7 +815,7 @@ def make_referral_card(
     return buf.getvalue()
 
 
-def make_achievements_grid(items: list[tuple[str, str, bool]]) -> bytes:
+def make_achievements_grid(items: list[tuple[str, str, bool]], locale: str = DEFAULT_LOCALE) -> bytes:
     """
     items = [(emoji, title, unlocked), ...]
     Renders 3-column grid. Up to 9 items shown.
@@ -715,8 +836,8 @@ def make_achievements_grid(items: list[tuple[str, str, bool]]) -> bytes:
     f_count = _font_bold(36)
 
     earned = sum(1 for _, _, ok in items if ok)
-    d.text((60, 50), "ДОСТИЖЕНИЯ", font=f_sub, fill=GOLD_SOFT)
-    d.text((60, 80), "КОЛЛЕКЦИЯ ТРОФЕЕВ", font=f_title, fill=GOLD)
+    d.text((60, 50), t("imagegen.achievements_eyebrow", locale), font=f_sub, fill=GOLD_SOFT)
+    d.text((60, 80), t("imagegen.achievements_title", locale), font=f_title, fill=GOLD)
     cnt_str = f"{earned} / {len(items)}"
     cw = d.textlength(cnt_str, font=f_count)
     d.text((w - 60 - cw, 100), cnt_str, font=f_count, fill=TEXT_1)
@@ -737,7 +858,7 @@ def make_achievements_grid(items: list[tuple[str, str, bool]]) -> bytes:
         d.rounded_rectangle(
             [x, y, x + cell_w, y + cell_h], radius=18, outline=outline, width=2
         )
-        text_color = TEXT_1 if ok else "#5a5050"
+        text_color = TEXT_1 if ok else TEXT_3
         # try color emoji rendering with downscale; fall back to ASCII placeholder
         emoji_drawn = False
         try:
@@ -767,7 +888,7 @@ def make_achievements_grid(items: list[tuple[str, str, bool]]) -> bytes:
         tw = d.textlength(title, font=f_name)
         d.text((x + (cell_w - tw) // 2, y + cell_h - 38), title, font=f_name, fill=text_color)
         if not ok:
-            d.text((x + cell_w - 30, y + 12), "✖", font=f_name, fill="#3a3030")
+            d.text((x + cell_w - 30, y + 12), "✖", font=f_name, fill=BG_2)
 
     _watermark(d, w, h)
     buf = io.BytesIO()
@@ -779,6 +900,7 @@ def make_leaderboard_table(
     rows: list[tuple[int, str, float, int, int, int]],
     *,
     highlight_rank: int | None = None,
+    locale: str = DEFAULT_LOCALE,
 ) -> bytes:
     """
     rows = [(rank, name, winrate_pct, wins, losses, tier), ...]
@@ -793,16 +915,15 @@ def make_leaderboard_table(
     f_row = _font_regular(22)
     f_rank = _font_bold(28)
 
-    d.text((60, 50), "ЛИДЕРБОРД", font=f_sub, fill=GOLD_SOFT)
-    d.text((60, 80), "ТОП ТРЕЙДЕРОВ", font=f_title, fill=GOLD)
+    d.text((60, 50), t("imagegen.leaderboard_eyebrow", locale), font=f_sub, fill=GOLD_SOFT)
+    d.text((60, 80), t("imagegen.leaderboard_title", locale), font=f_title, fill=GOLD)
 
-    # Header
+    # Header — earnings + signals ranking (mirrors web leaderboard)
     cols = [
-        ("#", 60, 70),
-        ("ТРЕЙДЕР", 130, 380),
-        ("ВИНРЕЙТ", 510, 160),
-        ("СДЕЛКИ", 670, 160),
-        ("ТИР", 830, 100),
+        (t("imagegen.col_rank", locale), 60, 70),
+        (t("imagegen.col_trader", locale), 130, 500),
+        (t("imagegen.col_signals", locale), 640, 200),
+        (t("imagegen.col_earnings", locale), 850, 200),
     ]
     head_y = 200
     for label, x, _w in cols:
@@ -815,7 +936,7 @@ def make_leaderboard_table(
     # alpha-capable layer for highlight
     hl = Image.new("RGBA", (w, h), (0, 0, 0, 0))
     hd = ImageDraw.Draw(hl)
-    for rank, name, wr, wins, losses, tier in rows[:10]:
+    for rank, name, earnings, signals, _losses, _tier in rows[:10]:
         is_me = highlight_rank is not None and rank == highlight_rank
         if is_me:
             hd.rounded_rectangle(
@@ -827,13 +948,12 @@ def make_leaderboard_table(
             )
         rank_lbl = rank_marks.get(rank, f"{rank}")
         d.text((cols[0][1], row_y), rank_lbl, font=f_rank, fill=GOLD if rank <= 3 else TEXT_1)
-        if len(name) > 22:
-            name = name[:21] + "…"
+        if len(name) > 28:
+            name = name[:27] + "…"
         d.text((cols[1][1], row_y + 4), name, font=f_row, fill=TEXT_1)
-        wr_color = GREEN if wr >= 55 else RED if wr < 45 else GOLD
-        d.text((cols[2][1], row_y + 4), f"{wr:.1f}%", font=f_row, fill=wr_color)
-        d.text((cols[3][1], row_y + 4), f"{wins}/{wins + losses}", font=f_row, fill=TEXT_2)
-        d.text((cols[4][1], row_y + 4), f"T{tier}", font=f_row, fill=GOLD)
+        d.text((cols[2][1], row_y + 4), str(signals), font=f_row, fill=GOLD)
+        earnings_lbl = f"${int(earnings):,}" if earnings > 0 else "—"
+        d.text((cols[3][1], row_y + 4), earnings_lbl, font=f_row, fill=GOLD if earnings > 0 else TEXT_2)
         row_y += row_h
 
     img = Image.alpha_composite(img.convert("RGBA"), hl).convert("RGB")
@@ -850,6 +970,7 @@ def make_settings_card(
     tier: int,
     po_trader_id: str | None,
     notifications_enabled: bool,
+    locale: str = DEFAULT_LOCALE,
 ) -> bytes:
     w, h = 1100, 520
     img = _frame(w, h)
@@ -860,21 +981,22 @@ def make_settings_card(
     f_label = _font_regular(22)
     f_val = _font_bold(28)
 
-    d.text((60, 50), "НАСТРОЙКИ", font=f_sub, fill=GOLD_SOFT)
-    d.text((60, 80), "ПРОФИЛЬ", font=f_title, fill=GOLD)
+    d.text((60, 50), t("imagegen.settings_eyebrow", locale), font=f_sub, fill=GOLD_SOFT)
+    d.text((60, 80), t("imagegen.settings_title", locale), font=f_title, fill=GOLD)
     d.text((60, 160), name, font=f_val, fill=TEXT_1)
 
+    tier_label = TIER_NAMES.get(tier, "Free")
     # Rows
     rows = [
-        ("Текущий тир", f"T{tier}", GOLD),
+        (t("imagegen.tier_access_label", locale), tier_label, GOLD),
         (
-            "PocketOption ID",
-            po_trader_id if po_trader_id else "не привязан",
+            t("imagegen.po_id_label", locale),
+            po_trader_id if po_trader_id else t("imagegen.not_linked_short", locale),
             TEXT_1 if po_trader_id else GOLD_SOFT,
         ),
         (
-            "Уведомления",
-            "включены" if notifications_enabled else "отключены",
+            t("imagegen.notifications_label", locale),
+            t("imagegen.notifications_on", locale) if notifications_enabled else t("imagegen.notifications_off", locale),
             GREEN if notifications_enabled else RED,
         ),
     ]
@@ -892,7 +1014,7 @@ def make_settings_card(
     return buf.getvalue()
 
 
-def make_help_sheet(commands: list[tuple[str, str]]) -> bytes:
+def make_help_sheet(commands: list[tuple[str, str]], locale: str = DEFAULT_LOCALE) -> bytes:
     """commands = [(/cmd, description), ...]"""
     w, h = 1100, max(520, 200 + 50 * len(commands))
     img = _frame(w, h)
@@ -903,8 +1025,8 @@ def make_help_sheet(commands: list[tuple[str, str]]) -> bytes:
     f_cmd = _font_bold(24)
     f_desc = _font_regular(22)
 
-    d.text((60, 50), "СПРАВКА", font=f_sub, fill=GOLD_SOFT)
-    d.text((60, 80), "КОМАНДЫ БОТА", font=f_title, fill=GOLD)
+    d.text((60, 50), t("imagegen.help_eyebrow", locale), font=f_sub, fill=GOLD_SOFT)
+    d.text((60, 80), t("imagegen.help_title", locale), font=f_title, fill=GOLD)
 
     y = 180
     for cmd, desc in commands:

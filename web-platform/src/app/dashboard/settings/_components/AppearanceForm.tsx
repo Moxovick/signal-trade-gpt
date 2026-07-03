@@ -1,45 +1,38 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { Sun, Moon, Monitor, Save, Check } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Save, Check, Globe, Clock } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useI18n } from "@/lib/i18n/context";
 import type {
   Language,
   Theme,
   UserPreferences,
 } from "@/lib/user-preferences";
 
-const THEMES: { value: Theme; label: string; icon: typeof Sun }[] = [
-  { value: "light", label: "Светлая", icon: Sun },
-  { value: "dark", label: "Тёмная", icon: Moon },
-  { value: "auto", label: "Системная", icon: Monitor },
+const LANGUAGES: { value: Language; native: string }[] = [
+  { value: "ru", native: "RU" },
+  { value: "en", native: "EN" },
+  { value: "uk", native: "UA" },
 ];
 
-const LANGUAGES: { value: Language; label: string; flag: string }[] = [
-  { value: "ru", label: "Русский", flag: "RU" },
-  { value: "en", label: "English", flag: "EN" },
-  { value: "uk", label: "Українська", flag: "UA" },
+const TIMEZONE_DATA = [
+  { tz: "UTC",                 label: "UTC +0"    },
+  { tz: "Europe/London",       label: "UTC +0/+1" },
+  { tz: "Europe/Berlin",       label: "UTC +1/+2" },
+  { tz: "Europe/Warsaw",       label: "UTC +1/+2" },
+  { tz: "Europe/Kyiv",         label: "UTC +2/+3" },
+  { tz: "Europe/Minsk",        label: "UTC +3"    },
+  { tz: "Europe/Moscow",       label: "UTC +3"    },
+  { tz: "Asia/Dubai",          label: "UTC +4"    },
+  { tz: "Asia/Tashkent",       label: "UTC +5"    },
+  { tz: "Asia/Almaty",         label: "UTC +6"    },
+  { tz: "Asia/Bangkok",        label: "UTC +7"    },
+  { tz: "Asia/Tokyo",          label: "UTC +9"    },
+  { tz: "America/New_York",    label: "UTC -5/-4" },
+  { tz: "America/Los_Angeles", label: "UTC -8/-7" },
 ];
 
-const TIMEZONES = [
-  "UTC",
-  "Europe/Kyiv",
-  "Europe/Moscow",
-  "Europe/Minsk",
-  "Europe/Warsaw",
-  "Europe/London",
-  "Europe/Berlin",
-  "Asia/Almaty",
-  "Asia/Tashkent",
-  "Asia/Dubai",
-  "Asia/Bangkok",
-  "Asia/Tokyo",
-  "America/New_York",
-  "America/Los_Angeles",
-];
-
-/** Apply theme to document.html dataset and write localStorage so the
-    choice persists on next reload before SSR. */
 export function applyTheme(theme: Theme) {
   if (typeof document === "undefined") return;
   const effective =
@@ -50,7 +43,7 @@ export function applyTheme(theme: Theme) {
       : theme;
   document.documentElement.dataset["theme"] = effective;
   try {
-    localStorage.setItem("stg_theme", theme);
+    localStorage.setItem("ss_theme", theme);
   } catch {
     // ignore
   }
@@ -61,16 +54,42 @@ export function AppearanceForm({
 }: {
   initialPrefs: UserPreferences;
 }) {
-  const [theme, setTheme] = useState<Theme>(initialPrefs.theme);
+  const { t } = useI18n();
+
+  const CITY_LABELS: Record<string, string> = {
+    UTC: "UTC",
+    "Europe/London": t.appearance.cityLondon,
+    "Europe/Berlin": t.appearance.cityBerlin,
+    "Europe/Warsaw": t.appearance.cityWarsaw,
+    "Europe/Kyiv": t.appearance.cityKyiv,
+    "Europe/Minsk": t.appearance.cityMinsk,
+    "Europe/Moscow": t.appearance.cityMoscow,
+    "Asia/Dubai": t.appearance.cityDubai,
+    "Asia/Tashkent": t.appearance.cityTashkent,
+    "Asia/Almaty": t.appearance.cityAlmaty,
+    "Asia/Bangkok": t.appearance.cityBangkok,
+    "Asia/Tokyo": t.appearance.cityTokyo,
+    "America/New_York": t.appearance.cityNewYork,
+    "America/Los_Angeles": t.appearance.cityLosAngeles,
+  };
+
+  const TIMEZONES = TIMEZONE_DATA.map(({ tz, label }) => ({
+    tz,
+    label,
+    city: CITY_LABELS[tz] ?? tz,
+  }));
+
+  const LANG_LABELS: Record<string, string> = {
+    ru: t.appearance.langRu,
+    en: t.appearance.langEn,
+    uk: t.appearance.langUk,
+  };
+
   const [language, setLanguage] = useState<Language>(initialPrefs.language);
   const [timezone, setTimezone] = useState(initialPrefs.timezone);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
 
   async function save() {
     setError(null);
@@ -79,10 +98,10 @@ export function AppearanceForm({
       const r = await fetch("/api/account/preferences", {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ theme, language, timezone }),
+        body: JSON.stringify({ theme: "dark", language, timezone }),
       });
       if (!r.ok) {
-        setError("Не удалось сохранить. Попробуй ещё раз.");
+        setError(t.appearance.errorSave);
         return;
       }
       setSaved(true);
@@ -90,102 +109,111 @@ export function AppearanceForm({
     });
   }
 
-  return (
-    <div className="space-y-8">
-      <section>
-        <label className="block text-[13px] font-semibold text-[var(--t-2)] mb-2">
-          Тема оформления
-        </label>
-        <div className="grid grid-cols-3 gap-3">
-          {THEMES.map(({ value, label, icon: Icon }) => {
-            const active = theme === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setTheme(value)}
-                className={`flex flex-col items-center justify-center gap-2 py-4 rounded-xl border text-sm transition-colors ${
-                  active
-                    ? "border-[var(--brand-gold)] bg-[rgba(212,160,23,0.08)] text-[var(--brand-gold)]"
-                    : "border-[var(--b-soft)] text-[var(--t-2)] hover:border-[var(--b-hard)]"
-                }`}
-              >
-                <Icon size={20} />
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      </section>
+  const currentTzEntry = TIMEZONES.find((t) => t.tz === timezone);
+  const currentTime = new Date().toLocaleString("ru-RU", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 
+  return (
+    <div className="space-y-7">
+      {/* Language */}
       <section>
-        <label className="block text-[13px] font-semibold text-[var(--t-2)] mb-2">
-          Язык интерфейса
+        <label className="flex items-center gap-2 text-[13px] font-semibold text-[var(--t-1)] mb-3">
+          <Globe size={14} className="text-[var(--brand-gold)]" />
+          {t.appearance.langLabel}
         </label>
         <div className="grid grid-cols-3 gap-3">
-          {LANGUAGES.map(({ value, label, flag }) => {
+          {LANGUAGES.map(({ value, native }) => {
+            const label = LANG_LABELS[value] ?? value;
             const active = language === value;
             return (
               <button
                 key={value}
                 type="button"
                 onClick={() => setLanguage(value)}
-                className={`flex items-center justify-center gap-2 py-3 rounded-xl border text-sm transition-colors ${
+                className={`flex flex-col items-center gap-1.5 py-4 rounded-xl border text-sm transition-all duration-200 ${
                   active
-                    ? "border-[var(--brand-gold)] bg-[rgba(212,160,23,0.08)] text-[var(--brand-gold)]"
-                    : "border-[var(--b-soft)] text-[var(--t-2)] hover:border-[var(--b-hard)]"
+                    ? "border-[var(--brand-gold)] bg-[rgba(212,160,23,0.08)]"
+                    : "border-[var(--b-soft)] hover:border-[var(--b-hard)] hover:bg-[var(--bg-2)]"
                 }`}
               >
-                <span className="font-mono text-xs text-[var(--t-3)]">
-                  {flag}
+                <span
+                  className="text-base font-black"
+                  style={{
+                    fontFamily: "var(--font-jetbrains)",
+                    color: active ? "var(--brand-gold)" : "var(--t-2)",
+                  }}
+                >
+                  {native}
                 </span>
-                {label}
+                <span
+                  className={`text-[12px] ${
+                    active ? "text-[var(--brand-gold)]" : "text-[var(--t-3)]"
+                  }`}
+                >
+                  {label}
+                </span>
               </button>
             );
           })}
         </div>
         {language !== "ru" && (
-          <p className="text-[11px] text-[var(--t-3)] mt-2">
-            Поддержка {language.toUpperCase()} — в процессе, часть текстов пока
-            на русском.
+          <p className="text-[11px] text-[var(--t-3)] mt-2 pl-1">
+            {t.appearance.langPartialHint.replace("{lang}", language.toUpperCase())}
           </p>
         )}
       </section>
 
+      {/* Timezone */}
       <section>
         <label
           htmlFor="tz"
-          className="block text-[13px] font-semibold text-[var(--t-2)] mb-2"
+          className="flex items-center gap-2 text-[13px] font-semibold text-[var(--t-1)] mb-3"
         >
-          Часовой пояс
+          <Clock size={14} className="text-[var(--brand-gold)]" />
+          {t.appearance.timezoneLabel}
         </label>
         <select
           id="tz"
           value={timezone}
           onChange={(e) => setTimezone(e.target.value)}
-          className="w-full h-11 px-4 rounded-xl bg-[var(--bg-2)] border border-[var(--b-soft)] text-sm focus:border-[var(--b-hard)] focus:outline-none"
+          className="w-full h-11 px-4 rounded-xl bg-[var(--bg-2)] border border-[var(--b-soft)] text-sm text-[var(--t-1)] focus:border-[var(--b-hard)] focus:outline-none transition-colors"
         >
-          {TIMEZONES.map((tz) => (
+          {TIMEZONES.map(({ tz, label, city }) => (
             <option key={tz} value={tz}>
-              {tz.replace("_", " ")}
+              {city} — {label}
             </option>
           ))}
         </select>
-        <p className="text-[11px] text-[var(--t-3)] mt-2">
-          Текущее время в выбранной зоне:{" "}
-          {new Date().toLocaleString("ru-RU", { timeZone: timezone })}
-        </p>
+        <div className="flex items-center gap-2 mt-2 px-1">
+          <span className="text-[11px] text-[var(--t-3)]">
+            {currentTzEntry?.city ?? timezone}:
+          </span>
+          <span
+            className="text-[11px] text-[var(--t-2)] font-semibold"
+            style={{ fontFamily: "var(--font-jetbrains)" }}
+          >
+            {currentTime}
+          </span>
+        </div>
       </section>
 
-      <div className="flex items-center gap-3 pt-4 border-t border-[var(--b-soft)]">
+      {/* Save */}
+      <div className="flex items-center gap-3 pt-2 border-t border-[var(--b-soft)]">
         <Button
           onClick={save}
           disabled={pending}
           iconLeft={saved ? <Check size={14} /> : <Save size={14} />}
         >
-          {pending ? "Сохраняю..." : saved ? "Сохранено" : "Сохранить"}
+          {pending ? t.appearance.saving : saved ? t.appearance.saved : t.appearance.save}
         </Button>
         {error && <span className="text-xs text-[var(--red)]">{error}</span>}
+        {saved && (
+          <span className="text-xs text-[var(--green)]">{t.appearance.settingsApplied}</span>
+        )}
       </div>
     </div>
   );

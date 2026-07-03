@@ -6,18 +6,28 @@
  */
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
+import { BindUnmatched } from "./_components/BindUnmatched";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 const EVENT_COLOR: Record<string, { bg: string; fg: string }> = {
   registration: { bg: "rgba(136,188,255,0.10)", fg: "#88bcff" },
   email_confirm: { bg: "rgba(212,160,23,0.10)", fg: "var(--brand-gold)" },
-  ftd: { bg: "rgba(142,224,107,0.10)", fg: "var(--green)" },
+  ftd: { bg: "rgba(76,195,138,0.10)", fg: "var(--green)" },
   redeposit: { bg: "rgba(245,232,192,0.10)", fg: "var(--t-1)" },
   commission: { bg: "rgba(212,160,23,0.18)", fg: "var(--brand-gold-bright)" },
+  withdrawal: { bg: "rgba(220,90,90,0.10)", fg: "var(--red)" },
 };
 
 export default async function PostbacksPage() {
+  const session = await auth();
+  if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") redirect("/login");
+  const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
+  const tp = t?.admin?.postbacks ?? {};
+
   const rows = await prisma.postback.findMany({
     orderBy: { receivedAt: "desc" },
     take: 100,
@@ -28,69 +38,77 @@ export default async function PostbacksPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">PocketOption · postbacks</h1>
+      <h1 className="text-2xl font-bold">{tp.title ?? "PocketOption · postbacks"}</h1>
 
       <Card padding="none">
         <div className="px-5 py-3 border-b border-[var(--b-soft)] grid grid-cols-12 gap-4 text-xs uppercase tracking-wider text-[var(--t-3)]">
-          <div className="col-span-2">Время</div>
-          <div className="col-span-2">Событие</div>
-          <div className="col-span-2">PO ID</div>
-          <div className="col-span-3">Пользователь</div>
-          <div className="col-span-2 text-right">Сумма</div>
-          <div className="col-span-1 text-right">Click</div>
+          <div className="col-span-2">{tp.table?.time ?? "Время"}</div>
+          <div className="col-span-2">{tp.table?.event ?? "Событие"}</div>
+          <div className="col-span-2">{tp.table?.poId ?? "PO ID"}</div>
+          <div className="col-span-3">{tp.table?.user ?? "Пользователь"}</div>
+          <div className="col-span-2 text-right">{tp.table?.amount ?? "Сумма"}</div>
+          <div className="col-span-1 text-right">{tp.table?.click ?? "Click"}</div>
         </div>
         <div className="divide-y divide-[var(--b-soft)]">
           {rows.length === 0 && (
             <div className="px-5 py-10 text-center text-sm text-[var(--t-3)]">
-              Postback-ов ещё не было.
+              {tp.empty ?? "Postback-ов ещё не было."}
             </div>
           )}
           {rows.map((p) => {
             const user = p.poAccount?.user;
             const userLabel = user?.firstName ?? user?.username ?? user?.email;
             const colors = EVENT_COLOR[p.eventType] ?? { bg: "var(--bg-2)", fg: "var(--t-2)" };
+            const isUnmatched = !p.poAccountId;
             return (
-              <div
-                key={p.id}
-                className="px-5 py-3 grid grid-cols-12 gap-4 items-center text-sm"
-              >
-                <div
-                  className="col-span-2 text-xs text-[var(--t-3)]"
-                  style={{ fontFamily: "var(--font-jetbrains)" }}
-                >
-                  {new Date(p.receivedAt).toLocaleString("ru-RU")}
-                </div>
-                <div className="col-span-2">
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full"
-                    style={{ background: colors.bg, color: colors.fg }}
+              <div key={p.id} className="px-5 py-3 space-y-2">
+                <div className="grid grid-cols-12 gap-4 items-center text-sm">
+                  <div
+                    className="col-span-2 text-xs text-[var(--t-3)]"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
                   >
-                    {p.eventType}
-                  </span>
+                    {new Date(p.receivedAt).toLocaleString("ru-RU")}
+                  </div>
+                  <div className="col-span-2">
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-full"
+                      style={{ background: colors.bg, color: colors.fg }}
+                    >
+                      {p.eventType}
+                    </span>
+                  </div>
+                  <div
+                    className="col-span-2 text-[var(--brand-gold)]"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
+                    #{p.poTraderId ?? "—"}
+                  </div>
+                  <div className="col-span-3 truncate">
+                    {userLabel ?? (
+                      <span className="text-[var(--red)] text-xs">unmatched</span>
+                    )}
+                  </div>
+                  <div
+                    className="col-span-2 text-right tabular-nums"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
+                    {p.amount ? `$${Number(p.amount).toLocaleString("en-US")}` : "—"}
+                  </div>
+                  <div
+                    className="col-span-1 text-right text-xs text-[var(--t-3)] truncate"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
+                    {p.clickId ? p.clickId.slice(0, 6) : "—"}
+                  </div>
                 </div>
-                <div
-                  className="col-span-2 text-[var(--brand-gold)]"
-                  style={{ fontFamily: "var(--font-jetbrains)" }}
-                >
-                  #{p.poTraderId ?? "—"}
-                </div>
-                <div className="col-span-3 truncate">
-                  {userLabel ?? (
-                    <span className="text-[var(--red)] text-xs">unmatched</span>
-                  )}
-                </div>
-                <div
-                  className="col-span-2 text-right tabular-nums"
-                  style={{ fontFamily: "var(--font-jetbrains)" }}
-                >
-                  {p.amount ? `$${Number(p.amount).toLocaleString("en-US")}` : "—"}
-                </div>
-                <div
-                  className="col-span-1 text-right text-xs text-[var(--t-3)] truncate"
-                  style={{ fontFamily: "var(--font-jetbrains)" }}
-                >
-                  {p.clickId ? p.clickId.slice(0, 6) : "—"}
-                </div>
+                {isUnmatched && (
+                  <div className="pl-[16.6667%]">
+                    <BindUnmatched
+                      postbackId={p.id}
+                      defaultTraderId={p.poTraderId}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}

@@ -17,11 +17,10 @@ import logging
 from dataclasses import dataclass
 from typing import Awaitable, Callable
 
-import aiosqlite
 from aiogram import Bot
 from aiogram.enums import ParseMode
 
-from database.db import DB_PATH, get_referral_count
+from database.db import _get_pool, telegram_id_to_bigint, get_referral_count
 from database.models import User
 
 logger = logging.getLogger(__name__)
@@ -59,12 +58,12 @@ async def _winrate_70(u: User) -> bool:
     return total >= 10 and (u.wins / total) >= 0.7
 
 
-async def _tier_t2(u: User) -> bool:
+async def _tier_basic(u: User) -> bool:
+    return u.tier >= 1
+
+
+async def _tier_pro(u: User) -> bool:
     return u.tier >= 2
-
-
-async def _tier_t4(u: User) -> bool:
-    return u.tier >= 4
 
 
 async def _three_referrals(u: User) -> bool:
@@ -111,16 +110,16 @@ ACHIEVEMENTS: list[Achievement] = [
         _winrate_70,
     ),
     Achievement(
-        "tier_t2",
-        "📈 Active",
-        "Поднял тир до T2",
-        _tier_t2,
+        "tier_basic",
+        "⭐ Basic-доступ",
+        "Открыл Basic — депозит от $20 на PocketOption",
+        _tier_basic,
     ),
     Achievement(
-        "tier_t4",
-        "👑 VIP",
-        "Поднял тир до T4 — топ-уровень",
-        _tier_t4,
+        "tier_pro",
+        "🚀 Pro-доступ",
+        "Открыл Pro — депозит от $100 на PocketOption",
+        _tier_pro,
     ),
     Achievement(
         "three_referrals",
@@ -137,41 +136,96 @@ ACHIEVEMENTS: list[Achievement] = [
 ]
 
 
-# ── persistence ───────────────────────────────────────────────────────────────
+# ── persistence (Postgres via asyncpg) ────────────────────────────────────────
+
+
+async def _get_user_id(telegram_id: int) -> str | None:
+    """Resolve telegram_id → User.id (CUID) in Postgres."""
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        'SELECT id FROM "users" WHERE "telegramId" = $1',
+        telegram_id_to_bigint(telegram_id),
+    )
+    return row["id"] if row else None
+
+
+async def _get_achievement_id(code: str) -> str | None:
+    """Resolve achievement code → Achievement.id (CUID) in Postgres.
+
+    If the code doesn't exist yet (bot defines achievements that weren't
+    seeded by the web platform), auto-create the row so _record can link it.
+    """
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        'SELECT id FROM "achievements" WHERE code = $1',
+        code,
+    )
+    if row:
+        return row["id"]
+
+    # Auto-seed: find the Achievement definition for metadata
+    defn = next((a for a in ACHIEVEMENTS if a.code == code), None)
+    if not defn:
+        return None
+    from database.db import _generate_cuid
+    new_id = _generate_cuid()
+    await pool.execute(
+        """
+        INSERT INTO "achievements" (id, code, name, description, icon, "minTier", "isActive", "createdAt")
+        VALUES ($1, $2, $3, $4, '🏅', 0, true, NOW())
+        ON CONFLICT (code) DO NOTHING
+        """,
+        new_id, code, defn.title, defn.description,
+    )
+    # Re-fetch in case of race condition
+    row = await pool.fetchrow(
+        'SELECT id FROM "achievements" WHERE code = $1', code,
+    )
+    return row["id"] if row else None
 
 
 async def _ensure_table() -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """
-            CREATE TABLE IF NOT EXISTS achievements (
-                telegram_id INTEGER NOT NULL,
-                code        TEXT    NOT NULL,
-                awarded_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (telegram_id, code)
-            )
-            """
-        )
-        await db.commit()
+    """No-op: tables are managed by Prisma migrations."""
 
 
 async def _unlocked_codes(telegram_id: int) -> set[str]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT code FROM achievements WHERE telegram_id = ?",
-            (telegram_id,),
-        ) as cur:
-            rows = await cur.fetchall()
-            return {r[0] for r in rows}
+    pool = _get_pool()
+    user_id = await _get_user_id(telegram_id)
+    if not user_id:
+        return set()
+    rows = await pool.fetch(
+        """
+        SELECT a.code
+        FROM "user_achievements" ua
+        JOIN "achievements" a ON a.id = ua."achievementId"
+        WHERE ua."userId" = $1
+        """,
+        user_id,
+    )
+    return {r["code"] for r in rows}
 
 
 async def _record(telegram_id: int, code: str) -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "INSERT OR IGNORE INTO achievements (telegram_id, code) VALUES (?, ?)",
-            (telegram_id, code),
-        )
-        await db.commit()
+    pool = _get_pool()
+    user_id = await _get_user_id(telegram_id)
+    if not user_id:
+        logger.warning("Cannot record achievement %s: user %s not found", code, telegram_id)
+        return
+    ach_id = await _get_achievement_id(code)
+    if not ach_id:
+        logger.warning("Cannot record achievement: code %s not in achievements table", code)
+        return
+    from database.db import _generate_cuid
+    await pool.execute(
+        """
+        INSERT INTO "user_achievements" (id, "userId", "achievementId", "unlockedAt")
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT ("userId", "achievementId") DO NOTHING
+        """,
+        _generate_cuid(),
+        user_id,
+        ach_id,
+    )
 
 
 # ── public API ────────────────────────────────────────────────────────────────
@@ -179,7 +233,6 @@ async def _record(telegram_id: int, code: str) -> None:
 
 async def check_and_award(bot: Bot, user: User) -> None:
     """Evaluate every achievement for `user` and award + notify any new ones."""
-    await _ensure_table()
     unlocked = await _unlocked_codes(user.telegram_id)
     for ach in ACHIEVEMENTS:
         if ach.code in unlocked:
@@ -211,6 +264,5 @@ async def check_and_award(bot: Bot, user: User) -> None:
 
 async def list_for_user(telegram_id: int) -> list[tuple[Achievement, bool]]:
     """Return (achievement, unlocked) pairs in catalogue order."""
-    await _ensure_table()
     unlocked = await _unlocked_codes(telegram_id)
     return [(a, a.code in unlocked) for a in ACHIEVEMENTS]

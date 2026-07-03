@@ -1,6 +1,6 @@
 """
 Tier-sync — periodically pulls a snapshot of PocketOption account state from
-the web platform and applies it to the bot's local SQLite mirror.
+the web platform and applies it to the shared Postgres database.
 
 When a user's tier is upgraded, the bot fires a congratulations message
 including a regenerated tier-card image. Idempotent: if the snapshot tier
@@ -15,47 +15,38 @@ import asyncio
 import logging
 from typing import Any
 
-import aiosqlite
-import httpx
 from aiogram import Bot
 from aiogram.enums import ParseMode
 from aiogram.types import BufferedInputFile
 
 from config import settings
-from database.db import DB_PATH, set_deposit_total, set_tier
+from constants import TIER_DEPOSIT_THRESHOLDS, TIER_NAMES
+from database.db import set_deposit_total, set_signals_received, set_tier, _get_pool, telegram_id_to_bigint
+from services import web_sync
 from services.imagegen import make_tier_card
 
 logger = logging.getLogger(__name__)
 
 POLL_INTERVAL_SECONDS = 60
-USER_TIER_DEPOSIT_THRESHOLDS = {1: 100, 2: 500, 3: 2000, 4: 10000}
-USER_TIER_NAMES = {0: "Демо", 1: "Starter", 2: "Active", 3: "Pro", 4: "VIP"}
-
-
-async def _fetch_snapshot() -> list[dict[str, Any]]:
-    url = f"{settings.platform_api_url.rstrip('/')}/api/bot/sync"
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(
-            url, headers={"X-Bot-Secret": settings.bot_sync_secret}
-        )
-        resp.raise_for_status()
-        body = resp.json()
-        if not body.get("ok"):
-            raise RuntimeError(f"sync failed: {body}")
-        return body["accounts"]
+USER_TIER_DEPOSIT_THRESHOLDS = TIER_DEPOSIT_THRESHOLDS
+USER_TIER_NAMES = TIER_NAMES
 
 
 async def _local_state(po_trader_id: str) -> tuple[int, float, int | None] | None:
     """Returns (tier, deposit_total, telegram_id) for a po_trader_id, or None."""
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT tier, deposit_total, telegram_id FROM users WHERE po_trader_id = ?",
-            (po_trader_id,),
-        ) as cur:
-            row = await cur.fetchone()
-            if row is None:
-                return None
-            return int(row[0] or 0), float(row[1] or 0.0), int(row[2])
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        """
+        SELECT u.tier, u."depositTotal", u."telegramId"
+        FROM "users" u
+        JOIN "po_accounts" pa ON pa."userId" = u.id
+        WHERE pa."poTraderId" = $1
+        """,
+        po_trader_id,
+    )
+    if row is None or row["telegramId"] is None:
+        return None
+    return int(row["tier"] or 0), float(row["depositTotal"] or 0.0), int(row["telegramId"])
 
 
 async def _send_upgrade(bot: Bot, telegram_id: int, new_tier: int, deposit: float) -> None:
@@ -67,16 +58,21 @@ async def _send_upgrade(bot: Bot, telegram_id: int, new_tier: int, deposit: floa
         logger.warning("Could not render tier card on upgrade: %s", exc)
         card = None
 
+    from constants import TIER_DAILY_LIMITS, TIER_SIGNAL_TYPES
+    types = TIER_SIGNAL_TYPES.get(new_tier, ["otc"])
+    signal_access = " + ".join(t.upper() for t in types)
+    daily_limit = TIER_DAILY_LIMITS.get(new_tier)
+    limit_text = "безлимит" if daily_limit is None else f"{daily_limit}/день"
+
     text = (
-        f"<b>🎉 Тир разблокирован: T{new_tier} · {name}</b>\n"
+        f"<b>🎉 Уровень разблокирован: {name}!</b>\n"
         f"\n"
         f"Депозит на PocketOption: <b>${deposit:,.2f}</b>\n"
         f"\n"
-        + (
-            f"Дальше — T{new_tier + 1} (≥${next_threshold:,}).\n" if next_threshold else "Это максимальный тир. 🏆\n"
-        )
-        + "\n"
-        "Новые перки уже активны — попробуй «📊 Сигнал» из меню."
+        f"Доступные сигналы: <b>{signal_access}</b>\n"
+        f"Лимит: <b>{limit_text}</b>\n"
+        "\n"
+        "Нажми «🎯 Получить сигнал» в меню, чтобы запросить сигнал."
     )
     if card:
         await bot.send_photo(
@@ -89,19 +85,61 @@ async def _send_upgrade(bot: Bot, telegram_id: int, new_tier: int, deposit: floa
         await bot.send_message(telegram_id, text, parse_mode=ParseMode.HTML)
 
 
+def _compute_tier_from_deposit(deposit: float) -> int:
+    """Mirror the web-platform computeTier logic locally."""
+    thresholds = USER_TIER_DEPOSIT_THRESHOLDS
+    if deposit >= thresholds.get(2, 100):
+        return 2
+    if deposit >= thresholds.get(1, 20):
+        return 1
+    return 0
+
+
 async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
-    po_id = str(item["poTraderId"])
-    new_tier = int(item.get("tier") or 0)
+    po_id = item.get("poTraderId")
+    if not po_id:
+        return
+    po_id = str(po_id)
     deposit = float(item.get("totalDeposit") or 0.0)
+    # Compute tier from deposit locally, don't blindly trust API tier
+    new_tier = _compute_tier_from_deposit(deposit)
 
     state = await _local_state(po_id)
     if state is None:
-        # Account exists on web but bot user hasn't /linked locally yet — skip.
+        # Account exists on web but bot user hasn't /linked locally yet.
+        # Try to match by telegramId and auto-link the PO ID.
+        tg_id_str = item.get("telegramId")
+        if tg_id_str:
+            try:
+                from database.db import get_user, set_po_trader_id
+                tg_id = int(tg_id_str)
+                user = await get_user(tg_id)
+                if user and not user.po_trader_id:
+                    await set_po_trader_id(tg_id, po_id)
+                    await set_deposit_total(tg_id, deposit)
+                    await set_tier(tg_id, new_tier)
+                    logger.info("Auto-linked PO ID %s to telegram_id %s via web sync", po_id, tg_id)
+                    if new_tier > 0:
+                        try:
+                            await _send_upgrade(bot, tg_id, new_tier, deposit)
+                        except Exception:  # noqa: BLE001
+                            pass
+                    return
+            except (ValueError, TypeError):
+                pass
         return
     old_tier, old_deposit, telegram_id = state
 
     if abs(deposit - old_deposit) > 1e-2:
         await set_deposit_total(telegram_id, deposit)
+
+    # Sync signal count from web (includes signals from website + MiniApp + bot)
+    web_signals = int(item.get("signalsCount") or 0)
+    if web_signals > 0:
+        from database.db import get_user as _get_user
+        _u = await _get_user(telegram_id)
+        if _u and web_signals > _u.signals_received:
+            await set_signals_received(telegram_id, web_signals)
 
     if new_tier > old_tier:
         await set_tier(telegram_id, new_tier)
@@ -122,6 +160,58 @@ async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
         await set_tier(telegram_id, new_tier)
 
 
+async def try_sync_user(telegram_id: int) -> bool:
+    """Check web platform for this user's PO account and sync all fields.
+
+    Returns True if anything was updated (caller should re-read user).
+    Does NOT require a Bot instance — no upgrade message is sent.
+    """
+    if not settings.platform_api_url or not settings.bot_sync_secret:
+        return False
+    ok = await web_sync.refresh_now()
+    if not ok:
+        return False
+    snapshot = web_sync.state().accounts
+    for item in snapshot:
+        tg_id_str = item.get("telegramId")
+        if not tg_id_str:
+            continue
+        try:
+            if int(tg_id_str) != telegram_id:
+                continue
+        except (ValueError, TypeError):
+            continue
+        po_id = item.get("poTraderId")
+        if not po_id:
+            continue
+        po_id = str(po_id)
+        deposit = float(item.get("totalDeposit") or 0.0)
+        new_tier = _compute_tier_from_deposit(deposit)
+        web_signals = int(item.get("signalsCount") or 0)
+        from database.db import get_user, set_po_trader_id
+        user = await get_user(telegram_id)
+        if not user:
+            return False
+        changed = False
+        if not user.po_trader_id:
+            await set_po_trader_id(telegram_id, po_id)
+            await set_deposit_total(telegram_id, deposit)
+            await set_tier(telegram_id, new_tier)
+            logger.info("Immediate sync: linked PO ID %s to telegram_id %s", po_id, telegram_id)
+            changed = True
+        if abs(deposit - user.deposit_total) > 1e-2:
+            await set_deposit_total(telegram_id, deposit)
+            changed = True
+        if new_tier != user.tier:
+            await set_tier(telegram_id, new_tier)
+            changed = True
+        if web_signals > user.signals_received:
+            await set_signals_received(telegram_id, web_signals)
+            changed = True
+        return changed
+    return False
+
+
 async def tier_sync_loop(bot: Bot) -> None:
     """Background task that polls the web platform every POLL_INTERVAL_SECONDS."""
     if not settings.platform_api_url or not settings.bot_sync_secret:
@@ -135,11 +225,9 @@ async def tier_sync_loop(bot: Bot) -> None:
     )
     while True:
         try:
-            snapshot = await _fetch_snapshot()
+            snapshot = web_sync.state().accounts
             for item in snapshot:
                 await _apply_one(bot, item)
-        except httpx.HTTPError as exc:
-            logger.warning("Tier-sync fetch failed: %s", exc)
         except Exception as exc:  # noqa: BLE001
             logger.exception("Tier-sync iteration failed: %s", exc)
         await asyncio.sleep(POLL_INTERVAL_SECONDS)

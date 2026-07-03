@@ -47,3 +47,14 @@ node_modules/
 web-platform/src/generated/
 web-platform/.env
 web-platform/.env.local
+
+# Patch/snapshot artifacts
+v3pkg/
+v6a-files/
+v6b-files/
+
+# Bot runtime
+bot/data/bot.pid
+
+# Claude Code local settings
+.claude/settings.local.json

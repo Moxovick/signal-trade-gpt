@@ -11,13 +11,16 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAccessReport } from "@/lib/access";
 import { Card } from "@/components/ui/Card";
-import { Trophy, Star, Lock, CheckCircle2 } from "lucide-react";
+import { Trophy, Star, Lock, CheckCircle2, Target, BarChart3, Flame, Award, Coins, Rocket, Handshake, Users } from "lucide-react";
+import { redirect } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 type AchievementDef = {
   id: string;
-  emoji: string;
-  title: string;
-  description: string;
+  icon: LucideIcon;
+  titleKey: string;
+  descKey: string;
   /** Predicate evaluated against the stats payload. */
   unlocked: (s: Stats) => boolean;
 };
@@ -32,93 +35,72 @@ type Stats = {
 const CATALOG: AchievementDef[] = [
   {
     id: "first_signal",
-    emoji: "🎯",
-    title: "Первый сигнал",
-    description: "Получи свой первый AI-сигнал в боте",
+    icon: Target,
+    titleKey: "firstSignalTitle",
+    descKey: "firstSignalDesc",
     unlocked: (s) => s.signalsReceived >= 1,
   },
   {
     id: "ten_signals",
-    emoji: "📊",
-    title: "Десятка",
-    description: "Получи 10 сигналов",
+    icon: BarChart3,
+    titleKey: "tenSignalsTitle",
+    descKey: "tenSignalsDesc",
     unlocked: (s) => s.signalsReceived >= 10,
   },
   {
     id: "fifty_signals",
-    emoji: "🔥",
-    title: "На потоке",
-    description: "Получи 50 сигналов",
+    icon: Flame,
+    titleKey: "fiftySignalsTitle",
+    descKey: "fiftySignalsDesc",
     unlocked: (s) => s.signalsReceived >= 50,
   },
   {
     id: "hundred_signals",
-    emoji: "💯",
-    title: "Центурион",
-    description: "Получи 100 сигналов",
+    icon: Award,
+    titleKey: "hundredSignalsTitle",
+    descKey: "hundredSignalsDesc",
     unlocked: (s) => s.signalsReceived >= 100,
   },
   {
     id: "first_deposit",
-    emoji: "💰",
-    title: "Первый депозит",
-    description: "Внеси первый депозит на PocketOption",
+    icon: Coins,
+    titleKey: "firstDepositTitle",
+    descKey: "firstDepositDesc",
     unlocked: (s) => s.totalDeposit > 0,
   },
   {
     id: "tier_1",
-    emoji: "🚀",
-    title: "Starter",
-    description: "Достигни тира T1",
+    icon: Rocket,
+    titleKey: "tier1Title",
+    descKey: "tier1Desc",
     unlocked: (s) => s.tier >= 1,
   },
   {
-    id: "tier_2",
-    emoji: "⚡",
-    title: "Active",
-    description: "Достигни тира T2",
-    unlocked: (s) => s.tier >= 2,
-  },
-  {
-    id: "tier_3",
-    emoji: "💎",
-    title: "Pro",
-    description: "Достигни тира T3",
-    unlocked: (s) => s.tier >= 3,
-  },
-  {
-    id: "tier_4",
-    emoji: "👑",
-    title: "VIP",
-    description: "Достигни тира T4 (максимум)",
-    unlocked: (s) => s.tier >= 4,
-  },
-  {
     id: "first_referral",
-    emoji: "🤝",
-    title: "Первый реферал",
-    description: "Пригласи первого друга",
+    icon: Handshake,
+    titleKey: "firstReferralTitle",
+    descKey: "firstReferralDesc",
     unlocked: (s) => s.referrals >= 1,
   },
   {
     id: "five_referrals",
-    emoji: "👥",
-    title: "Пятёрка",
-    description: "Пригласи 5 друзей",
+    icon: Users,
+    titleKey: "fiveReferralsTitle",
+    descKey: "fiveReferralsDesc",
     unlocked: (s) => s.referrals >= 5,
   },
   {
     id: "ten_referrals",
-    emoji: "🌟",
-    title: "Лидер мнений",
-    description: "Пригласи 10 друзей",
+    icon: Star,
+    titleKey: "tenReferralsTitle",
+    descKey: "tenReferralsDesc",
     unlocked: (s) => s.referrals >= 10,
   },
 ];
 
 export default async function DashboardAchievementsPage() {
   const session = await auth();
-  if (!session?.user?.id) return null;
+  if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
   const [user, account, report] = await Promise.all([
@@ -132,7 +114,9 @@ export default async function DashboardAchievementsPage() {
     prisma.pocketOptionAccount.findUnique({ where: { userId } }),
     getAccessReport(userId),
   ]);
-  if (!user || !report) return null;
+  if (!user || !report) redirect("/login");
+
+  const t = await getDictionaryForUser(userId);
 
   const stats: Stats = {
     signalsReceived: user.signalsReceived,
@@ -141,7 +125,12 @@ export default async function DashboardAchievementsPage() {
     tier: report.tier,
   };
 
-  const items = CATALOG.map((a) => ({ ...a, isUnlocked: a.unlocked(stats) }));
+  const items = CATALOG.map((a) => ({
+    ...a,
+    title: (t.achievements[a.titleKey] as string) ?? a.titleKey,
+    description: (t.achievements[a.descKey] as string) ?? a.descKey,
+    isUnlocked: a.unlocked(stats),
+  }));
   const unlockedCount = items.filter((i) => i.isUnlocked).length;
   const progressPct = (unlockedCount / items.length) * 100;
 
@@ -149,11 +138,11 @@ export default async function DashboardAchievementsPage() {
     <div className="space-y-6">
       <div>
         <p className="text-xs uppercase tracking-widest text-[var(--brand-gold)] mb-1">
-          Прогресс
+          {t.achievements.progressLabel}
         </p>
-        <h1 className="text-3xl md:text-4xl font-bold">Достижения</h1>
+        <h1 className="text-3xl md:text-4xl font-bold">{t.achievements.title}</h1>
         <p className="text-[var(--t-2)] mt-2">
-          Открывай новые ачивки за активность в боте и на платформе.
+          {t.achievements.desc}
         </p>
       </div>
 
@@ -163,7 +152,7 @@ export default async function DashboardAchievementsPage() {
             <Trophy size={24} className="text-[var(--brand-gold)]" />
             <div>
               <div className="text-xs uppercase tracking-widest text-[var(--t-3)]">
-                Открыто
+                {t.achievements.unlocked}
               </div>
               <div className="text-2xl font-bold">
                 {unlockedCount} <span className="text-[var(--t-3)] text-base">/ {items.length}</span>
@@ -177,9 +166,7 @@ export default async function DashboardAchievementsPage() {
             className="h-full transition-all duration-700"
             style={{
               width: `${progressPct}%`,
-              background:
-                "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold), var(--brand-gold-bright))",
-              boxShadow: "0 0 12px rgba(212, 160, 23, 0.45)",
+              background: "var(--brand-gold)",
             }}
           />
         </div>
@@ -195,10 +182,10 @@ export default async function DashboardAchievementsPage() {
             }`}
           >
             <div
-              className={`text-5xl mb-3 ${a.isUnlocked ? "" : "grayscale"}`}
+              className={`mb-3 ${a.isUnlocked ? "text-[var(--brand-gold)]" : "text-[var(--t-3)] grayscale"}`}
               aria-hidden
             >
-              {a.emoji}
+              <a.icon size={28} />
             </div>
             <h3 className="text-sm font-semibold mb-1">{a.title}</h3>
             <p className="text-xs text-[var(--t-3)] leading-snug flex-1">
@@ -207,11 +194,11 @@ export default async function DashboardAchievementsPage() {
             <div className="mt-3">
               {a.isUnlocked ? (
                 <span className="inline-flex items-center gap-1 text-xs text-[var(--green)] font-semibold">
-                  <CheckCircle2 size={12} /> Получено
+                  <CheckCircle2 size={12} /> {t.achievements.earned}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 text-xs text-[var(--t-3)]">
-                  <Lock size={12} /> Заблокировано
+                  <Lock size={12} /> {t.achievements.locked}
                 </span>
               )}
             </div>

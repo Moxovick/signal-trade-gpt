@@ -8,11 +8,12 @@
  * Returns trader info (deposit, FTD timestamp) or null if the trader does not
  * belong to our partner / does not exist / network error.
  *
- * Configured via env:
- *   POCKETOPTION_API_TOKEN  — secret API token
- *   POCKETOPTION_PARTNER_ID — partner numeric id
+ * Credentials are read from `SiteSettings` first (so admins can edit them
+ * via /admin/settings/po-api without redeploying), with env fallback for
+ * local dev. See `lib/po-config.ts`.
  */
 import { createHash } from "node:crypto";
+import { getPoApiToken, getPoPartnerId } from "@/lib/po-config";
 
 const API_BASE = "https://affiliate.pocketoption.com/api/user-info";
 const REQUEST_TIMEOUT_MS = 8_000;
@@ -28,9 +29,8 @@ function md5(input: string): string {
   return createHash("md5").update(input).digest("hex");
 }
 
-function credentials(): { partnerId: string; token: string } | null {
-  const token = (process.env["POCKETOPTION_API_TOKEN"] ?? "").trim();
-  const partnerId = (process.env["POCKETOPTION_PARTNER_ID"] ?? "").trim();
+async function credentials(): Promise<{ partnerId: string; token: string } | null> {
+  const [token, partnerId] = await Promise.all([getPoApiToken(), getPoPartnerId()]);
   if (!token || !partnerId) return null;
   return { partnerId, token };
 }
@@ -44,7 +44,7 @@ export type PoVerifyOutcome =
  * (typically: the trader didn't sign up via our referral or doesn't exist).
  */
 export async function fetchTraderInfo(userId: string): Promise<PoVerifyOutcome> {
-  const creds = credentials();
+  const creds = await credentials();
   if (!creds) return { ok: false, reason: "not_configured" };
 
   const { partnerId, token } = creds;
@@ -89,6 +89,8 @@ export async function fetchTraderInfo(userId: string): Promise<PoVerifyOutcome> 
   } catch {
     return { ok: false, reason: "invalid_response" };
   }
+
+  console.log("[po-api] response for", userId, "status:", resp.status, "body:", JSON.stringify(data).slice(0, 500));
 
   // Accept several common shapes — PO docs are sparse.
   let payload: Record<string, unknown> = {};

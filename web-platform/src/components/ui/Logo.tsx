@@ -14,9 +14,7 @@ const SIZE: Record<NonNullable<Props["size"]>, { icon: number; text: string }> =
 };
 
 /**
- * Custom mark: candlestick-like glyph + wordmark in Bebas Neue.
- *
- * Replaces the generic emoji-based logo from v1.
+ * SpaceSignal logo — signal wave inside a hexagonal orbit.
  */
 export function Logo({ href = "/", size = "md", withText = true, className }: Props) {
   const s = SIZE[size];
@@ -35,32 +33,33 @@ export function Logo({ href = "/", size = "md", withText = true, className }: Pr
         className="transition-transform duration-300 group-hover:scale-110"
       >
         <defs>
-          <linearGradient id="stg-logo-grad" x1="0" y1="0" x2="0" y2="32">
+          <linearGradient id="ss-logo-grad" x1="0" y1="0" x2="32" y2="32">
             <stop offset="0%" stopColor="#e6b840" />
             <stop offset="50%" stopColor="#d4a017" />
             <stop offset="100%" stopColor="#8a6500" />
           </linearGradient>
         </defs>
-        {/* Outer ring */}
-        <circle cx="16" cy="16" r="14" stroke="url(#stg-logo-grad)" strokeWidth="1.5" />
-        {/* Candlestick body */}
-        <rect x="13" y="9" width="6" height="14" rx="1" fill="url(#stg-logo-grad)" />
-        {/* Upper wick */}
-        <line x1="16" y1="5" x2="16" y2="9" stroke="url(#stg-logo-grad)" strokeWidth="1.6" strokeLinecap="round" />
-        {/* Lower wick */}
-        <line x1="16" y1="23" x2="16" y2="27" stroke="url(#stg-logo-grad)" strokeWidth="1.6" strokeLinecap="round" />
+        {/* Outer orbit ring */}
+        <circle cx="16" cy="16" r="14" stroke="url(#ss-logo-grad)" strokeWidth="1.2" opacity="0.5" />
+        {/* Inner orbit ring */}
+        <circle cx="16" cy="16" r="10.5" stroke="url(#ss-logo-grad)" strokeWidth="0.8" opacity="0.3" strokeDasharray="3 2" />
+        {/* Signal wave — 3 bars ascending */}
+        <rect x="9" y="19" width="3" height="5" rx="1" fill="url(#ss-logo-grad)" opacity="0.6" />
+        <rect x="14" y="15" width="3" height="9" rx="1" fill="url(#ss-logo-grad)" opacity="0.8" />
+        <rect x="19" y="10" width="3" height="14" rx="1" fill="url(#ss-logo-grad)" />
+        {/* Star / dot accent */}
+        <circle cx="25" cy="8" r="1.5" fill="#e6b840" />
       </svg>
       {withText && (
         <span
-          className={`font-display tracking-widest text-[var(--t-1)] ${s.text}`}
+          className={`font-sans tracking-widest text-[var(--t-1)] ${s.text}`}
           style={{
-            fontFamily: "var(--font-bebas, 'Bebas Neue', sans-serif)",
             letterSpacing: "0.16em",
           }}
         >
-          STG
-          <span className="ml-1 text-[var(--brand-gold)]">·</span>
-          <span className="ml-1 text-[var(--t-2)] text-[0.85em] font-normal">SIGNALS</span>
+          SPACE
+          <span className="mx-1 text-[var(--brand-gold)]">·</span>
+          <span className="text-[var(--brand-gold)] font-normal">SIGNAL</span>
         </span>
       )}
     </Link>

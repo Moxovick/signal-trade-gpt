@@ -15,7 +15,6 @@ export async function GET() {
 
   const promoCodes = await prisma.promoCode.findMany({
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { usedBy: true } } },
   });
 
   return NextResponse.json({ promoCodes });

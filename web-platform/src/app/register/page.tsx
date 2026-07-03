@@ -1,19 +1,50 @@
 /**
- * /register — v3 (email-first, post-supervisor-feedback).
+ * /register — v4 (username-first).
  *
- * Email + password is the primary path. Telegram Login Widget is shown as an
- * optional fast path below. Form collects nickname, telegram username, and
- * referral code in addition to email + password.
+ * Username + password + telegram is the primary path. Telegram deep-link
+ * is shown as an alternative below.
  */
 import Link from "next/link";
 import { Suspense } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { Card } from "@/components/ui/Card";
-import { TelegramLoginButton } from "@/components/auth/TelegramLoginButton";
+import { TelegramDeeplinkButton } from "@/components/auth/TelegramDeeplinkButton";
 import { RegisterForm } from "./_components/RegisterForm";
+import { auth } from "@/lib/auth";
+import { getDictionary, getDictionaryForUser, getLocaleFromCookies, getLocaleForUser } from "@/lib/i18n";
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const session = await auth();
+  const locale = session?.user?.id
+    ? await getLocaleForUser(session.user.id)
+    : await getLocaleFromCookies();
+  const t = await getDictionary(locale);
+
+  const register = t.register as {
+    title: string;
+    subtitle: string;
+    dividerTelegram: string;
+    telegramRegisterButton: string;
+    hasAccount: string;
+    loginLink: string;
+    backToHome: string;
+    form: {
+      loginLabel: string;
+      loginPlaceholder: string;
+      telegramLabel: string;
+      telegramPlaceholder: string;
+      passwordLabel: string;
+      passwordPlaceholder: string;
+      confirmLabel: string;
+      confirmPlaceholder: string;
+      submitButton: string;
+      submittingButton: string;
+      autoLoginButton: string;
+      autoLoginError: string;
+    };
+  };
+
   const botUsername = process.env["NEXT_PUBLIC_TELEGRAM_LOGIN_BOT"];
 
   return (
@@ -24,38 +55,40 @@ export default function RegisterPage() {
         </div>
 
         <Card padding="lg">
-          <h1 className="text-2xl font-bold mb-2">Регистрация</h1>
+          <h1 className="text-2xl font-bold mb-2">{register.title}</h1>
           <p className="text-sm text-[var(--t-2)] mb-6">
-            Создай аккаунт за 30 секунд. Демо-сигналы доступны сразу, без
-            депозита.
+            {register.subtitle}
           </p>
 
           <Suspense>
-            <RegisterForm />
+            <RegisterForm translations={register.form} />
           </Suspense>
 
           {botUsername && (
             <>
               <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-widest text-[var(--t-3)]">
                 <span className="flex-1 h-px bg-[var(--b-soft)]" />
-                или быстро через telegram
+                {register.dividerTelegram}
                 <span className="flex-1 h-px bg-[var(--b-soft)]" />
               </div>
-              <div className="flex justify-center py-2">
+              <div className="py-2">
                 <Suspense>
-                  <TelegramLoginButton botUsername={botUsername} />
+                  <TelegramDeeplinkButton
+                    purpose="login"
+                    label={register.telegramRegisterButton}
+                  />
                 </Suspense>
               </div>
             </>
           )}
 
           <p className="text-center text-sm text-[var(--t-3)] mt-6">
-            Уже есть аккаунт?{" "}
+            {register.hasAccount}{" "}
             <Link
               href="/login"
               className="text-[var(--brand-gold)] hover:underline"
             >
-              Войти
+              {register.loginLink}
             </Link>
           </p>
         </Card>
@@ -65,7 +98,7 @@ export default function RegisterPage() {
             href="/"
             className="text-sm text-[var(--t-3)] hover:text-[var(--t-1)] inline-flex items-center gap-1.5"
           >
-            <ArrowLeft size={14} /> На главную
+            <ArrowLeft size={14} /> {register.backToHome}
           </Link>
         </p>
       </div>

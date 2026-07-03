@@ -15,6 +15,7 @@ import { avatarUrl, initialsFromName } from "@/lib/avatar";
 import { parsePreferences } from "@/lib/user-preferences";
 import { Users, Send, Trophy, Award } from "lucide-react";
 import Link from "next/link";
+import { getDictionary } from "@/lib/i18n";
 
 type Props = { params: Promise<{ username: string }> };
 
@@ -53,13 +54,14 @@ export default async function PublicProfile({ params }: Props) {
   // For now everyone active is listed.
   void prefs;
 
-  const [referralsCount, achievementsCount] = await Promise.all([
+  const [referralsCount, achievementsCount, t] = await Promise.all([
     prisma.user.count({ where: { referredById: user.id } }),
     prisma.userAchievement.count({ where: { userId: user.id } }),
+    getDictionary("ru"),
   ]);
 
   const displayName =
-    user.firstName ?? user.username ?? user.email?.split("@")[0] ?? "Трейдер";
+    user.firstName ?? user.username ?? user.email?.split("@")[0] ?? (t.tma?.profile?.defaultName ?? "Трейдер");
   const avatar = avatarUrl({ avatar: user.avatar, email: user.email });
   const initials = initialsFromName(user);
 
@@ -105,7 +107,7 @@ export default async function PublicProfile({ params }: Props) {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
           <Stat
-            label="Сигналов"
+            label={t.profile?.statSignals ?? "Сигналов"}
             value={user.signalsReceived}
             icon={<Send size={16} />}
           />
@@ -115,12 +117,12 @@ export default async function PublicProfile({ params }: Props) {
             icon={<Trophy size={16} />}
           />
           <Stat
-            label="Рефералов"
+            label={t.profile?.statReferrals ?? "Рефералов"}
             value={referralsCount}
             icon={<Users size={16} />}
           />
           <Stat
-            label="Достижений"
+            label={t.profile?.achievements ?? "Достижений"}
             value={achievementsCount}
             icon={<Award size={16} />}
           />

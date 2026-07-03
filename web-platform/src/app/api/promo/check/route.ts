@@ -24,8 +24,8 @@ export async function GET(req: Request) {
   }
 
   const messages: Record<string, string> = {
-    trial: `Промо-код активен! ${promo.trialDays} дней Premium бесплатно`,
-    discount: `Скидка ${promo.discountPercent}% на подписку`,
+    trial: `Промо-код активен! ${promo.trialDays} дней Pro бесплатно`,
+    discount: `Скидка ${promo.discountPercent}%`,
     bonus: `Бонус при регистрации`,
   };
 

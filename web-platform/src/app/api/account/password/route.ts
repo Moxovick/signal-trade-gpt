@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 function ipFrom(req: Request): string | null {
   return (
@@ -18,10 +19,22 @@ function ipFrom(req: Request): string | null {
   );
 }
 
+/** 5 password change attempts per user per 15 minutes. */
+const PW_RL_LIMIT = 5;
+const PW_RL_WINDOW_MS = 15 * 60 * 1000;
+
 export async function POST(req: Request): Promise<Response> {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const rl = rateLimit(`pw:${session.user.id}`, PW_RL_LIMIT, PW_RL_WINDOW_MS);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Слишком много попыток. Подождите." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } },
+    );
   }
   const body = (await req.json().catch(() => null)) as
     | { currentPassword: string | null; newPassword: string }

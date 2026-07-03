@@ -9,17 +9,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAccessReport } from "@/lib/access";
+import { TIER_ACCESS } from "@/lib/tier";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-const TIER_ACCESS: Record<number, ("otc" | "exchange" | "elite")[]> = {
-  0: ["otc"],
-  1: ["otc"],
-  2: ["otc", "exchange"],
-  3: ["otc", "exchange", "elite"],
-  4: ["otc", "exchange", "elite"],
-};
 
 export async function GET(req: NextRequest) {
   const session = await auth();

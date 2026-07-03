@@ -3,8 +3,10 @@
 import { useState, useTransition } from "react";
 import { Save, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useI18n } from "@/lib/i18n/context";
 
 export function ChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
+  const { t } = useI18n();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -17,11 +19,11 @@ export function ChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
     setError(null);
     setOk(false);
     if (next.length < 8) {
-      setError("Новый пароль — минимум 8 символов");
+      setError(t.security.errorMinLength);
       return;
     }
     if (next !== confirm) {
-      setError("Пароли не совпадают");
+      setError(t.security.errorMismatch);
       return;
     }
     start(async () => {
@@ -35,7 +37,7 @@ export function ChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
       });
       if (!r.ok) {
         const body = await r.json().catch(() => ({}));
-        setError(body?.error ?? "Не удалось сохранить");
+        setError(body?.error ?? t.security.errorSave);
         return;
       }
       setOk(true);
@@ -54,7 +56,7 @@ export function ChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
       {hasPassword && (
         <div>
           <label className="block text-[13px] text-[var(--t-2)] mb-1">
-            Текущий пароль
+            {t.security.currentPassword}
           </label>
           <input
             type="password"
@@ -68,7 +70,7 @@ export function ChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
       )}
       <div>
         <label className="block text-[13px] text-[var(--t-2)] mb-1">
-          Новый пароль
+          {t.security.newPassword}
         </label>
         <input
           type="password"
@@ -82,7 +84,7 @@ export function ChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
       </div>
       <div>
         <label className="block text-[13px] text-[var(--t-2)] mb-1">
-          Подтверди пароль
+          {t.security.confirmPassword}
         </label>
         <input
           type="password"
@@ -100,12 +102,12 @@ export function ChangePasswordForm({ hasPassword }: { hasPassword: boolean }) {
           iconLeft={ok ? <Check size={14} /> : <Save size={14} />}
         >
           {pending
-            ? "Сохраняю..."
+            ? t.security.saving
             : ok
-              ? "Сохранено"
+              ? t.security.saved
               : hasPassword
-                ? "Сменить пароль"
-                : "Установить пароль"}
+                ? t.security.changePassword
+                : t.security.setPassword}
         </Button>
         {error && <span className="text-xs text-[var(--red)]">{error}</span>}
       </div>

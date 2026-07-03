@@ -8,16 +8,22 @@
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
 import { TierBadge } from "@/components/ui/TierBadge";
+import { auth } from "@/lib/auth";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
-  verified: { bg: "rgba(142,224,107,0.10)", fg: "var(--green)" },
+  verified: { bg: "rgba(76,195,138,0.10)", fg: "var(--green)" },
   pending: { bg: "rgba(212,160,23,0.10)", fg: "var(--brand-gold)" },
-  rejected: { bg: "rgba(255,107,61,0.10)", fg: "var(--red)" },
+  rejected: { bg: "rgba(232,98,58,0.10)", fg: "var(--red)" },
 };
 
 export default async function PoAccountsPage() {
+  const session = await auth();
+  const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
+  const tpa = t?.admin?.poAccounts ?? {};
+
   const accounts = await prisma.pocketOptionAccount.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -28,21 +34,21 @@ export default async function PoAccountsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">PocketOption · аккаунты</h1>
+      <h1 className="text-2xl font-bold">{tpa.title ?? "PocketOption · аккаунты"}</h1>
 
       <Card padding="none">
         <div className="px-5 py-3 border-b border-[var(--b-soft)] grid grid-cols-12 gap-4 text-xs uppercase tracking-wider text-[var(--t-3)]">
-          <div className="col-span-3">Пользователь</div>
-          <div className="col-span-2">PO ID</div>
-          <div className="col-span-2">Статус</div>
-          <div className="col-span-1">Tier</div>
-          <div className="col-span-2 text-right">Депозит</div>
-          <div className="col-span-2 text-right">RevShare</div>
+          <div className="col-span-3">{tpa.columns?.user ?? "Пользователь"}</div>
+          <div className="col-span-2">{tpa.columns?.poId ?? "PO ID"}</div>
+          <div className="col-span-2">{tpa.columns?.status ?? "Статус"}</div>
+          <div className="col-span-1">{tpa.columns?.tier ?? "Tier"}</div>
+          <div className="col-span-2 text-right">{tpa.columns?.deposit ?? "Депозит"}</div>
+          <div className="col-span-2 text-right">{tpa.columns?.revShare ?? "RevShare"}</div>
         </div>
         <div className="divide-y divide-[var(--b-soft)]">
           {accounts.length === 0 && (
             <div className="px-5 py-10 text-center text-sm text-[var(--t-3)]">
-              Нет привязанных аккаунтов.
+              {tpa.empty ?? "Нет привязанных аккаунтов."}
             </div>
           )}
           {accounts.map((a) => {

@@ -41,8 +41,8 @@ def _hash(user_id: str, partner_id: str, token: str) -> str:
 
 
 def _credentials() -> tuple[str, str] | None:
-    token = (settings.pocket_option_api_token or "").strip()
-    partner = (settings.pocket_option_partner_id or "").strip()
+    token = (settings.pocketoption_api_token or "").strip()
+    partner = (settings.pocketoption_partner_id or "").strip()
     if not token or not partner:
         return None
     return partner, token
@@ -105,14 +105,22 @@ async def fetch_trader_info(user_id: str) -> TraderInfo | None:
         )
         return None
 
+    logger.info("PO API raw response for %s (HTTP %s): %s", user_id, resp.status_code, resp.text[:500])
+
     # PO docs are sparse — accept several common shapes.
     payload: dict[str, Any] = data
     if isinstance(data, dict) and isinstance(data.get("data"), dict):
         # Some endpoints wrap the user object under {"data": {...}}.
         payload = data["data"]
 
+    # Reject explicit error responses
     if isinstance(payload.get("error"), bool) and payload["error"]:
         logger.warning("PO API returned error for %s: %s", user_id, payload)
+        return None
+
+    # Reject truly empty payloads (no keys at all, or non-dict)
+    if not payload or not isinstance(payload, dict) or len(payload) == 0:
+        logger.warning("PO API returned empty/unrecognized data for %s: %s", user_id, payload)
         return None
 
     deposit = (

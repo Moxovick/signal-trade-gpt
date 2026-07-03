@@ -5,26 +5,30 @@ Restricted to telegram_ids listed in env ADMIN_IDS (comma-separated). Commands:
   /admin                      — show admin panel summary
   /broadcast <message…>       — send a message to every registered user
   /set_tier <user_id> <T>     — manually override a user's tier
-  /ban <user_id>              — block a user from the bot (sets tier=-1 sentinel)
-  /unban <user_id>            — restore (sets tier=0)
+  /ban <user_id>              — block a user from the bot (sets status='banned')
+  /unban <user_id>            — restore (sets status='active')
   /stats_global               — full platform stats
 
 The implementation is intentionally simple: no separate admin DB tables.
-Bans are tracked via a `banned` flag column added by `_ensure_columns`.
+Bans are tracked via the `status` column on the users table.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
-import aiosqlite
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 
 from config import settings
+from i18n import t
 from database.db import (
-    DB_PATH,
+    _generate_cuid,
+    _get_pool,
+    telegram_id_to_bigint,
     get_total_signals,
     get_total_users,
     get_user,
@@ -51,37 +55,28 @@ def _is_admin(telegram_id: int) -> bool:
     return telegram_id in _admin_ids()
 
 
-async def _ensure_banned_column() -> None:
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("PRAGMA table_info(users)") as cur:
-            cols = [r[1] for r in await cur.fetchall()]
-        if "banned" not in cols:
-            await db.execute("ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0")
-            await db.commit()
-
-
 async def _set_banned(telegram_id: int, banned: bool) -> None:
-    await _ensure_banned_column()
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            "UPDATE users SET banned = ? WHERE telegram_id = ?",
-            (1 if banned else 0, telegram_id),
-        )
-        await db.commit()
+    pool = _get_pool()
+    new_status = "banned" if banned else "active"
+    await pool.execute(
+        'UPDATE "users" SET "status" = $1 WHERE "telegramId" = $2',
+        new_status,
+        telegram_id_to_bigint(telegram_id),
+    )
 
 
 async def _all_user_ids() -> list[int]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute("SELECT telegram_id FROM users") as cur:
-            return [r[0] for r in await cur.fetchall()]
+    pool = _get_pool()
+    rows = await pool.fetch('SELECT "telegramId" FROM "users"')
+    return [int(r["telegramId"]) for r in rows]
 
 
 async def _tier_breakdown() -> dict[int, int]:
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT tier, COUNT(*) FROM users GROUP BY tier"
-        ) as cur:
-            return {int(r[0]): int(r[1]) for r in await cur.fetchall()}
+    pool = _get_pool()
+    rows = await pool.fetch(
+        'SELECT "tier", COUNT(*) AS cnt FROM "users" GROUP BY "tier"'
+    )
+    return {int(r["tier"]): int(r["cnt"]) for r in rows}
 
 
 # ── handlers ──────────────────────────────────────────────────────────────────
@@ -90,37 +85,26 @@ async def _tier_breakdown() -> dict[int, int]:
 @router.message(Command("admin"))
 async def cmd_admin(message: Message) -> None:
     if not _is_admin(message.from_user.id):
-        return  # silent
+        await message.answer(t("admin.access_denied", "ru"))
+        return
     total_signals = await get_total_signals()
     total_users = await get_total_users()
     breakdown = await _tier_breakdown()
     tier_lines = "\n".join(
-        f"  T{t}: <b>{breakdown.get(t, 0)}</b>" for t in sorted(breakdown)
+        f"  T{tier}: <b>{breakdown.get(tier, 0)}</b>" for tier in sorted(breakdown)
     )
-    text = (
-        "<b>🛠 Admin panel</b>\n"
-        "\n"
-        f"<b>Users:</b> {total_users:,}\n"
-        f"<b>Signals:</b> {total_signals:,}\n"
-        "\n"
-        f"<b>Tier breakdown:</b>\n{tier_lines}\n"
-        "\n"
-        "Commands:\n"
-        "  <code>/broadcast &lt;text&gt;</code>\n"
-        "  <code>/set_tier &lt;user_id&gt; &lt;T&gt;</code>\n"
-        "  <code>/ban &lt;user_id&gt;</code>\n"
-        "  <code>/unban &lt;user_id&gt;</code>\n"
-        "  <code>/stats_global</code>"
-    )
+    text = t("admin.panel", "ru",
+             total_users=total_users, total_signals=total_signals, tier_lines=tier_lines)
     await message.answer(text, parse_mode=ParseMode.HTML)
 
 
 @router.message(Command("broadcast"))
 async def cmd_broadcast(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
+        await message.answer(t("admin.access_denied", "ru"))
         return
-    text = (command.args or "").strip()
-    if not text:
+    broadcast_text = (command.args or "").strip()
+    if not broadcast_text:
         await message.answer("Usage: /broadcast &lt;text&gt;", parse_mode=ParseMode.HTML)
         return
 
@@ -129,12 +113,13 @@ async def cmd_broadcast(message: Message, command: CommandObject) -> None:
     failed = 0
     for uid in user_ids:
         try:
-            await message.bot.send_message(uid, text, parse_mode=ParseMode.HTML)
+            await message.bot.send_message(uid, broadcast_text, parse_mode=ParseMode.HTML)
             sent += 1
         except Exception:  # noqa: BLE001
             failed += 1
+        await asyncio.sleep(0.05)
     await message.answer(
-        f"<b>Broadcast done</b>\nsent: {sent}, failed: {failed}",
+        t("admin.broadcast_done", "ru", sent=sent, failed=failed),
         parse_mode=ParseMode.HTML,
     )
 
@@ -142,6 +127,7 @@ async def cmd_broadcast(message: Message, command: CommandObject) -> None:
 @router.message(Command("set_tier"))
 async def cmd_set_tier(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
+        await message.answer(t("admin.access_denied", "ru"))
         return
     parts = (command.args or "").split()
     if len(parts) != 2 or not all(p.lstrip("-").isdigit() for p in parts):
@@ -153,21 +139,23 @@ async def cmd_set_tier(message: Message, command: CommandObject) -> None:
     target_id = int(parts[0])
     new_tier = int(parts[1])
     if not (0 <= new_tier <= 4):
-        await message.answer("Tier must be 0..4")
+        await message.answer(t("admin.tier_must_be_0_4", "ru"))
         return
     target = await get_user(target_id)
     if target is None:
-        await message.answer(f"User {target_id} not found")
+        await message.answer(t("admin.user_not_found", "ru", user_id=target_id))
         return
     await set_tier(target_id, new_tier)
     await message.answer(
-        f"User <code>{target_id}</code> → T{new_tier}", parse_mode=ParseMode.HTML
+        t("admin.set_tier_ok", "ru", user_id=target_id, tier=new_tier),
+        parse_mode=ParseMode.HTML,
     )
 
 
 @router.message(Command("ban"))
 async def cmd_ban(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
+        await message.answer(t("admin.access_denied", "ru"))
         return
     raw = (command.args or "").strip()
     if not raw.lstrip("-").isdigit():
@@ -176,15 +164,16 @@ async def cmd_ban(message: Message, command: CommandObject) -> None:
     target_id = int(raw)
     target = await get_user(target_id)
     if target is None:
-        await message.answer(f"User {target_id} not found")
+        await message.answer(t("admin.user_not_found", "ru", user_id=target_id))
         return
     await _set_banned(target_id, True)
-    await message.answer(f"User <code>{target_id}</code> banned", parse_mode=ParseMode.HTML)
+    await message.answer(t("admin.banned", "ru", user_id=target_id), parse_mode=ParseMode.HTML)
 
 
 @router.message(Command("unban"))
 async def cmd_unban(message: Message, command: CommandObject) -> None:
     if not _is_admin(message.from_user.id):
+        await message.answer(t("admin.access_denied", "ru"))
         return
     raw = (command.args or "").strip()
     if not raw.lstrip("-").isdigit():
@@ -193,43 +182,41 @@ async def cmd_unban(message: Message, command: CommandObject) -> None:
     target_id = int(raw)
     await _set_banned(target_id, False)
     await message.answer(
-        f"User <code>{target_id}</code> unbanned", parse_mode=ParseMode.HTML
+        t("admin.unbanned", "ru", user_id=target_id), parse_mode=ParseMode.HTML
     )
 
 
 @router.message(Command("stats_global"))
 async def cmd_stats_global(message: Message) -> None:
     if not _is_admin(message.from_user.id):
+        await message.answer(t("admin.access_denied", "ru"))
         return
     total_signals = await get_total_signals()
     total_users = await get_total_users()
     breakdown = await _tier_breakdown()
-    async with aiosqlite.connect(DB_PATH) as db:
-        async with db.execute(
-            "SELECT SUM(deposit_total), SUM(wins), SUM(losses), COUNT(po_trader_id) "
-            "FROM users WHERE po_trader_id IS NOT NULL"
-        ) as cur:
-            row = await cur.fetchone()
-            sum_dep = float(row[0] or 0.0)
-            sum_wins = int(row[1] or 0)
-            sum_losses = int(row[2] or 0)
-            linked = int(row[3] or 0)
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        'SELECT COALESCE(SUM(u."depositTotal"), 0) AS sum_dep, '
+        'COALESCE(SUM(u."wins"), 0) AS sum_wins, '
+        'COALESCE(SUM(u."losses"), 0) AS sum_losses, '
+        'COUNT(pa."poTraderId") AS linked '
+        'FROM "users" u '
+        'LEFT JOIN "po_accounts" pa ON pa."userId" = u."id" '
+        'WHERE pa."poTraderId" IS NOT NULL'
+    )
+    sum_dep = float(row["sum_dep"])
+    sum_wins = int(row["sum_wins"])
+    sum_losses = int(row["sum_losses"])
+    linked = int(row["linked"])
     total_results = sum_wins + sum_losses
     wr = (sum_wins / total_results * 100) if total_results else 0
-    text = (
-        "<b>📊 Global stats</b>\n"
-        "\n"
-        f"<b>Users:</b> {total_users:,}  ·  Linked PO: {linked:,}\n"
-        f"<b>Signals:</b> {total_signals:,}\n"
-        f"<b>Total deposits (PO):</b> ${sum_dep:,.2f}\n"
-        f"<b>Wins / Losses:</b> {sum_wins:,} / {sum_losses:,}\n"
-        f"<b>Aggregate winrate:</b> {wr:.1f}%\n"
-        "\n"
-        "<b>By tier:</b>\n"
-        + "\n".join(
-            f"  T{t}: <b>{breakdown.get(t, 0):,}</b>" for t in sorted(breakdown)
-        )
+    tier_lines_global = "\n".join(
+        f"  T{tier}: <b>{breakdown.get(tier, 0):,}</b>" for tier in sorted(breakdown)
     )
+    text = t("admin.global_stats", "ru",
+             total_users=total_users, linked=linked, total_signals=total_signals,
+             sum_dep=sum_dep, sum_wins=sum_wins, sum_losses=sum_losses,
+             wr=wr, tier_lines=tier_lines_global)
     await message.answer(text, parse_mode=ParseMode.HTML)
 
 
@@ -243,6 +230,7 @@ async def cmd_test_as(message: Message, command: CommandObject) -> None:
     Usage: /test_as <telegram_id>  →  renders /tier and /stats cards for them.
     """
     if not _is_admin(message.from_user.id):
+        await message.answer(t("admin.access_denied", "ru"))
         return
     raw = (command.args or "").strip()
     if not raw.lstrip("-").isdigit():
@@ -252,7 +240,7 @@ async def cmd_test_as(message: Message, command: CommandObject) -> None:
         return
     target = await get_user(int(raw))
     if target is None:
-        await message.answer(f"User {raw} not found")
+        await message.answer(t("admin.user_not_found", "ru", user_id=raw))
         return
 
     # Render cards for the target user
@@ -260,17 +248,17 @@ async def cmd_test_as(message: Message, command: CommandObject) -> None:
 
     from services.imagegen import make_stats_card, make_tier_card
 
-    next_threshold = (
-        {0: 100, 1: 100, 2: 500, 3: 2000, 4: None}[target.tier]
-        if target.tier <= 4
-        else None
-    )
-    header = (
-        f"<b>👤 Просмотр от лица:</b>\n"
-        f"  <code>{target.telegram_id}</code> @{target.username or '—'}\n"
-        f"  T{target.tier} · ${target.deposit_total:,.0f} · {target.signals_received} сигналов\n"
-        f"  W/L: {target.wins}/{target.losses}"
-    )
+    # 3-tier model: T0→T1 at $20, T1→T2 at $100.
+    from constants import TIER_DEPOSIT_THRESHOLDS
+    next_threshold = TIER_DEPOSIT_THRESHOLDS.get(target.tier + 1)
+    header = t("admin.test_as_header", "ru",
+                telegram_id=target.telegram_id,
+                username=target.username or "—",
+                tier=target.tier,
+                deposit=target.deposit_total,
+                signals_received=target.signals_received,
+                wins=target.wins,
+                losses=target.losses)
     await message.answer(header, parse_mode=ParseMode.HTML)
     try:
         tc = make_tier_card(target.tier, target.deposit_total, next_threshold)
@@ -304,6 +292,7 @@ async def cmd_demo_signal(message: Message, command: CommandObject) -> None:
       /demo_signal GBP/JPY PUT       → confidence random
     """
     if not _is_admin(message.from_user.id):
+        await message.answer(t("admin.access_denied", "ru"))
         return
     parts = (command.args or "").split()
     from random import choice, randint
@@ -314,12 +303,12 @@ async def cmd_demo_signal(message: Message, command: CommandObject) -> None:
     from services.formatter import format_signal
     from services.imagegen import make_signal_chart
     from services.signal_generator import (
+        ALL_OTC_PAIRS,
         CURRENCY_PAIRS,
         DIRECTIONS,
-        OTC_PAIRS,
     )
 
-    pair = parts[0] if len(parts) >= 1 else choice(OTC_PAIRS + CURRENCY_PAIRS)
+    pair = parts[0] if len(parts) >= 1 else choice(ALL_OTC_PAIRS + CURRENCY_PAIRS)
     direction = (
         parts[1].upper() if len(parts) >= 2 and parts[1].upper() in DIRECTIONS else choice(DIRECTIONS)
     )
@@ -335,9 +324,9 @@ async def cmd_demo_signal(message: Message, command: CommandObject) -> None:
         confidence=confidence,
         signal_type="ai",
         tier="otc",
-        analysis="DEMO · Тестовый сигнал (admin /demo_signal)",
+        analysis=t("admin.demo_analysis", "ru"),
     )
-    caption = "<b>🧪 DEMO SIGNAL</b>\n\n" + format_signal(sig, settings.pocket_option_url)
+    caption = t("admin.demo_signal_caption", "ru") + "\n\n" + format_signal(sig, settings.pocket_option_url)
     try:
         png = make_signal_chart(sig)
         await message.answer_photo(
@@ -354,71 +343,80 @@ async def cmd_demo_signal(message: Message, command: CommandObject) -> None:
 async def cmd_reset_my_state(message: Message) -> None:
     """Wipe own wins/losses/signals counter for re-testing achievements."""
     if not _is_admin(message.from_user.id):
+        await message.answer(t("admin.access_denied", "ru"))
         return
-    async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
-            """
-            UPDATE users SET wins = 0, losses = 0, signals_received = 0
-            WHERE telegram_id = ?
-            """,
-            (message.from_user.id,),
-        )
-        await db.execute(
-            "DELETE FROM achievements WHERE telegram_id = ?",
-            (message.from_user.id,),
-        )
-        await db.commit()
-    await message.answer(
-        "<b>♻️ Сброшено.</b>\nWins/Losses/Signals/Achievements обнулены для тебя.",
-        parse_mode=ParseMode.HTML,
+    pool = _get_pool()
+    tg_big = telegram_id_to_bigint(message.from_user.id)
+    await pool.execute(
+        'UPDATE "users" SET "wins" = 0, "losses" = 0, "signalsReceived" = 0 '
+        'WHERE "telegramId" = $1',
+        tg_big,
     )
+    # Delete user achievements via userId (CUID), need sub-select
+    await pool.execute(
+        'DELETE FROM "user_achievements" WHERE "userId" IN '
+        '(SELECT "id" FROM "users" WHERE "telegramId" = $1)',
+        tg_big,
+    )
+    await message.answer(t("admin.reset_ok", "ru"), parse_mode=ParseMode.HTML)
 
 
 @router.message(Command("seed_data"))
 async def cmd_seed_data(message: Message) -> None:
     """Insert 5 fake users with different tiers, for leaderboard / preview testing."""
     if not _is_admin(message.from_user.id):
+        await message.answer(t("admin.access_denied", "ru"))
         return
     fakes = [
-        (9_000_001, "alex_pro", "Alex", 4, 15000.0, 24, 6),
-        (9_000_002, "maria_fx", "Maria", 3, 4500.0, 31, 9),
-        (9_000_003, "john_otc", "John", 2, 800.0, 18, 8),
-        (9_000_004, "lena_demo", "Lena", 1, 120.0, 9, 5),
-        (9_000_005, "guest_t0", "Guest", 0, 0.0, 1, 1),
+        (9_000_001, "d1mkas", "Дмитрий", 2, 48411.0, 280, 60),
+        (9_000_002, "kapital_andrey", "Андрей", 2, 37514.0, 231, 66),
+        (9_000_003, "alex_t92", "Алексей", 2, 33956.0, 340, 91),
+        (9_000_004, "olgaprofit", "Ольга", 2, 31950.0, 128, 36),
+        (9_000_005, "nik_winner", "Николай", 2, 29219.0, 270, 74),
     ]
+    from decimal import Decimal as D
     inserted = 0
-    async with aiosqlite.connect(DB_PATH) as db:
-        for tg_id, uname, fname, tier, deposit, w, _l in fakes:
-            ref_code = f"SEED{tg_id % 10000:04d}"
-            try:
-                await db.execute(
-                    """
-                    INSERT OR IGNORE INTO users
-                      (telegram_id, username, first_name, tier, deposit_total,
-                       wins, losses, referral_code, signals_received)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (tg_id, uname, fname, tier, deposit, w, _l, ref_code, w + _l),
-                )
-                if db.total_changes:
-                    inserted += 1
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("seed_data: %s", exc)
-        await db.commit()
+    pool = _get_pool()
+    for tg_id, uname, fname, tier, deposit, w, _l in fakes:
+        ref_code = f"SEED{tg_id % 10000:04d}"
+        try:
+            result = await pool.execute(
+                'INSERT INTO "users" '
+                '("id", "telegramId", "username", "firstName", "tier", "depositTotal", '
+                '"wins", "losses", "referralCode", "signalsReceived", '
+                '"createdAt", "role", "status") '
+                'VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), \'user\', \'active\') '
+                'ON CONFLICT ("telegramId") DO NOTHING',
+                _generate_cuid(),
+                telegram_id_to_bigint(tg_id),
+                uname,
+                fname,
+                tier,
+                D(str(deposit)),
+                w,
+                _l,
+                ref_code,
+                w + _l,
+            )
+            if result and result.split()[-1] != "0":
+                inserted += 1
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("seed_data: %s", exc)
     await message.answer(
-        f"<b>🌱 Seed готов.</b>\nДобавлено фейк-юзеров: {inserted} (из {len(fakes)})",
+        t("admin.seed_ok", "ru", inserted=inserted, total=len(fakes)),
         parse_mode=ParseMode.HTML,
     )
 
 
 @router.message(Command("preview"))
-async def cmd_preview(message: Message, command: CommandObject) -> None:
+async def cmd_preview(message: Message, command: CommandObject, state: FSMContext) -> None:
     """Render any screen as image for the admin themself.
 
     Usage: /preview <screen>
       Screens: tier, stats, ref, ach, top, settings, help
     """
     if not _is_admin(message.from_user.id):
+        await message.answer(t("admin.access_denied", "ru"))
         return
     screen = (command.args or "").strip().lower()
     valid = {"tier", "stats", "ref", "ach", "top", "settings", "help"}
@@ -436,16 +434,16 @@ async def cmd_preview(message: Message, command: CommandObject) -> None:
     from handlers import menu  # circular-safe at runtime
 
     if screen == "tier":
-        await menu.btn_tier(message)
+        await message.answer(t("admin.preview_tier_not_impl", "ru"))
     elif screen == "stats":
-        await menu.btn_stats(message)
+        await message.answer(t("admin.command_removed", "ru"))
     elif screen == "ref":
-        await menu.btn_ref(message)
+        await menu.btn_ref(message, state=state)
     elif screen == "ach":
         await menu.cmd_achievements(message)
     elif screen == "top":
         await menu.cmd_leaderboard(message)
     elif screen == "settings":
-        await menu.btn_settings(message)
+        await message.answer(t("admin.command_removed", "ru"))
     elif screen == "help":
         await menu.btn_help(message)

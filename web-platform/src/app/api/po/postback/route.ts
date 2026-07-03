@@ -1,40 +1,72 @@
 /**
- * POST /api/po/postback
+ * GET /api/po/postback (POST accepted for forward-compat)
  *
- * Server-to-server endpoint for PocketOption Postback 2.0.
+ * Server-to-server endpoint for PocketOption Partners postbacks.
  *
- * Behaviour:
- * 1. Read raw body (we need it for HMAC verification).
- * 2. Verify signature via HMAC-SHA256(POCKETOPTION_POSTBACK_SECRET, body).
- *    The signature can come from header `X-Signature` or `signature` field.
- * 3. Parse the payload, drop unknown event types.
- * 4. Apply via `applyPostback` which is idempotent on dedupeKey.
+ * PocketOption Partners sends GET-postbacks with macro-substituted query
+ * parameters and no body. They have **no per-request signature** — instead
+ * the partner bakes a shared secret into the URL itself (`?...&secret=...`).
+ * That is the only authentication path we can rely on, so this endpoint:
  *
- * We always return 200 with a JSON status so PO doesn't retry forever, even
- * for unmatched/duplicate events. Real failures (5xx) trigger PO's retry.
+ *   1. Parses the query string into a normalised ParsedPostback.
+ *   2. Verifies `?secret=` against `po_postback_secret` (SiteSettings; env
+ *      fallback POCKETOPTION_POSTBACK_SECRET).
+ *   3. Applies the postback via `applyPostback`, which is idempotent on
+ *      `dedupeKey`.
+ *
+ * Both GET and POST are accepted (POST falls back to query first, then a
+ * `application/x-www-form-urlencoded` body) so the same URL works regardless
+ * of how PO ends up calling it.
+ *
+ * Returns:
+ *   200 — processed (including duplicates / unmatched leads).
+ *   401 — bad/missing secret.
+ *   400 — unknown / malformed event.
+ *   500 — internal error (PO will retry).
  */
 import { NextResponse, type NextRequest } from "next/server";
 import {
   applyPostback,
-  parsePostback,
-  verifyPostbackSignature,
+  parsePostbackQuery,
+  verifyPostbackSecret,
 } from "@/lib/pocketoption";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function POST(req: NextRequest) {
-  const raw = await req.text();
-  const sigHeader =
-    req.headers.get("x-signature") ?? req.headers.get("x-po-signature");
+async function handle(req: NextRequest) {
+  const url = new URL(req.url);
+  const params: URLSearchParams = url.searchParams;
 
-  const parsed = parsePostback(raw);
-  if (!parsed) {
-    return NextResponse.json({ ok: false, reason: "bad_payload" }, { status: 400 });
+  // POST x-www-form-urlencoded: merge body params (URL params take priority).
+  if (req.method === "POST") {
+    const contentType = req.headers.get("content-type") ?? "";
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      const text = await req.text();
+      const bodyParams = new URLSearchParams(text);
+      for (const [k, v] of bodyParams.entries()) {
+        if (!params.has(k)) params.append(k, v);
+      }
+    }
   }
 
-  if (!verifyPostbackSignature(raw, sigHeader ?? parsed.signature)) {
-    return NextResponse.json({ ok: false, reason: "bad_signature" }, { status: 401 });
+  const providedSecret = params.get("secret");
+  // Strip secret from the working copy before parsing/persisting.
+  params.delete("secret");
+
+  if (!(await verifyPostbackSecret(providedSecret))) {
+    return NextResponse.json(
+      { ok: false, reason: "bad_secret" },
+      { status: 401 },
+    );
+  }
+
+  const parsed = parsePostbackQuery(params);
+  if (!parsed) {
+    return NextResponse.json(
+      { ok: false, reason: "bad_payload" },
+      { status: 400 },
+    );
   }
 
   try {
@@ -42,10 +74,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     console.error("[postback] apply failed", err);
-    return NextResponse.json({ ok: false, reason: "internal_error" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, reason: "internal_error" },
+      { status: 500 },
+    );
   }
 }
 
-export async function GET() {
-  return NextResponse.json({ ok: true, hint: "POST PocketOption postbacks here." });
+export async function GET(req: NextRequest) {
+  return handle(req);
+}
+
+export async function POST(req: NextRequest) {
+  return handle(req);
 }

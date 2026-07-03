@@ -1,11 +1,8 @@
 """
-Channel signal cadence + daily brief.
+Daily brief background loop.
 
-Two background loops:
-  • signal_loop — every 5–15 min during working hours, generates a signal,
-    saves it, renders a chart image, posts to the channel.
-  • daily_brief_loop — once per day at 08:00 UTC, posts a market-open brief
-    to the channel (yesterday's totals, top pair, motivational nudge).
+Signal delivery is now on-demand (user presses button), so the old
+signal_loop and scheduled_signal_loop are removed.
 """
 from __future__ import annotations
 
@@ -16,69 +13,22 @@ from datetime import datetime, timezone
 
 from aiogram import Bot
 from aiogram.enums import ParseMode
-from aiogram.types import BufferedInputFile
 
 from config import settings
-from database.db import get_total_signals, save_signal
-from services.formatter import format_signal_caption
-from services.imagegen import make_signal_chart
-from services.signal_generator import generate_signal, random_interval_seconds
+from database.db import get_total_signals
 
 logger = logging.getLogger(__name__)
-
-
-def _is_working_hours() -> bool:
-    now_utc = datetime.now(timezone.utc)
-    return settings.working_hours_start <= now_utc.hour < settings.working_hours_end
-
-
-async def signal_loop(bot: Bot) -> None:
-    logger.info("Signal loop started")
-    while True:
-        interval = random_interval_seconds(
-            settings.signal_interval_min, settings.signal_interval_max
-        )
-        await asyncio.sleep(interval)
-
-        if not _is_working_hours():
-            logger.debug("Outside working hours, skipping signal")
-            continue
-
-        try:
-            kind = random.choice(["otc", "exchange", "elite"])
-            signal = generate_signal(kind)
-            sid = await save_signal(signal)
-            signal.id = sid
-
-            chart_bytes = make_signal_chart(signal)
-            caption = format_signal_caption(signal, settings.pocket_option_url)
-
-            await bot.send_photo(
-                chat_id=settings.channel_id,
-                photo=BufferedInputFile(chart_bytes, filename=f"signal_{sid}.png"),
-                caption=caption,
-                parse_mode=ParseMode.HTML,
-            )
-            logger.info(
-                "Signal sent: %s %s exp=%s conf=%d%% kind=%s",
-                signal.pair,
-                signal.direction,
-                signal.expiration,
-                signal.confidence,
-                kind,
-            )
-        except Exception:  # noqa: BLE001
-            logger.exception("Failed to send signal")
 
 
 # ── Daily brief ───────────────────────────────────────────────────────────────
 
 
 def _seconds_until_utc_hour(target_hour: int) -> float:
+    from datetime import timedelta
     now = datetime.now(timezone.utc)
     target = now.replace(hour=target_hour, minute=0, second=0, microsecond=0)
     if target <= now:
-        target = target.replace(day=now.day + 1)
+        target += timedelta(days=1)
     return (target - now).total_seconds()
 
 
@@ -111,7 +61,7 @@ async def daily_brief_loop(bot: Bot) -> None:
                 "Не забывай про <b>1–3% от депозита на сделку</b>. Холодный ум "
                 "и риск-менеджмент важнее любого сигнала.\n"
                 "\n"
-                "<i>Сигналы стартуют через ~10 минут.</i>"
+                "<i>Нажми «🎯 Получить сигнал» в боте, чтобы запросить сигнал.</i>"
             )
             await bot.send_message(
                 chat_id=settings.channel_id, text=text, parse_mode=ParseMode.HTML

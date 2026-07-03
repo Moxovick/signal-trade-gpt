@@ -2,15 +2,17 @@
  * GET /api/bot/sync
  *
  * Bot-facing snapshot endpoint. Returns:
- *   - accounts:   linked PO accounts with tier/deposit/telegramId
- *   - signals:    recent active signals (admin-published) the bot can broadcast
- *   - config:     bot configuration (welcome msg, signal template, autopost,
- *                 daily limits, FAQ, price source) — see lib/bot-config.ts.
+ *   - accounts:       linked PO accounts with tier/deposit/telegramId
+ *   - config:         bot configuration (welcome msg, signal template,
+ *                     FAQ, price source) — see lib/bot-config.ts.
  *   - tierThresholds: for tier-up calculations.
+ *   - onDemandConfig: per-tier daily limits & allowed signal types.
  *
- * Auth: header `X-Bot-Secret` must equal env BOT_SYNC_SECRET. Shared-secret
- * auth is enough because the response is read-only and the bot is trusted.
+ * On-demand model: signals are no longer broadcast from admin. Each user
+ * requests signals individually. The bot generates signals on /signal command
+ * using onDemandConfig for limits and allowed types.
  *
+ * Auth: header `X-Bot-Secret` must equal env BOT_SYNC_SECRET.
  * The bot polls this endpoint every ~60s and mirrors data to SQLite.
  */
 import { NextResponse, type NextRequest } from "next/server";
@@ -21,52 +23,62 @@ import {
   SITE_SETTING_TIER_THRESHOLDS,
   type TierThresholds,
 } from "@/lib/tier";
+import { verifyBotSecret } from "@/lib/bot-secret";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
-  const secret = process.env["BOT_SYNC_SECRET"];
-  if (!secret) {
+  const check = verifyBotSecret(req.headers.get("x-bot-secret"));
+  if (!check.ok) {
+    const status = check.reason === "not_configured" ? 503 : 401;
     return NextResponse.json(
-      { ok: false, reason: "sync_disabled" },
-      { status: 503 },
-    );
-  }
-  const provided = req.headers.get("x-bot-secret");
-  if (provided !== secret) {
-    return NextResponse.json(
-      { ok: false, reason: "bad_secret" },
-      { status: 401 },
+      { ok: false, reason: check.reason === "not_configured" ? "sync_disabled" : "bad_secret" },
+      { status },
     );
   }
 
-  const [accounts, settings, signals] = await Promise.all([
+  // On-demand model: no scheduled signals to sync. Only accounts + config.
+  const startOfDay = new Date();
+  startOfDay.setUTCHours(0, 0, 0, 0);
+
+  const [accounts, settings, dailyUsage] = await Promise.all([
     prisma.pocketOptionAccount.findMany({
       select: {
         poTraderId: true,
         totalDeposit: true,
+        userId: true,
         user: {
           select: {
             tier: true,
             telegramId: true,
+            _count: { select: { signalsCreated: true } },
           },
         },
       },
     }),
     prisma.siteSettings.findMany(),
-    prisma.signal.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: "desc" },
-      take: 50,
+    prisma.activityLog.groupBy({
+      by: ["userId"],
+      where: {
+        action: { in: ["signal_view", "signal_received"] },
+        createdAt: { gte: startOfDay },
+      },
+      _count: true,
     }),
   ]);
+
+  const usageByUserId = new Map(
+    dailyUsage.map((r) => [r.userId, r._count]),
+  );
 
   const accountsData = accounts.map((a) => ({
     poTraderId: a.poTraderId,
     tier: a.user.tier,
     totalDeposit: Number(a.totalDeposit),
     telegramId: a.user.telegramId ? a.user.telegramId.toString() : null,
+    signalsCount: a.user._count.signalsCreated,
+    signalsTodayUsed: usageByUserId.get(a.userId) ?? 0,
   }));
 
   const settingsRows = settings.map((s) => ({ key: s.key, value: s.value }));
@@ -78,29 +90,24 @@ export async function GET(req: NextRequest) {
       ? (tierRow.value as TierThresholds)
       : DEFAULT_TIER_THRESHOLDS;
 
-  const signalsData = signals.map((s) => ({
-    id: s.id,
-    pair: s.pair,
-    direction: s.direction,
-    expiration: s.expiration,
-    confidence: s.confidence,
-    tier: s.tier,
-    type: s.type,
-    entryPrice: s.entryPrice == null ? null : Number(s.entryPrice),
-    analysis: s.analysis,
-    reasoning: s.reasoning,
-    result: s.result,
-    isActive: s.isActive,
-    createdAt: s.createdAt.toISOString(),
-    closedAt: s.closedAt ? s.closedAt.toISOString() : null,
-  }));
+  // On-demand signal config for the bot (daily limits per tier)
+  const onDemandRow = settings.find((s) => s.key === "on_demand_signal_config");
+  const onDemandConfig = onDemandRow?.value ?? {
+    dailyLimits: { "0": 3, "1": 10, "2": null },
+    allowedTypes: {
+      "0": ["otc"],
+      "1": ["otc", "exchange"],
+      "2": ["otc", "exchange", "elite"],
+    },
+    proFrequencySeconds: 0,
+  };
 
   return NextResponse.json({
     ok: true,
     ts: Date.now(),
     accounts: accountsData,
-    signals: signalsData,
     config,
     tierThresholds,
+    onDemandConfig,
   });
 }

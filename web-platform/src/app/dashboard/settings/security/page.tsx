@@ -1,27 +1,24 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getPreferences } from "@/lib/user-preferences";
 import { Card } from "@/components/ui/Card";
 import { ChangePasswordForm } from "./_components/ChangePasswordForm";
-import { TwoFactorForm } from "./_components/TwoFactorForm";
 import { LoginLog } from "./_components/LoginLog";
-import { Shield, KeyRound, ScrollText } from "lucide-react";
+import { KeyRound, ScrollText } from "lucide-react";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export default async function SecuritySettingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [user, prefs, events] = await Promise.all([
+  const [user, events] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
         email: true,
-        emailVerifiedAt: true,
         passwordHash: true,
       },
     }),
-    getPreferences(session.user.id),
     prisma.loginEvent.findMany({
       where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
@@ -30,44 +27,30 @@ export default async function SecuritySettingsPage() {
   ]);
   if (!user) redirect("/login");
 
+  const t = await getDictionaryForUser(session.user.id);
+
   return (
     <div className="space-y-6">
       <Card padding="lg">
         <div className="flex items-center gap-2 mb-1">
           <KeyRound size={18} className="text-[var(--brand-gold)]" />
-          <h2 className="text-lg font-semibold">Пароль</h2>
+          <h2 className="text-lg font-semibold">{t.security.passwordTitle}</h2>
         </div>
         <p className="text-sm text-[var(--t-3)] mb-6">
           {user.passwordHash
-            ? "Смени пароль, если подозреваешь что им мог завладеть кто-то ещё."
-            : "У твоего аккаунта ещё нет пароля — ты входил через Telegram. Установи пароль, чтобы иметь запасной способ входа."}
+            ? t.security.passwordDescHas
+            : t.security.passwordDescNoPass}
         </p>
         <ChangePasswordForm hasPassword={!!user.passwordHash} />
       </Card>
 
       <Card padding="lg">
         <div className="flex items-center gap-2 mb-1">
-          <Shield size={18} className="text-[var(--brand-gold)]" />
-          <h2 className="text-lg font-semibold">Двухфакторная аутентификация</h2>
-        </div>
-        <p className="text-sm text-[var(--t-3)] mb-6">
-          При входе мы отправим 6-значный код на твой email. Включи, если
-          переживаешь за аккаунт.
-        </p>
-        <TwoFactorForm
-          email={user.email}
-          emailVerified={!!user.emailVerifiedAt}
-          twoFactorEmail={prefs.twoFactorEmail}
-        />
-      </Card>
-
-      <Card padding="lg">
-        <div className="flex items-center gap-2 mb-1">
           <ScrollText size={18} className="text-[var(--brand-gold)]" />
-          <h2 className="text-lg font-semibold">Журнал безопасности</h2>
+          <h2 className="text-lg font-semibold">{t.security.logTitle}</h2>
         </div>
         <p className="text-sm text-[var(--t-3)] mb-6">
-          Последние 20 событий: входы, смены пароля, неудачные попытки.
+          {t.security.logDesc}
         </p>
         <LoginLog
           events={events.map((e) => ({

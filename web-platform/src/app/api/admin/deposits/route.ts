@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     prisma.deposit.findMany({
       where,
       include: {
-        user: { select: { id: true, email: true, username: true, subscriptionPlan: true } },
+        user: { select: { id: true, email: true, username: true, tier: true } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
@@ -47,6 +47,11 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "ID и статус обязательны" }, { status: 400 });
   }
 
+  const VALID_STATUSES = ["pending", "confirmed", "rejected"] as const;
+  if (!(VALID_STATUSES as readonly string[]).includes(status)) {
+    return NextResponse.json({ error: `status must be one of: ${VALID_STATUSES.join(", ")}` }, { status: 400 });
+  }
+
   const deposit = await prisma.deposit.update({
     where: { id },
     data: {
@@ -67,8 +72,6 @@ export async function PUT(req: NextRequest) {
       where: { id: deposit.userId },
       data: {
         depositTotal: totalDeposit,
-        eliteUnlocked: totalDeposit >= 500,
-        ...(totalDeposit >= 500 && { subscriptionPlan: "elite" }),
       },
     });
   }

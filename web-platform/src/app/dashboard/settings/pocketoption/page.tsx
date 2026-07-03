@@ -1,211 +1,418 @@
 /**
- * Settings · PocketOption — show attached PO ID, deposit history, P&L.
+ * Settings · PocketOption — linked account, deposit history, tier status.
  */
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
-import { Stat } from "@/components/ui/Stat";
 import {
   Link2,
   TrendingUp,
-  Trophy,
   AlertCircle,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Wallet,
+  ChevronRight,
+  Star,
 } from "lucide-react";
-import { TIER_LABELS } from "@/lib/tier";
+import { TIER_LABELS, getTierThresholds } from "@/lib/tier";
+import Link from "next/link";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export default async function PocketOptionSettingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [user, recentSignals] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        id: true,
-        depositTotal: true,
-        tier: true,
-        poAccount: {
-          select: {
-            poTraderId: true,
-            status: true,
-            totalDeposit: true,
-            totalRevShare: true,
-            ftdAt: true,
-            ftdAmount: true,
-            registeredAt: true,
-            emailConfirmedAt: true,
-            postbacks: {
-              orderBy: { receivedAt: "desc" },
-              take: 20,
-              select: {
-                id: true,
-                eventType: true,
-                amount: true,
-                currency: true,
-                receivedAt: true,
-              },
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      depositTotal: true,
+      tier: true,
+      poAccount: {
+        select: {
+          poTraderId: true,
+          status: true,
+          totalDeposit: true,
+          totalRevShare: true,
+          ftdAt: true,
+          ftdAmount: true,
+          registeredAt: true,
+          emailConfirmedAt: true,
+          postbacks: {
+            orderBy: { receivedAt: "desc" },
+            take: 20,
+            select: {
+              id: true,
+              eventType: true,
+              amount: true,
+              currency: true,
+              receivedAt: true,
             },
           },
         },
       },
-    }),
-    // Small P&L estimate: last 50 signals, % of wins.
-    prisma.signal.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 50,
-      select: { result: true },
-    }),
-  ]);
+    },
+  });
 
   if (!user) redirect("/login");
-  const po = user.poAccount;
-  const deposits = po?.postbacks.filter((p) => p.eventType === "ftd" || p.eventType === "redeposit") ?? [];
 
-  const closedSignals = recentSignals.filter(
-    (s) => s.result === "win" || s.result === "loss",
-  );
-  const wins = closedSignals.filter((s) => s.result === "win").length;
-  const losses = closedSignals.filter((s) => s.result === "loss").length;
-  const winrate =
-    closedSignals.length > 0
-      ? Math.round((wins / closedSignals.length) * 100)
-      : 0;
-  const avgPayout = 0.82;
-  const sessionStakes = 10;
-  const estimatedPnl = wins * sessionStakes * avgPayout - losses * sessionStakes;
+  const t = await getDictionaryForUser(session.user.id);
+
+  const po = user.poAccount;
+  const deposits =
+    po?.postbacks.filter(
+      (p) => p.eventType === "ftd" || p.eventType === "redeposit",
+    ) ?? [];
+
+  const depositTotal = Number(user.depositTotal ?? 0);
+  const thresholds = await getTierThresholds();
+  const isPro = user.tier >= 2;
+  const nextThreshold = user.tier === 0 ? thresholds[1] : user.tier === 1 ? thresholds[2] : null;
+  const progressPct = nextThreshold ? Math.min((depositTotal / nextThreshold) * 100, 100) : 100;
+  const nextLabel = user.tier === 0 ? "Базового" : user.tier === 1 ? "Про" : null;
+
+  const statusConfig = {
+    verified: { icon: CheckCircle2, label: t.pocketoption.statusVerified, color: "var(--green)", bg: "rgba(76,195,138,0.10)" },
+    pending: { icon: Clock, label: t.pocketoption.statusReview, color: "var(--brand-gold)", bg: "rgba(212,160,23,0.10)" },
+    rejected: { icon: XCircle, label: t.pocketoption.statusRejected, color: "var(--red)", bg: "rgba(232,98,58,0.10)" },
+  };
 
   return (
-    <div className="space-y-6">
-      <Card padding="lg">
-        <div className="flex items-center gap-2 mb-1">
-          <Link2 size={18} className="text-[var(--brand-gold)]" />
-          <h2 className="text-lg font-semibold">Твой PocketOption</h2>
-        </div>
-        <p className="text-sm text-[var(--t-3)] mb-6">
-          Текущий привязанный аккаунт. Чтобы перепривязать другой ID — обратись
-          в поддержку (нужен ручной перенос постбэков).
-        </p>
-        {po ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Stat label="PocketOption ID" value={`#${po.poTraderId}`} />
-            <Stat
-              label="Статус"
-              value={
-                po.status === "verified"
-                  ? "Подтверждён"
-                  : po.status === "pending"
-                    ? "Ожидает"
-                    : "Отклонён"
-              }
-              tone={
-                po.status === "verified"
-                  ? "positive"
-                  : po.status === "rejected"
-                    ? "negative"
-                    : "neutral"
-              }
-            />
-            <Stat
-              label="Депозитов всего"
-              value={`$${Number(po.totalDeposit).toFixed(2)}`}
-            />
+    <div className="space-y-5">
+      {/* Tier progress card */}
+      <div
+        className="rounded-2xl border p-5 relative overflow-hidden"
+        style={{
+          borderColor: isPro ? "rgba(245,236,217,0.14)" : "rgba(245,236,217,0.08)",
+          background: "var(--bg-1)",
+        }}
+      >
+        <div className="flex items-start gap-3 mb-4">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: isPro ? "rgba(212,160,23,0.15)" : "var(--bg-2)" }}
+          >
+            {isPro
+              ? <Star size={20} className="text-[var(--brand-gold)]" fill="currentColor" />
+              : <TrendingUp size={20} className="text-[var(--t-2)]" />
+            }
           </div>
-        ) : (
-          <div className="rounded-xl border border-[var(--b-soft)] bg-[var(--bg-2)] p-4 flex items-start gap-2">
-            <AlertCircle
-              size={16}
-              className="text-[var(--red)] shrink-0 mt-0.5"
-            />
-            <div>
-              <div className="text-sm font-semibold">PO ID не привязан</div>
-              <div className="text-[12px] text-[var(--t-3)]">
-                Перейди на{" "}
-                <a
-                  href="/onboarding/po-id"
-                  className="text-[var(--brand-gold)] underline"
+          <div>
+            <div className="font-bold text-base">
+              {TIER_LABELS[user.tier] ?? "Бесплатный"}
+            </div>
+            <div className="text-[12px] text-[var(--t-3)] mt-0.5">
+              {isPro
+                ? t.pocketoption.tierFullAccess
+                : nextLabel
+                  ? `${t.pocketoption.tierUntil} ${nextLabel}: ${t.pocketoption.tierDepositRequired}${nextThreshold} ${t.pocketoption.tierDepositOnPO}`
+                  : ""}
+            </div>
+          </div>
+        </div>
+
+        {nextThreshold != null && (
+          <>
+            <div className="flex justify-between text-xs text-[var(--t-3)] mb-1.5">
+              <span>{t.pocketoption.depositCredited}</span>
+              <span style={{ fontFamily: "var(--font-jetbrains)" }}>
+                ${depositTotal.toFixed(2)} / ${nextThreshold}
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-[var(--bg-3)] overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{
+                  width: `${progressPct}%`,
+                  background: "var(--brand-gold)",
+                }}
+              />
+            </div>
+            <p className="text-[11px] text-[var(--t-3)] mt-2">
+              {t.pocketoption.autoUpgrade}
+            </p>
+          </>
+        )}
+      </div>
+
+      {/* Tier comparison */}
+      <Card padding="lg">
+        <h2 className="text-base font-semibold mb-4">{t.pocketoption.accessLevels}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {([
+            {
+              tier: 0,
+              name: "Free",
+              deposit: "$0",
+              active: user.tier === 0,
+              perks: [
+                t.pocketoption.freePerks1,
+                t.pocketoption.freePerks2,
+                t.pocketoption.freePerks3,
+              ],
+            },
+            {
+              tier: 1,
+              name: "Basic",
+              deposit: `${t.pocketoption.tierDepositFrom} $${thresholds[1]}`,
+              active: user.tier === 1,
+              perks: [
+                t.pocketoption.basicPerks1,
+                t.pocketoption.basicPerks2,
+                t.pocketoption.basicPerks3,
+                t.pocketoption.basicPerks4,
+              ],
+            },
+            {
+              tier: 2,
+              name: "Pro",
+              deposit: `${t.pocketoption.tierDepositFrom} $${thresholds[2]}`,
+              active: user.tier >= 2,
+              perks: [
+                t.pocketoption.proPerks1,
+                t.pocketoption.proPerks2,
+                t.pocketoption.proPerks3,
+                t.pocketoption.proPerks4,
+                t.pocketoption.proPerks5,
+              ],
+            },
+          ] as const).map((tierItem) => (
+            <div
+              key={tierItem.tier}
+              className="rounded-xl border p-4 relative"
+              style={{
+                borderColor: tierItem.active ? "var(--brand-gold)" : "var(--b-soft)",
+                background: "var(--bg-1)",
+              }}
+            >
+              {tierItem.active && (
+                <div
+                  className="absolute top-2.5 right-2.5 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md"
+                  style={{
+                    background: "rgba(212,160,23,0.15)",
+                    color: "var(--brand-gold)",
+                  }}
                 >
-                  экран привязки
-                </a>
-                , чтобы подключить аккаунт.
+                  {t.pocketoption.tierCurrentBadge}
+                </div>
+              )}
+              <div className="font-bold text-sm mb-0.5">{tierItem.name}</div>
+              <div
+                className="text-[11px] text-[var(--t-3)] mb-3"
+                style={{ fontFamily: "var(--font-jetbrains)" }}
+              >
+                {tierItem.deposit}
+              </div>
+              <ul className="space-y-1.5">
+                {tierItem.perks.map((p) => (
+                  <li
+                    key={p}
+                    className="flex items-start gap-2 text-[12px] text-[var(--t-2)] leading-snug"
+                  >
+                    <CheckCircle2
+                      size={12}
+                      className="shrink-0 mt-0.5"
+                      style={{
+                        color: tierItem.active ? "var(--brand-gold)" : "var(--t-3)",
+                      }}
+                    />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] text-[var(--t-3)] mt-3 leading-relaxed">
+          {t.pocketoption.tierNote}
+        </p>
+      </Card>
+
+      {/* PO Account card */}
+      <Card padding="lg">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Link2 size={16} className="text-[var(--brand-gold)]" />
+            <h2 className="text-base font-semibold">{t.pocketoption.poAccountTitle}</h2>
+          </div>
+          {!po && (
+            <Link
+              href="/onboarding/po-id"
+              className="inline-flex items-center gap-1 text-xs text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
+            >
+              {t.pocketoption.poLink} <ChevronRight size={12} />
+            </Link>
+          )}
+        </div>
+
+        {po ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* ID */}
+              <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--b-soft)] p-3">
+                <div className="text-[11px] uppercase tracking-wider text-[var(--t-3)] mb-1">
+                  {t.pocketoption.labelTraderId}
+                </div>
+                <div
+                  className="text-lg font-bold text-[var(--t-1)]"
+                  style={{ fontFamily: "var(--font-jetbrains)" }}
+                >
+                  #{po.poTraderId}
+                </div>
+              </div>
+
+              {/* Status */}
+              {(() => {
+                const cfg = statusConfig[po.status as keyof typeof statusConfig] ?? statusConfig.pending;
+                const StatusIcon = cfg.icon;
+                return (
+                  <div
+                    className="rounded-xl border p-3"
+                    style={{ background: cfg.bg, borderColor: "transparent" }}
+                  >
+                    <div className="text-[11px] uppercase tracking-wider text-[var(--t-3)] mb-1">
+                      {t.pocketoption.labelStatus}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <StatusIcon size={14} style={{ color: cfg.color }} />
+                      <span className="text-sm font-semibold" style={{ color: cfg.color }}>
+                        {cfg.label}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Total deposit */}
+              <div className="rounded-xl bg-[var(--bg-2)] border border-[var(--b-soft)] p-3">
+                <div className="text-[11px] uppercase tracking-wider text-[var(--t-3)] mb-1">
+                  {t.pocketoption.labelTotalDeposit}
+                </div>
+                <div
+                  className="text-lg font-bold text-[var(--t-1)]"
+                  style={{ fontFamily: "var(--font-jetbrains)" }}
+                >
+                  ${Number(po.totalDeposit).toFixed(2)}
+                </div>
               </div>
             </div>
+
+            {po.registeredAt && (
+              <p className="text-[11px] text-[var(--t-3)]">
+                {t.pocketoption.registeredAt}{" "}
+                {new Date(po.registeredAt).toLocaleDateString("ru-RU", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-[var(--b-soft)] p-6 flex flex-col items-center text-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-[var(--bg-2)] flex items-center justify-center">
+              <AlertCircle size={20} className="text-[var(--t-3)]" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold mb-1">{t.pocketoption.poNotLinkedTitle}</div>
+              <div className="text-[12px] text-[var(--t-3)] leading-relaxed">
+                {t.pocketoption.poNotLinkedDesc}
+              </div>
+            </div>
+            <Link
+              href="/onboarding/po-id"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--brand-gold)] hover:text-[var(--brand-gold-bright)] transition-colors"
+            >
+              {t.pocketoption.linkAccountAction} <ChevronRight size={14} />
+            </Link>
           </div>
         )}
       </Card>
 
-      <Card padding="lg">
-        <div className="flex items-center gap-2 mb-1">
-          <TrendingUp size={18} className="text-[var(--brand-gold)]" />
-          <h2 className="text-lg font-semibold">История депозитов</h2>
+      {/* Deposit history */}
+      <Card padding="none">
+        <div className="px-5 py-4 border-b border-[var(--b-soft)] flex items-center gap-2">
+          <TrendingUp size={15} className="text-[var(--brand-gold)]" />
+          <h2 className="text-base font-semibold">{t.pocketoption.depositHistory}</h2>
+          {deposits.length > 0 && (
+            <span className="ml-auto text-xs text-[var(--t-3)]">
+              {deposits.length} {t.pocketoption.operations}
+            </span>
+          )}
         </div>
-        <p className="text-sm text-[var(--t-3)] mb-6">
-          Постбэки с PocketOption. FTD — первый депозит, Redeposit — каждый
-          следующий.
-        </p>
+
         {deposits.length === 0 ? (
-          <div className="text-sm text-[var(--t-3)] text-center py-6">
-            Пока депозитов нет.
+          <div className="flex flex-col items-center gap-2 py-10 text-center">
+            <Wallet size={28} className="text-[var(--t-3)]" />
+            <div className="text-sm text-[var(--t-2)] font-medium">{t.pocketoption.noDepositsTitle}</div>
+            <div className="text-[11px] text-[var(--t-3)]">
+              {t.pocketoption.noDepositsDesc}
+            </div>
           </div>
         ) : (
           <div className="divide-y divide-[var(--b-soft)]">
             {deposits.map((d) => (
-              <div
-                key={d.id}
-                className="flex items-center gap-4 py-3 text-sm"
-              >
-                <span
-                  className={`inline-block px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-semibold ${
-                    d.eventType === "ftd"
-                      ? "bg-[rgba(142,224,107,0.12)] text-[var(--green)]"
-                      : "bg-[var(--bg-2)] text-[var(--t-2)]"
-                  }`}
+              <div key={d.id} className="flex items-center gap-4 px-5 py-3.5">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  style={{
+                    background:
+                      d.eventType === "ftd"
+                        ? "rgba(76,195,138,0.12)"
+                        : "var(--bg-2)",
+                  }}
                 >
-                  {d.eventType === "ftd" ? "FTD" : "Redeposit"}
-                </span>
-                <span className="flex-1 font-medium tabular-nums">
-                  ${Number(d.amount ?? 0).toFixed(2)} {d.currency ?? "USD"}
-                </span>
-                <span className="text-[var(--t-3)] text-[12px] tabular-nums">
-                  {new Date(d.receivedAt).toLocaleString("ru-RU", {
-                    dateStyle: "short",
-                    timeStyle: "short",
-                  })}
-                </span>
+                  <TrendingUp
+                    size={14}
+                    style={{
+                      color:
+                        d.eventType === "ftd" ? "var(--green)" : "var(--t-3)",
+                    }}
+                  />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="text-xs px-1.5 py-0.5 rounded-md font-semibold uppercase tracking-wider"
+                      style={{
+                        background:
+                          d.eventType === "ftd"
+                            ? "rgba(76,195,138,0.12)"
+                            : "var(--bg-2)",
+                        color:
+                          d.eventType === "ftd"
+                            ? "var(--green)"
+                            : "var(--t-2)",
+                      }}
+                    >
+                      {d.eventType === "ftd" ? t.pocketoption.depositTypeFirst : t.pocketoption.depositTypeRepeat}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <div
+                    className="text-sm font-semibold tabular-nums"
+                    style={{ fontFamily: "var(--font-jetbrains)" }}
+                  >
+                    ${Number(d.amount ?? 0).toFixed(2)}
+                  </div>
+                  <div className="text-[11px] text-[var(--t-3)] tabular-nums">
+                    {new Date(d.receivedAt).toLocaleString("ru-RU", {
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         )}
-      </Card>
-
-      <Card padding="lg">
-        <div className="flex items-center gap-2 mb-1">
-          <Trophy size={18} className="text-[var(--brand-gold)]" />
-          <h2 className="text-lg font-semibold">Оценочный P&L</h2>
-        </div>
-        <p className="text-sm text-[var(--t-3)] mb-6">
-          Приблизительная оценка на основе последних 50 сигналов, ставка
-          ${sessionStakes}, выплата {Math.round(avgPayout * 100)}%. Реальные
-          результаты зависят от твоих сделок.
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Stat label="Винрейт" value={`${winrate}%`} />
-          <Stat label="Побед" value={wins} tone="positive" />
-          <Stat label="Поражений" value={losses} tone="negative" />
-          <Stat
-            label="Оценочный P&L"
-            value={
-              estimatedPnl >= 0
-                ? `+$${estimatedPnl.toFixed(2)}`
-                : `-$${Math.abs(estimatedPnl).toFixed(2)}`
-            }
-            tone={estimatedPnl >= 0 ? "positive" : "negative"}
-          />
-        </div>
-        <div className="mt-4 text-[11px] text-[var(--t-3)]">
-          Текущий тир: <b>T{user.tier}</b> — {TIER_LABELS[user.tier] ?? ""}.
-          Депозит учтён: ${Number(user.depositTotal).toFixed(2)}.
-        </div>
       </Card>
     </div>
   );

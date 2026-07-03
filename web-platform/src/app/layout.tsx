@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
-import { Manrope, JetBrains_Mono, Bebas_Neue } from "next/font/google";
+import { Manrope, JetBrains_Mono } from "next/font/google";
+import { cookies } from "next/headers";
+import Script from "next/script";
 import "./globals.css";
 import { AnimatedBackground } from "@/components/effects/AnimatedBackground";
 import { Preloader } from "@/components/effects/Preloader";
 import { ScrollProgress } from "@/components/effects/ScrollProgress";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -17,43 +20,42 @@ const jetbrains = JetBrains_Mono({
   weight: ["400", "500"],
 });
 
-const bebas = Bebas_Neue({
-  variable: "--font-bebas",
-  subsets: ["latin"],
-  weight: ["400"],
-});
-
 export const metadata: Metadata = {
-  title: "Signal Trade GPT — AI Trading Signals",
+  title: "SpaceSignal — AI Trading Signals",
   description:
     "Сигналы для PocketOption. Открывай аккаунт по нашей ссылке — получи доступ к боту в Telegram. Чем выше депозит, тем сильнее перки.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = (await cookies()).get("locale")?.value === "uk" ? "uk" : "ru";
   return (
     <html
-      lang="ru"
+      lang={locale}
       data-scroll-behavior="smooth"
       data-theme="dark"
-      className={`${manrope.variable} ${jetbrains.variable} ${bebas.variable} h-full`}
+      className={`${manrope.variable} ${jetbrains.variable} h-full`}
     >
       <head>
-        {/* Inline theme loader — runs before body paints to avoid flash */}
-        <script
+        {/* Theme initializer — before-interactive so no flash on load */}
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('stg_theme')||'dark';var eff=t==='auto'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.dataset.theme=eff;}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('ss_theme')||'dark';var eff=t==='auto'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.dataset.theme=eff;}catch(e){}})();`,
           }}
         />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <AnimatedBackground />
-        <ScrollProgress />
-        <Preloader />
-        {children}
+        <AuthProvider>
+          <AnimatedBackground />
+          <ScrollProgress />
+          <Preloader />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

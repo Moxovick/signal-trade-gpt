@@ -6,16 +6,24 @@
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/Card";
 import { SettingsForm } from "./_components/SettingsForm";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getDictionaryForUser } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
+  const session = await auth();
+  if (!session?.user?.id || (session.user as { role?: string }).role !== "admin") redirect("/login");
+  const t = session?.user?.id ? await getDictionaryForUser(session.user.id) : null;
+  const ts = t?.admin?.settings ?? {};
+
   const allSettings = await prisma.siteSettings.findMany();
   const map = Object.fromEntries(allSettings.map((s) => [s.key, s]));
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Настройки</h1>
+      <h1 className="text-2xl font-bold">{(ts as { title?: string }).title ?? "Настройки"}</h1>
       <Card padding="lg">
         <SettingsForm
           tierThresholds={map.tier_thresholds?.value ?? null}

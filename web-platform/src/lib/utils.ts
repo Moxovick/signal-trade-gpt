@@ -13,9 +13,10 @@ export function generateReferralCode(): string {
 }
 
 export function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
+  const d = typeof date === "string" ? new Date(date) : date;
+  return d.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "short",
     year: "numeric",
   });
 }
@@ -23,8 +24,8 @@ export function formatDate(date: Date | string): string {
 export function planLabel(plan: string): string {
   const labels: Record<string, string> = {
     free: "Free",
-    premium: "Premium",
-    vip: "VIP",
+    basic: "Basic",
+    pro: "Pro",
   };
   return labels[plan] ?? plan;
 }

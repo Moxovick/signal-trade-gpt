@@ -70,7 +70,7 @@ export type PriceSource = {
 };
 
 export const DEFAULT_BOT_WELCOME =
-  "Привет, {first_name}! Это Signal Trade GPT.\n\n" +
+  "Привет, {first_name}! Это SpaceSignal.\n\n" +
   "Твой текущий тир: T{tier}.\n\n" +
   "Команды:\n" +
   "/signals — последние сигналы\n" +
@@ -108,10 +108,10 @@ export const DEFAULT_TIER_FEATURES: TierFeatures = {
 };
 
 export const DEFAULT_BOT_TIER_THRESHOLDS: TierThresholds = {
-  "1": 100,
-  "2": 1000,
-  "3": 5000,
-  "4": 10000,
+  "1": 20,
+  "2": 100,
+  "3": Number.MAX_SAFE_INTEGER,
+  "4": Number.MAX_SAFE_INTEGER,
 };
 
 export const DEFAULT_AUTOPOST: BotAutopost = {

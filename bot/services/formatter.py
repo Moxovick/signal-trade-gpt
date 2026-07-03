@@ -1,10 +1,142 @@
+from constants import TIER_DAILY_LIMITS, TIER_DEPOSIT_THRESHOLDS, TIER_NAMES, TIER_SIGNAL_TYPES
 from database.models import Signal
+from i18n import t
 from services import web_sync
 
 
 DIRECTION_ARROW = {"CALL": "⬆", "PUT": "⬇"}
 DIRECTION_TAG = {"CALL": "call", "PUT": "put"}
 DIRECTION_WORD = {"CALL": "ВВЕРХ", "PUT": "ВНИЗ"}
+
+
+def direction_word(direction: str, locale: str = "ru") -> str:
+    """Return locale-aware direction word (ВВЕРХ/ВГОРУ etc.)."""
+    if direction == "CALL":
+        return t("signal.direction.up", locale)
+    if direction == "PUT":
+        return t("signal.direction.down", locale)
+    return direction
+
+
+def tier_header(tier: str, locale: str = "ru") -> str:
+    """Return locale-aware tier header like '<b>OTC СИГНАЛ</b>'."""
+    key = f"signal.header.{tier}"
+    raw = t(key, locale)
+    # If key not found, fallback to otc
+    if raw == key:
+        raw = t("signal.header.otc", locale)
+    return f"<b>{raw}</b>"
+
+# Pair-type emoji for signal messages
+PAIR_EMOJI: dict[str, str] = {
+    # Forex — flag pairs
+    "EUR/USD": "🇪🇺🇺🇸", "GBP/USD": "🇬🇧🇺🇸", "USD/JPY": "🇺🇸🇯🇵",
+    "AUD/USD": "🇦🇺🇺🇸", "EUR/GBP": "🇪🇺🇬🇧", "USD/CHF": "🇺🇸🇨🇭",
+    "NZD/USD": "🇳🇿🇺🇸", "EUR/JPY": "🇪🇺🇯🇵", "AUD/CHF": "🇦🇺🇨🇭",
+    "AUD/NZD": "🇦🇺🇳🇿", "EUR/CHF": "🇪🇺🇨🇭", "GBP/JPY": "🇬🇧🇯🇵",
+    "USD/CAD": "🇺🇸🇨🇦", "CAD/JPY": "🇨🇦🇯🇵", "GBP/AUD": "🇬🇧🇦🇺",
+    "EUR/NZD": "🇪🇺🇳🇿", "AUD/CAD": "🇦🇺🇨🇦", "EUR/AUD": "🇪🇺🇦🇺",
+    "AUD/JPY": "🇦🇺🇯🇵", "CHF/JPY": "🇨🇭🇯🇵",
+    # Crypto
+    "Bitcoin ETF": "₿", "Bitcoin": "₿", "Ethereum": "⟠", "Solana": "◎",
+    "Dogecoin": "🐕", "Polygon": "🟣", "Cardano": "♦️",
+    "Polkadot": "⚫", "Chainlink": "🔗", "Toncoin": "💎",
+    "BNB": "🔶", "Litecoin": "Ł", "Avalanche": "🔺", "TRON": "🔻",
+    "BTC/USD": "₿", "ETH/USD": "⟠", "SOL/USD": "◎",
+    # Stocks
+    "Apple": "🍎", "AAPL": "🍎",
+    "Tesla": "⚡", "TSLA": "⚡",
+    "Amazon": "📦", "AMZN": "📦",
+    "Microsoft": "🪟", "MSFT": "🪟",
+    "Meta": "Ⓜ️", "META": "Ⓜ️",
+    "Netflix": "🎬", "NFLX": "🎬",
+    "NVIDIA": "🟢", "NVDA": "🟢",
+    # Commodities
+    "Gold": "🥇", "GOLD": "🥇",
+    "Silver": "🥈", "SILVER": "🥈",
+    "Brent Oil": "🛢", "WTI Oil": "🛢",
+    # Indices
+    "S&P 500": "📊", "SP500": "📊",
+    "NASDAQ 100": "📈", "US100": "📈",
+    "Dow Jones": "📉",
+}
+
+
+def _pair_emoji(pair: str) -> str:
+    """Return emoji for pair, checking both full name and stripped OTC version."""
+    clean = pair.replace(" (OTC)", "")
+    return PAIR_EMOJI.get(pair, PAIR_EMOJI.get(clean, ""))
+
+# Payout percentages per pair (from PocketOption — synced with constants.py)
+PAIR_PAYOUTS: dict[str, int] = {
+    # OTC Forex
+    "AED/CNY (OTC)": 92, "AUD/CAD (OTC)": 92, "CAD/JPY (OTC)": 92,
+    "EUR/GBP (OTC)": 92, "EUR/JPY (OTC)": 92, "GBP/JPY (OTC)": 92,
+    "NZD/USD (OTC)": 92, "OMR/CNY (OTC)": 92, "USD/CNH (OTC)": 92,
+    "USD/MYR (OTC)": 92, "USD/PHP (OTC)": 92, "USD/SGD (OTC)": 92,
+    "YER/USD (OTC)": 92, "USD/ARS (OTC)": 91, "USD/PKR (OTC)": 91,
+    "EUR/NZD (OTC)": 90, "AUD/NZD (OTC)": 89, "USD/CLP (OTC)": 88,
+    "CHF/JPY (OTC)": 87, "LBP/USD (OTC)": 86, "USD/THB (OTC)": 86,
+    "AUD/USD (OTC)": 83, "AUD/JPY (OTC)": 82, "NGN/USD (OTC)": 81,
+    "QAR/CNY (OTC)": 74, "BHD/CNY (OTC)": 71, "USD/JPY (OTC)": 70,
+    "NZD/JPY (OTC)": 68, "USD/INR (OTC)": 67, "EUR/HUF (OTC)": 65,
+    "MAD/USD (OTC)": 65, "CAD/CHF (OTC)": 64, "USD/EGP (OTC)": 63,
+    "ZAR/USD (OTC)": 63, "EUR/USD (OTC)": 61, "GBP/USD (OTC)": 59,
+    "AUD/CHF (OTC)": 58, "USD/BRL (OTC)": 58, "USD/BDT (OTC)": 57,
+    "EUR/CHF (OTC)": 52, "KES/USD (OTC)": 52, "USD/COP (OTC)": 51,
+    "CHF/NOK (OTC)": 50, "USD/VND (OTC)": 50, "JOD/CNY (OTC)": 46,
+    "TND/USD (OTC)": 45, "USD/IDR (OTC)": 43, "USD/DZD (OTC)": 36,
+    "UAH/USD (OTC)": 33, "USD/MXN (OTC)": 32, "GBP/AUD (OTC)": 30,
+    "USD/CHF (OTC)": 30, "EUR/TRY (OTC)": 29, "USD/CAD (OTC)": 24,
+    "SAR/CNY (OTC)": 20,
+    # OTC Crypto
+    "Bitcoin ETF (OTC)": 92, "BNB (OTC)": 92, "Polkadot (OTC)": 92,
+    "Litecoin (OTC)": 92, "Toncoin (OTC)": 92,
+    "Ethereum (OTC)": 86, "Avalanche (OTC)": 80,
+    "Chainlink (OTC)": 77, "Polygon (OTC)": 73,
+    "Bitcoin (OTC)": 68, "Cardano (OTC)": 67,
+    "TRON (OTC)": 50, "Solana (OTC)": 48, "Dogecoin (OTC)": 38,
+    # OTC Commodities
+    "Gold (OTC)": 80, "Silver (OTC)": 80, "Brent Oil (OTC)": 80, "WTI Oil (OTC)": 80,
+    "Natural Gas (OTC)": 45, "Palladium (OTC)": 45, "Platinum (OTC)": 45,
+    # OTC Stocks
+    "Apple (OTC)": 92, "GameStop (OTC)": 92, "VISA (OTC)": 92,
+    "American Express (OTC)": 90, "VIX (OTC)": 90, "Pfizer (OTC)": 87,
+    "AMD (OTC)": 83, "Johnson & Johnson (OTC)": 81,
+    "Marathon Digital (OTC)": 73, "Amazon (OTC)": 69,
+    "Netflix (OTC)": 63, "ExxonMobil (OTC)": 60,
+    "Coinbase (OTC)": 59, "Cisco (OTC)": 57,
+    "Alibaba (OTC)": 52, "Citigroup (OTC)": 50, "FedEx (OTC)": 50,
+    "Meta (OTC)": 45, "Intel (OTC)": 36, "Palantir (OTC)": 34,
+    "McDonald's (OTC)": 33, "Tesla (OTC)": 33, "Microsoft (OTC)": 31,
+    # OTC Indices
+    "S&P 500 (OTC)": 45, "NASDAQ 100 (OTC)": 45, "Dow Jones (OTC)": 45,
+    "AUS 200 (OTC)": 67, "FTSE 100 (OTC)": 45, "DAX 30 (OTC)": 45,
+    "E35EUR (OTC)": 45, "E50EUR (OTC)": 45, "CAC 40 (OTC)": 45,
+    "Nikkei 225 (OTC)": 45,
+    # Exchange Forex
+    "CHF/JPY": 88, "EUR/CAD": 88, "AUD/JPY": 86, "CAD/JPY": 80,
+    "AUD/CHF": 78, "EUR/USD": 78, "EUR/CHF": 75, "AUD/CAD": 74,
+    "EUR/AUD": 73, "GBP/JPY": 72, "USD/JPY": 68, "EUR/JPY": 61,
+    "EUR/GBP": 60, "GBP/USD": 55, "GBP/CAD": 48, "USD/CAD": 44,
+    "GBP/CHF": 42, "AUD/USD": 40, "USD/CHF": 35, "CAD/CHF": 26,
+    "GBP/AUD": 24,
+    # Exchange Crypto
+    "BTC/USD": 15,
+    # Ticker aliases
+    "AAPL": 92, "TSLA": 33, "AMZN": 69, "MSFT": 31, "META": 45,
+    "NFLX": 63, "NVDA": 80, "GOLD": 80, "SILVER": 80,
+    "ETH/USD": 80, "SOL/USD": 80, "SP500": 45, "US100": 45,
+}
+
+
+def _payout_line(pair: str, locale: str = "ru") -> str:
+    """Return payout line if we have data for this pair."""
+    pct = PAIR_PAYOUTS.get(pair)
+    if pct is None:
+        return ""
+    label = t("signal.payout", locale)
+    return f"{label}: <b>+{pct}%</b>\n"
 
 
 def _render_admin_template(template: str, signal: Signal, entry_price: float | None) -> str:
@@ -17,8 +149,13 @@ def _render_admin_template(template: str, signal: Signal, entry_price: float | N
     analysis_line = (
         f"<b>Анализ:</b> <i>{signal.analysis}</i>\n" if signal.analysis else ""
     )
+    pct = PAIR_PAYOUTS.get(signal.pair)
+    payout_str = f"+{pct}%" if pct else "—"
+    payout_line = f"Выплата: <b>+{pct}%</b>\n" if pct else ""
+    pair_emoji = _pair_emoji(signal.pair)
     return (
         template
+        .replace("{pair_emoji}", pair_emoji)
         .replace("{pair}", signal.pair)
         .replace("{direction}", signal.direction)
         .replace("{direction_word}", word)
@@ -28,42 +165,79 @@ def _render_admin_template(template: str, signal: Signal, entry_price: float | N
         .replace("{entry_price}", f"{entry_price:.5f}" if entry_price is not None else "—")
         .replace("{entry_line}", entry_line)
         .replace("{analysis_line}", analysis_line)
+        .replace("{payout}", payout_str)
+        .replace("{payout_line}", payout_line)
         .replace("{tier}", (signal.tier or "otc").upper())
+        .replace("{entry_time}", signal.entry_time or "—")
     )
 
 TIER_HEADERS = {
-    "demo": "<b>ДЕМО-СИГНАЛ</b>",
+    # `demo` остаётся для обратной совместимости со старыми сигналами в очереди.
+    "demo": "<b>OTC СИГНАЛ</b>",
     "otc": "<b>OTC СИГНАЛ</b>",
     "exchange": "<b>БИРЖЕВОЙ СИГНАЛ</b>",
     "elite": "<b>ELITE СИГНАЛ</b>",
 }
 
 TIER_BADGES = {
-    "demo": "DEMO",
+    "demo": "OTC",
     "otc": "OTC",
     "exchange": "EXCHANGE",
     "elite": "ELITE",
 }
 
 TIER_TAGS = {
-    "demo": "#demo",
+    "demo": "#otc",
     "otc": "#otc",
     "exchange": "#exchange",
     "elite": "#elite",
 }
 
-# Human label per user-tier (0..4).
-USER_TIER_NAMES = {0: "Демо", 1: "Starter", 2: "Active", 3: "Pro", 4: "VIP"}
-USER_TIER_DEPOSIT_THRESHOLDS = {1: 100, 2: 500, 3: 2000, 4: 10000}
+USER_TIER_NAMES = TIER_NAMES
+USER_TIER_DEPOSIT_THRESHOLDS = TIER_DEPOSIT_THRESHOLDS
 
 
-def format_signal_caption(signal: Signal, pocket_option_url: str, entry_price: float | None = None) -> str:
+def format_otc_minimal(signal: Signal, locale: str = "ru") -> str:
     """
-    Compact caption to attach under a signal-chart image.
-    Telegram captions are capped at 1024 chars; we keep it well under.
+    OTC signal caption for Free-tier users.
+    Clean and readable: pair, direction, expiry, confidence bar, analysis.
+    """
+    arrow = DIRECTION_ARROW[signal.direction]
+    conf_bar_full = round(signal.confidence / 10)
+    conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
+    payout = _payout_line(signal.pair, locale)
 
-    If admin has set a custom signal template via /admin/bot-config, we render
-    it instead of the legacy hard-coded layout.
+    lines = [
+        tier_header("otc", locale),
+        "",
+        f"{_pair_emoji(signal.pair)} <b>{signal.pair}</b>  ·  {arrow} {signal.direction}  ·  {signal.expiration}",
+        "",
+        f"{t('signal.confidence', locale)}: <b>{signal.confidence}%</b>  {conf_bar}",
+    ]
+    if payout:
+        lines.append(payout.rstrip("\n"))
+    if signal.entry_time:
+        lines.append(f"{t('signal.entry_time', locale)}: <b>{signal.entry_time}</b>")
+    if signal.analysis:
+        lines.extend(["", f"<b>Анализ:</b>\n<i>{signal.analysis}</i>"])
+    lines.extend([
+        "",
+        t("signal.volume", locale),
+        "#otc #signal",
+    ])
+    return "\n".join(lines)
+
+
+def format_pro_signal_caption(
+    signal: Signal,
+    pocket_option_url: str,
+    entry_price: float | None = None,
+    locale: str = "ru",
+) -> str:
+    """
+    Full rich caption for Про users (exchange / elite signals).
+    Attaches under the advanced chart image.
+    Telegram captions are capped at 1024 chars; we stay well under.
     """
     admin_template = web_sync.get_signal_template()
     if admin_template:
@@ -72,32 +246,49 @@ def format_signal_caption(signal: Signal, pocket_option_url: str, entry_price: f
     arrow = DIRECTION_ARROW[signal.direction]
     pair_tag = signal.pair.replace("/", "").replace(" ", "").lower()
     dir_tag = DIRECTION_TAG[signal.direction]
-    tier = signal.tier or "otc"
-    badge = TIER_BADGES.get(tier, "OTC")
-    tier_tag = TIER_TAGS.get(tier, "#otc")
+    tier = signal.tier or "exchange"
+    header = tier_header(tier, locale)
+    tier_tag = TIER_TAGS.get(tier, "#exchange")
     conf_bar_full = round(signal.confidence / 10)
     conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
 
+    payout = _payout_line(signal.pair, locale)
     lines = [
-        f"<b>{signal.pair}</b>  ·  {signal.direction} {arrow}  ·  <code>{badge}</code>",
+        f"{header}",
         "",
-        f"<b>Экспирация:</b> {signal.expiration}",
-        f"<b>AI Confidence:</b> {signal.confidence}%  {conf_bar}",
+        f"{_pair_emoji(signal.pair)} <b>{signal.pair}</b>  ·  {arrow} {signal.direction}  ·  {signal.expiration}",
+        "",
+        f"{t('signal.confidence', locale)}: <b>{signal.confidence}%</b>  {conf_bar}",
     ]
+    if entry_price is not None:
+        lines.append(f"Вход: <code>{entry_price:.5f}</code>")
+    if payout:
+        lines.append(payout.rstrip("\n"))
+    if signal.entry_time:
+        lines.append(f"{t('signal.entry_time', locale)}: <b>{signal.entry_time}</b>")
     if signal.analysis:
-        lines.append(f"<b>Анализ:</b> <i>{signal.analysis}</i>")
-    lines.extend(
-        [
-            "",
-            "Объём: 1–3% депозита",
-            "",
-            f"#signal #{pair_tag} #{dir_tag} {tier_tag}",
-        ]
-    )
+        lines.extend(["", f"<i>{signal.analysis}</i>"])
+    lines.extend([
+        "",
+        t("signal.volume", locale),
+        f"#{pair_tag} #{dir_tag} {tier_tag} #signal",
+    ])
     return "\n".join(lines)
 
 
+def format_signal_caption(signal: Signal, pocket_option_url: str, entry_price: float | None = None) -> str:
+    """
+    Auto-selects format: minimal for OTC, rich Pro caption for exchange/elite.
+    Used when posting to the channel (all tiers see it there).
+    """
+    tier = signal.tier or "otc"
+    if tier in {"otc", "demo"}:
+        return format_otc_minimal(signal)
+    return format_pro_signal_caption(signal, pocket_option_url, entry_price)
+
+
 def format_signal(signal: Signal, pocket_option_url: str) -> str:
+    """Legacy full-text format (used by /signal command fallback)."""
     arrow = DIRECTION_ARROW[signal.direction]
     pair_tag = signal.pair.replace("/", "").replace(" ", "").lower()
     dir_tag = DIRECTION_TAG[signal.direction]
@@ -106,107 +297,127 @@ def format_signal(signal: Signal, pocket_option_url: str) -> str:
     badge = TIER_BADGES.get(tier, "OTC")
     tier_tag = TIER_TAGS.get(tier, "#otc")
 
+    if tier in {"otc", "demo"}:
+        return format_otc_minimal(signal)
+
+    conf_bar_full = round(signal.confidence / 10)
+    conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
+
+    payout = _payout_line(signal.pair)
     lines = [
         f"{header}",
         "━━━━━━━━━━━━━━━",
         "",
-        f"<b>Пара:</b> {signal.pair}",
+        f"<b>Пара:</b> {_pair_emoji(signal.pair)} {signal.pair}",
         f"<b>Направление:</b> {signal.direction} {arrow}",
         f"<b>Экспирация:</b> {signal.expiration}",
-        f"<b>AI Confidence:</b> {signal.confidence}%",
-        f"<b>Тип:</b> {badge}",
+        f"<b>Точность:</b> {signal.confidence}%  {conf_bar}",
     ]
+    if payout:
+        lines.append(payout.rstrip("\n"))
+    if signal.entry_time:
+        lines.append(f"<b>Время входа:</b> {signal.entry_time}")
+    lines.append(f"<b>Тип:</b> {badge}")
 
     if signal.analysis:
         lines.append("")
-        lines.append(f"<b>Анализ:</b> {signal.analysis}")
+        lines.append(f"<b>Анализ:</b> <i>{signal.analysis}</i>")
 
     lines.extend([
         "",
         "━━━━━━━━━━━━━━━",
-        "Рекомендуемый объём: 1-3% депозита",
-        f'<a href="{pocket_option_url}">Открыть Pocket Option →</a>',
+        "Объём: 1–3% депозита",
+        f'<a href="{pocket_option_url}">Открыть PocketOption →</a>',
         "",
-        f"#signal #{pair_tag} #{dir_tag} {tier_tag}",
+        f"#{pair_tag} #{dir_tag} {tier_tag} #signal",
     ])
 
     return "\n".join(lines)
 
 
-def format_stats(total_signals: int, total_users: int) -> str:
-    win_rate = 87.3
+def format_stats(total_signals: int, total_users: int, win_rate: float = 0.0) -> str:
     return (
-        f"<b>Статистика Signal Trade GPT</b>\n"
+        f"<b>Статистика SpaceSignal</b>\n"
         f"\n"
-        f"<b>Точность сигналов:</b> {win_rate}%\n"
+        f"<b>Точность сигналов:</b> {win_rate:.1f}%\n"
         f"<b>Всего сигналов:</b> {total_signals:,}\n"
         f"<b>Пользователей:</b> {total_users:,}\n"
         f"<b>Режим работы:</b> 24/7 (OTC) / 08:00-22:00 UTC (биржа)\n"
         f"\n"
-        f"<b>Tier-перки (открываются депозитом на PocketOption):</b>\n"
-        f"  • T0 — 2 демо-сигнала за всё время\n"
-        f"  • T1 ≥ $100 — 5 сигналов/день, OTC\n"
-        f"  • T2 ≥ $500 — 15 сигналов/день, OTC + биржа\n"
-        f"  • T3 ≥ $2000 — 25 сигналов/день, аналитика\n"
-        f"  • T4 ≥ $10000 — безлимит, ранний доступ\n"
+        f"<b>Уровни доступа:</b>\n"
+        f"  • <b>Free</b> — OTC-сигналы, 3/день\n"
+        f"  • <b>Basic</b> (депозит ≥ $20) — OTC + биржа, 10/день\n"
+        f"  • <b>Pro</b> (депозит ≥ $100) — всё: OTC + биржа + Elite, безлимит\n"
         f"\n"
         f"<i>Данные обновляются в режиме реального времени</i>"
     )
 
 
 def format_welcome(first_name: str, referral_code: str, bot_username: str) -> str:
-    referral_link = f"https://t.me/{bot_username}?start={referral_code}"
+    referral_link = f"https://t.me/{bot_username}?start=ref_{referral_code}"
     return (
         f"Привет, <b>{first_name}</b>!\n"
         f"\n"
-        f"<b>Signal Trade GPT</b> — AI-сигналы для PocketOption.\n"
-        f"Доступ открывается твоим депозитом на бирже, не подпиской.\n"
+        f"<b>SpaceSignal</b> — AI-сигналы для PocketOption.\n"
+        f"Доступ открывается регистрацией по нашей ссылке, не подпиской.\n"
         f"\n"
         f"<b>Как начать:</b>\n"
-        f"1. Открой счёт PocketOption по нашей реф-ссылке: /link\n"
-        f"   или пришли свой ID существующего счёта.\n"
-        f"2. Внеси депозит — tier откроется автоматически.\n"
-        f"3. Получай сигналы по своему лимиту.\n"
+        f"1. Открой счёт PocketOption по нашей реф-ссылке (/link)\n"
+        f"   и пришли свой PocketOption Trader ID.\n"
+        f"2. Сразу после привязки — уровень <b>Free</b>: OTC-сигналы, 3/день.\n"
+        f"3. Депозит ≥ $20 — <b>Basic</b>: OTC + биржа, 10/день.\n"
+        f"4. Депозит ≥ $100 — <b>Pro</b>: всё безлимитно.\n"
         f"\n"
         f"<b>Команды:</b>\n"
-        f"/tier — твой текущий уровень и лимиты\n"
+        f"/signal — запросить сигнал\n"
+        f"/tier — твой текущий уровень\n"
         f"/link — привязать аккаунт PocketOption\n"
-        f"/signal — запросить демо-сигнал (T0)\n"
         f"/stats — статистика платформы\n"
         f"/ref — реферальная программа\n"
         f"\n"
         f"<b>Твоя реферальная ссылка:</b>\n"
         f"<code>{referral_link}</code>\n"
         f"\n"
-        f"<i>Signal Trade GPT не является финансовым советником. "
+        f"<i>SpaceSignal не является финансовым советником. "
         f"Все сигналы предоставляются в информационных целях. "
         f"Торговля бинарными опционами сопряжена с высоким риском потери средств.</i>"
     )
 
 
 def format_tier_info(tier: int, po_trader_id: str | None, signals_received: int) -> str:
-    name = USER_TIER_NAMES.get(tier, "—")
-    next_tier = tier + 1 if tier < 4 else None
-    next_threshold = USER_TIER_DEPOSIT_THRESHOLDS.get(next_tier) if next_tier else None
+    name = USER_TIER_NAMES.get(tier, "Free")
 
-    daily_limits = {0: "2 сигнала за всё время (демо)", 1: "5 в день", 2: "15 в день", 3: "25 в день", 4: "безлимит"}
+    # Signal types for this tier
+    types = TIER_SIGNAL_TYPES.get(tier, ["otc"])
+    signal_access = " + ".join(t.upper() for t in types)
+
+    # Daily limit
+    daily_limit = TIER_DAILY_LIMITS.get(tier, 3)
+    limit_text = "безлимит" if daily_limit is None else f"{daily_limit}/день"
 
     lines = [
-        f"<b>Твой tier: T{tier} · {name}</b>",
+        f"<b>Твой уровень: {name}</b>",
         "",
-        f"<b>Лимит сигналов:</b> {daily_limits[tier]}",
+        f"<b>Доступные сигналы:</b> {signal_access}",
+        f"<b>Лимит:</b> {limit_text}",
         f"<b>Сигналов получено:</b> {signals_received}",
     ]
 
     if po_trader_id:
         lines.append(f"<b>PocketOption ID:</b> <code>{po_trader_id}</code>")
     else:
-        lines.append("<b>PocketOption:</b> не привязан — пришли /link")
+        lines.append("<b>PocketOption:</b> не привязан — /link")
 
-    if next_threshold:
+    # Show next tier info
+    if tier == 0:
         lines.append("")
         lines.append(
-            f"<i>До T{next_tier}: депозит ≥ ${next_threshold} на PocketOption.</i>"
+            "<i>До уровня Basic: депозит ≥ $20 на PocketOption.</i>"
+        )
+    elif tier == 1:
+        lines.append("")
+        lines.append(
+            "<i>До уровня Pro: депозит ≥ $100 на PocketOption.</i>"
         )
 
     return "\n".join(lines)
