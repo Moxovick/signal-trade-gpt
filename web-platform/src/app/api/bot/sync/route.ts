@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
         user: {
           select: {
             tier: true,
+            tierOverride: true,
             telegramId: true,
             _count: { select: { signalsCreated: true } },
           },
@@ -75,6 +76,7 @@ export async function GET(req: NextRequest) {
   const accountsData = accounts.map((a) => ({
     poTraderId: a.poTraderId,
     tier: a.user.tier,
+    tierOverride: a.user.tierOverride,
     totalDeposit: Number(a.totalDeposit),
     telegramId: a.user.telegramId ? a.user.telegramId.toString() : null,
     signalsCount: a.user._count.signalsCreated,

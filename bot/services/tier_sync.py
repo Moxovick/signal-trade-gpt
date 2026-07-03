@@ -102,7 +102,11 @@ async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
     po_id = str(po_id)
     deposit = float(item.get("totalDeposit") or 0.0)
     # Compute tier from deposit locally, don't blindly trust API tier
-    new_tier = _compute_tier_from_deposit(deposit)
+    computed_tier = _compute_tier_from_deposit(deposit)
+    # Admin override acts as a floor — tier never drops below it
+    tier_override = item.get("tierOverride")
+    tier_floor = int(tier_override) if tier_override is not None else 0
+    new_tier = max(computed_tier, tier_floor)
 
     state = await _local_state(po_id)
     if state is None:
