@@ -544,9 +544,9 @@ def make_otc_banner(signal: Signal, locale: str = "ru") -> bytes:
     for y_off, amp_scale, alpha, lw in wave_specs:
         pts: list[tuple[float, float]] = []
         for step in range(steps + 1):
-            t = step / steps
-            x = t * w
-            y = mid_y + y_off + math.sin(t * math.pi * 2 * freq) * amplitude * amp_scale
+            frac = step / steps
+            x = frac * w
+            y = mid_y + y_off + math.sin(frac * math.pi * 2 * freq) * amplitude * amp_scale
             pts.append((x, y))
         wd.line(pts, fill=(*gold_rgb, alpha), width=lw)
     wave_overlay = wave_overlay.filter(ImageFilter.GaussianBlur(radius=1))
@@ -680,7 +680,7 @@ def _frame(w: int, h: int, accent_x: int | None = None) -> Image.Image:
     overlay = overlay.filter(ImageFilter.GaussianBlur(radius=18))
     img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
     d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, w - 1, h - 1], outline=(*_hex(GOLD_SOFT), 90), width=2)
+    d.rectangle([0, 0, w - 1, h - 1], outline=_hex(GOLD_SOFT), width=2)
     return img
 
 

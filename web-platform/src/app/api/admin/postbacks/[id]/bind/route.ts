@@ -72,9 +72,16 @@ export async function POST(req: NextRequest, ctx: Params) {
     return NextResponse.json({ ok: false, reason: "user_not_found" }, { status: 404 });
   }
 
+  // Filter out unresolved PO macro placeholders like "{trader_id}"
+  const isMacro = (s: string | null | undefined): boolean =>
+    s != null && /^\{[^}]+\}$/.test(s);
+
   const poTraderId =
-    traderIdOverride ?? postback.poTraderId ?? user.poAccount?.poTraderId ?? null;
-  if (!poTraderId) {
+    traderIdOverride
+    ?? (isMacro(postback.poTraderId) ? null : postback.poTraderId)
+    ?? user.poAccount?.poTraderId
+    ?? null;
+  if (!poTraderId || isMacro(poTraderId)) {
     return NextResponse.json(
       { ok: false, reason: "missing_trader_id" },
       { status: 400 },

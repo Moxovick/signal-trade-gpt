@@ -435,7 +435,7 @@ async def log_activity(
             _generate_cuid(),
             user_id,
             action,
-            json.dumps(details) if details else None,
+            json.dumps(details) if details else "{}",
         )
     except Exception:
         logger.warning("log_activity failed for telegramId=%s action=%s", telegram_id, action, exc_info=True)
