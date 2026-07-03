@@ -138,7 +138,7 @@ export default async function LandingPage() {
                 <Sparkles size={12} />
                 <span>{landing.partnerBadge}</span>
               </div>
-              <h1 className="mt-8 text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] text-shimmer">
+              <h1 className="mt-8 text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] text-[var(--brand-gold)]">
                 {landing.heroTitle.split("\n").map((line, i, arr) => (
                   <span key={i}>
                     {line}
@@ -160,11 +160,10 @@ export default async function LandingPage() {
             {/* Right — signal mockup card */}
             <div className="hidden md:block w-[320px] shrink-0">
               <div
-                className="rounded-3xl border-2 overflow-hidden animate-float"
+                className="rounded-2xl overflow-hidden animate-float"
                 style={{
-                  borderColor: "var(--green)",
-                  background: "linear-gradient(135deg, rgba(0,229,160,0.08), transparent 60%)",
-                  boxShadow: "0 0 60px rgba(142,224,107,0.12)",
+                  border: "1px solid rgba(76,195,138,0.2)",
+                  background: "#15110e",
                 }}
               >
                 {/* Top bar */}
@@ -179,10 +178,10 @@ export default async function LandingPage() {
                 <div className="px-5 py-5">
                   <div className="flex items-center gap-3 mb-4">
                     <div
-                      className="w-14 h-14 rounded-xl flex flex-col items-center justify-center border-2"
+                      className="w-14 h-14 rounded-xl flex flex-col items-center justify-center"
                       style={{
-                        borderColor: "var(--green)",
-                        background: "rgba(142,224,107,0.10)",
+                        border: "1px solid rgba(76,195,138,0.3)",
+                        background: "rgba(76,195,138,0.10)",
                         color: "var(--green)",
                       }}
                     >

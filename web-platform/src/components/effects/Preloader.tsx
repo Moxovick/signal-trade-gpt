@@ -29,7 +29,7 @@ export function Preloader({ brandText = "SPACE · SIGNAL" }: { brandText?: strin
       <div
         className="text-5xl tracking-widest"
         style={{
-          fontFamily: "var(--font-bebas, 'Bebas Neue', sans-serif)",
+          fontFamily: "var(--font-sans)",
           color: "var(--brand-gold)",
           letterSpacing: "0.18em",
           textShadow: "0 0 32px rgba(212, 160, 23, 0.5)",

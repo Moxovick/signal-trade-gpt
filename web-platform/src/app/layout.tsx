@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Manrope, JetBrains_Mono, Bebas_Neue } from "next/font/google";
+import { Manrope, JetBrains_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import Script from "next/script";
 import "./globals.css";
@@ -20,12 +20,6 @@ const jetbrains = JetBrains_Mono({
   weight: ["400", "500"],
 });
 
-const bebas = Bebas_Neue({
-  variable: "--font-bebas",
-  subsets: ["latin"],
-  weight: ["400"],
-});
-
 export const metadata: Metadata = {
   title: "SpaceSignal — AI Trading Signals",
   description:
@@ -43,7 +37,7 @@ export default async function RootLayout({
       lang={locale}
       data-scroll-behavior="smooth"
       data-theme="dark"
-      className={`${manrope.variable} ${jetbrains.variable} ${bebas.variable} h-full`}
+      className={`${manrope.variable} ${jetbrains.variable} h-full`}
     >
       <head>
         {/* Theme initializer — before-interactive so no flash on load */}

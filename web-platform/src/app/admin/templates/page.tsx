@@ -29,7 +29,7 @@ export default async function AdminTemplatesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black tracking-wider" style={{ fontFamily: "var(--font-bebas)" }}>
+          <h1 className="text-2xl font-black tracking-wider">
             {tt.title ?? "ШАБЛОНЫ БОТА"}
           </h1>
           <p className="text-sm text-[#888]">{tt.subtitle ?? "Управление шаблонами сообщений для Telegram-бота"}</p>
@@ -44,7 +44,7 @@ export default async function AdminTemplatesPage() {
         <div key={key} className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-3 h-3 rounded-full" style={{ background: tierLabels[key].color }} />
-            <h2 className="text-lg font-bold" style={{ fontFamily: "var(--font-bebas)", letterSpacing: "0.05em", color: tierLabels[key].color }}>
+            <h2 className="text-lg font-bold" style={{ letterSpacing: "0.05em", color: tierLabels[key].color }}>
               {tierLabels[key].name}
             </h2>
             <span className="text-xs text-[#555]">({items.length})</span>

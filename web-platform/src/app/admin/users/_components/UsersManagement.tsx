@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Loader2,
   AlertCircle,
+  MessageCircle,
 } from "lucide-react";
 import { TierBadge } from "@/components/ui/TierBadge";
 import { useI18n } from "@/lib/i18n/context";
@@ -567,7 +568,6 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
       <div className="flex items-center justify-between">
         <h1
           className="text-2xl font-bold"
-          style={{ fontFamily: "var(--font-bebas)" }}
         >
           {(um as Record<string, string>).title ?? "Управление пользователями"}
         </h1>
@@ -678,9 +678,10 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
       >
         <div
           className="hidden md:grid px-5 py-3 text-xs text-[var(--t-3)] border-b gap-2"
-          style={{ gridTemplateColumns: "2.5fr 0.8fr 1.2fr 0.8fr 0.8fr 1.2fr 1fr 1fr 1fr", borderColor: "var(--b-soft, rgba(255,255,255,0.06))" }}
+          style={{ gridTemplateColumns: "2.5fr 0.5fr 0.8fr 1.2fr 0.8fr 0.8fr 1.2fr 1fr 1fr 1fr", borderColor: "var(--b-soft, rgba(255,255,255,0.06))" }}
         >
           <span>{umTable.user ?? "Пользователь"}</span>
+          <span>TG</span>
           <SortHeader label={umTable.tier ?? "Тир"} field="tier" current={sortBy} dir={sortDir} onClick={handleSort} />
           <SortHeader label={umTable.deposit ?? "Депозит"} field="depositTotal" current={sortBy} dir={sortDir} onClick={handleSort} />
           <SortHeader label={umTable.signals ?? "Сигналы"} field="signalsReceived" current={sortBy} dir={sortDir} onClick={handleSort} />
@@ -712,7 +713,7 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
                 type="button"
                 onClick={() => toggleExpand(u.id)}
                 className="w-full text-left grid grid-cols-1 md:grid-cols-none px-5 py-3 items-center border-b text-sm gap-2 hover:bg-white/[0.02] transition-colors cursor-pointer"
-                style={{ borderColor: "var(--b-soft, rgba(255,255,255,0.04))", gridTemplateColumns: "2.5fr 0.8fr 1.2fr 0.8fr 0.8fr 1.2fr 1fr 1fr 1fr" }}
+                style={{ borderColor: "var(--b-soft, rgba(255,255,255,0.04))", gridTemplateColumns: "2.5fr 0.5fr 0.8fr 1.2fr 0.8fr 0.8fr 1.2fr 1fr 1fr 1fr" }}
               >
                 {/* User */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -725,6 +726,15 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
                       {u.username ? `@${u.username}` : u.email ?? `TG: ${u.telegramId ?? "—"}`}
                     </div>
                   </div>
+                </div>
+
+                {/* Telegram */}
+                <div className="flex items-center justify-center">
+                  {u.telegramId ? (
+                    <MessageCircle size={14} className="text-[var(--green)]" />
+                  ) : (
+                    <span className="text-[var(--t-3)] text-xs">—</span>
+                  )}
                 </div>
 
                 {/* Tier */}
@@ -774,7 +784,7 @@ export function UsersManagement({ initialTotal }: { initialTotal: number }) {
                       style={{
                         background:
                           u.poAccount.status === "verified"
-                            ? "rgba(0,229,160,0.1)"
+                            ? "rgba(76,195,138,0.1)"
                             : "rgba(200,165,92,0.1)",
                         color:
                           u.poAccount.status === "verified"

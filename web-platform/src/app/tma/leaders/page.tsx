@@ -83,7 +83,7 @@ function Leaders() {
                   <div className="font-semibold truncate">{name}</div>
                   <div className="text-xs text-[var(--t-3)]">
                     {level} · {e.signalsReceived} {t.tma.leaders.signals} ·{" "}
-                    <span style={{ color: "#8ee06b", fontWeight: 600 }}>${e.earnings.toLocaleString("en-US")}</span>
+                    <span style={{ color: "var(--green)", fontWeight: 600 }}>${e.earnings.toLocaleString("en-US")}</span>
                   </div>
                 </div>
               </div>

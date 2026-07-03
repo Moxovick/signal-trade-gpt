@@ -63,7 +63,7 @@ function Home({ user }: { user: TmaUser }) {
       }
     }
     void load();
-    const id = window.setInterval(load, 7000);
+    const id = window.setInterval(load, 60_000);
     return () => {
       alive = false;
       window.clearInterval(id);
@@ -90,7 +90,7 @@ function Home({ user }: { user: TmaUser }) {
       <Link
         href="/tma/signals"
         className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.98]"
-        style={{ background: "linear-gradient(135deg, var(--brand-gold-deep), var(--brand-gold-bright))", color: "#1a1208" }}
+        style={{ background: "var(--brand-gold)", color: "#1a1208" }}
       >
         <Activity size={16} />
         {t.tma.home.getSignal}

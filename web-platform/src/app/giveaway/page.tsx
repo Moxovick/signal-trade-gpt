@@ -38,7 +38,7 @@ function PrizeIcon({ title }: { title: string }) {
   if (tl.includes("airpods") || tl.includes("наушники") || tl.includes("headphone")) {
     return (
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-3"
-        style={{ background: "rgba(142,224,107,0.10)", border: "1px solid rgba(142,224,107,0.15)" }}>
+        style={{ background: "rgba(76,195,138,0.10)", border: "1px solid rgba(76,195,138,0.15)" }}>
         <Headphones size={28} style={{ color: "#8ee06b" }} />
       </div>
     );

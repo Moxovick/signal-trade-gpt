@@ -18,10 +18,10 @@ const DEFAULTS: GiveawayPrize[] = [
   { place: 3, title: "AirPods 3 Pro" },
 ];
 
-const PLACE_STYLE: Record<number, { icon: LucideIcon; accentColor: string; borderColor: string; bgGradient: string }> = {
-  1: { icon: Trophy, accentColor: "var(--brand-gold)", borderColor: "rgba(212,160,23,0.4)", bgGradient: "linear-gradient(135deg, rgba(212,160,23,0.08) 0%, transparent 100%)" },
-  2: { icon: Medal, accentColor: "#c0c0c0", borderColor: "rgba(192,192,192,0.4)", bgGradient: "linear-gradient(135deg, rgba(192,192,192,0.06) 0%, transparent 100%)" },
-  3: { icon: Award, accentColor: "#cd7f32", borderColor: "rgba(205,127,50,0.4)", bgGradient: "linear-gradient(135deg, rgba(205,127,50,0.06) 0%, transparent 100%)" },
+const PLACE_STYLE: Record<number, { icon: LucideIcon; accentColor: string; borderColor: string; bg: string }> = {
+  1: { icon: Trophy, accentColor: "var(--brand-gold)", borderColor: "rgba(212,160,23,0.2)", bg: "var(--bg-1)" },
+  2: { icon: Medal, accentColor: "#c0c0c0", borderColor: "rgba(192,192,192,0.2)", bg: "var(--bg-1)" },
+  3: { icon: Award, accentColor: "#cd7f32", borderColor: "rgba(205,127,50,0.2)", bg: "var(--bg-1)" },
 };
 
 /** Return an inline SVG illustration based on prize title keywords. */
@@ -110,7 +110,7 @@ export default async function DashboardGiveawayPage() {
             <div
               key={prize.place}
               style={{
-                background: style.bgGradient,
+                background: style.bg,
                 border: `1px solid ${style.borderColor}`,
                 borderRadius: "12px",
                 padding: "24px",

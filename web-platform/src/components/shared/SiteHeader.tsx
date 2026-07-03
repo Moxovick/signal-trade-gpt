@@ -135,7 +135,7 @@ export function SiteHeader({
   const initial = displayName[0]?.toUpperCase() ?? "?";
 
   return (
-    <header className="sticky top-0 z-40 backdrop-blur-md border-b border-[var(--b-soft)] bg-[rgba(8,6,10,0.75)]">
+    <header className="sticky top-0 z-40 backdrop-blur-md border-b border-[var(--b-soft)] bg-[rgba(12,10,9,0.88)]">
       <nav className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <div className="shrink-0">
           <Logo size="md" />
@@ -184,7 +184,7 @@ export function SiteHeader({
 
       {/* Mobile dropdown */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-[var(--b-soft)] bg-[rgba(8,6,10,0.95)] px-6 pb-6 pt-4 space-y-4">
+        <div className="md:hidden border-t border-[var(--b-soft)] bg-[rgba(12,10,9,0.95)] px-6 pb-6 pt-4 space-y-4">
           {NAV.map((n) => (
             <Link
               key={n.href}

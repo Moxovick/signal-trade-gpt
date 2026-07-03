@@ -28,6 +28,11 @@ export async function GET(req: NextRequest) {
         { username: { contains: q, mode: "insensitive" } },
         { email: { contains: q, mode: "insensitive" } },
         { firstName: { contains: q, mode: "insensitive" } },
+        { lastName: { contains: q, mode: "insensitive" } },
+        // Allow searching by Telegram ID (numeric string)
+        ...((/^\d+$/.test(q))
+          ? [{ telegramId: BigInt(q) }]
+          : []),
       ],
     },
     select: {
@@ -35,6 +40,7 @@ export async function GET(req: NextRequest) {
       firstName: true,
       username: true,
       email: true,
+      telegramId: true,
     },
     orderBy: { createdAt: "desc" },
     take: 10,

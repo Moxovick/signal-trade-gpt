@@ -14,9 +14,9 @@ import { getDictionaryForUser } from "@/lib/i18n";
 export const dynamic = "force-dynamic";
 
 const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
-  verified: { bg: "rgba(142,224,107,0.10)", fg: "var(--green)" },
+  verified: { bg: "rgba(76,195,138,0.10)", fg: "var(--green)" },
   pending: { bg: "rgba(212,160,23,0.10)", fg: "var(--brand-gold)" },
-  rejected: { bg: "rgba(255,107,61,0.10)", fg: "var(--red)" },
+  rejected: { bg: "rgba(232,98,58,0.10)", fg: "var(--red)" },
 };
 
 export default async function PoAccountsPage() {

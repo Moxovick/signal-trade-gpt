@@ -17,6 +17,7 @@ type UserHit = {
   firstName: string | null;
   username: string | null;
   email: string | null;
+  telegramId: string | null;
 };
 
 const REASON_RU_FALLBACK: Record<string, string> = {
@@ -167,7 +168,7 @@ export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
                     search();
                   }
                 }}
-                placeholder="username / email / first name…"
+                placeholder="username / email / имя / telegram id…"
                 className="flex-1 bg-transparent text-xs outline-none"
               />
             </div>
@@ -199,9 +200,18 @@ export function BindUnmatched({ postbackId, defaultTraderId }: Props) {
                       {u.firstName ?? u.username ?? u.email ?? u.id.slice(0, 8)}
                     </div>
                     <div className="text-[10px] text-[var(--t-3)] truncate">
-                      {u.email ?? u.username ?? u.id}
+                      {[
+                        u.username ? `@${u.username}` : null,
+                        u.email,
+                        u.telegramId ? `TG: ${u.telegramId}` : null,
+                      ].filter(Boolean).join(" · ") || u.id}
                     </div>
                   </div>
+                  {u.telegramId && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[rgba(76,195,138,0.1)] text-[var(--green)] shrink-0">
+                      TG
+                    </span>
+                  )}
                 </button>
               ))}
             </div>

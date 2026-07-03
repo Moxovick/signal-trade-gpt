@@ -86,7 +86,7 @@ export default async function ReviewsPage() {
           <div className="inline-flex items-center gap-2 px-3 h-8 mt-8 rounded-full text-xs uppercase tracking-widest border border-[var(--b-soft)] text-[var(--brand-gold)] bg-[var(--bg-1)]">
             {reviews_t.badge}
           </div>
-          <h1 className="mt-6 text-5xl md:text-6xl font-bold leading-[1.05] text-shimmer">
+          <h1 className="mt-6 text-5xl md:text-6xl font-bold leading-[1.05] text-[var(--brand-gold)]">
             {reviews_t.title}
           </h1>
           <div className="mt-8 flex items-center justify-center gap-6 text-sm text-[var(--t-2)]">

@@ -27,10 +27,8 @@ export function TierStrip({ tier, depositTotal, nextThreshold, dailyLimit, signa
     <div
       className="flex items-center gap-3 rounded-xl border px-4 py-2.5"
       style={{
-        borderColor: isPro ? "rgba(245,232,192,0.30)" : "var(--b-soft)",
-        background: isPro
-          ? "linear-gradient(135deg, rgba(212,160,23,0.08), transparent 60%)"
-          : "var(--bg-1)",
+        borderColor: isPro ? "rgba(245,236,217,0.14)" : "rgba(245,236,217,0.08)",
+        background: "var(--bg-1)",
         maxHeight: 48,
       }}
     >
@@ -55,8 +53,7 @@ export function TierStrip({ tier, depositTotal, nextThreshold, dailyLimit, signa
                     className="h-full rounded-full transition-all duration-500"
                     style={{
                       width: `${progressPct}%`,
-                      background:
-                        "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+                      background: "var(--brand-gold)",
                     }}
                   />
                 </div>

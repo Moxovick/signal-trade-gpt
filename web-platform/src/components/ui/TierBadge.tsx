@@ -11,14 +11,14 @@ type Props = {
 const TIER_COLORS: Record<number, { bg: string; fg: string; border: string }> = {
   0: { bg: "rgba(110,96,76,0.15)", fg: "#b6a586", border: "rgba(110,96,76,0.3)" },
   1: {
-    bg: "linear-gradient(135deg, rgba(100,149,237,0.20), rgba(176,196,222,0.10))",
+    bg: "rgba(100,149,237,0.12)",
     fg: "#b0c4de",
-    border: "rgba(176,196,222,0.50)",
+    border: "rgba(176,196,222,0.25)",
   },
   2: {
-    bg: "linear-gradient(135deg, rgba(212,160,23,0.20), rgba(245,232,192,0.10))",
+    bg: "rgba(212,160,23,0.12)",
     fg: "#f5e8c0",
-    border: "rgba(245,232,192,0.50)",
+    border: "rgba(245,232,192,0.25)",
   },
 };
 

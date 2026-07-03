@@ -295,7 +295,7 @@ export default function AdminAssetsPage() {
                           OTC
                         </span>
                       ) : (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(142,224,107,0.12)] text-[var(--green)]">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[rgba(76,195,138,0.12)] text-[var(--green)]">
                           {(as_ as Record<string, string>).real ?? "Реал"}
                         </span>
                       )}

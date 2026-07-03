@@ -74,9 +74,9 @@ export default async function PocketOptionSettingsPage() {
   const nextLabel = user.tier === 0 ? "Базового" : user.tier === 1 ? "Про" : null;
 
   const statusConfig = {
-    verified: { icon: CheckCircle2, label: t.pocketoption.statusVerified, color: "var(--green)", bg: "rgba(142,224,107,0.10)" },
+    verified: { icon: CheckCircle2, label: t.pocketoption.statusVerified, color: "var(--green)", bg: "rgba(76,195,138,0.10)" },
     pending: { icon: Clock, label: t.pocketoption.statusReview, color: "var(--brand-gold)", bg: "rgba(212,160,23,0.10)" },
-    rejected: { icon: XCircle, label: t.pocketoption.statusRejected, color: "var(--red)", bg: "rgba(255,107,61,0.10)" },
+    rejected: { icon: XCircle, label: t.pocketoption.statusRejected, color: "var(--red)", bg: "rgba(232,98,58,0.10)" },
   };
 
   return (
@@ -85,10 +85,8 @@ export default async function PocketOptionSettingsPage() {
       <div
         className="rounded-2xl border p-5 relative overflow-hidden"
         style={{
-          borderColor: isPro ? "var(--b-hard)" : "var(--b-soft)",
-          background: isPro
-            ? "linear-gradient(135deg,rgba(212,160,23,0.08) 0%,var(--bg-1) 100%)"
-            : "var(--bg-1)",
+          borderColor: isPro ? "rgba(245,236,217,0.14)" : "rgba(245,236,217,0.08)",
+          background: "var(--bg-1)",
         }}
       >
         <div className="flex items-start gap-3 mb-4">
@@ -128,7 +126,7 @@ export default async function PocketOptionSettingsPage() {
                 className="h-full rounded-full transition-all duration-700"
                 style={{
                   width: `${progressPct}%`,
-                  background: "linear-gradient(90deg,var(--brand-gold-deep),var(--brand-gold-bright))",
+                  background: "var(--brand-gold)",
                 }}
               />
             </div>
@@ -186,9 +184,7 @@ export default async function PocketOptionSettingsPage() {
               className="rounded-xl border p-4 relative"
               style={{
                 borderColor: tierItem.active ? "var(--brand-gold)" : "var(--b-soft)",
-                background: tierItem.active
-                  ? "linear-gradient(135deg,rgba(212,160,23,0.06) 0%,var(--bg-1) 100%)"
-                  : "var(--bg-1)",
+                background: "var(--bg-1)",
               }}
             >
               {tierItem.active && (
@@ -364,7 +360,7 @@ export default async function PocketOptionSettingsPage() {
                   style={{
                     background:
                       d.eventType === "ftd"
-                        ? "rgba(142,224,107,0.12)"
+                        ? "rgba(76,195,138,0.12)"
                         : "var(--bg-2)",
                   }}
                 >
@@ -384,7 +380,7 @@ export default async function PocketOptionSettingsPage() {
                       style={{
                         background:
                           d.eventType === "ftd"
-                            ? "rgba(142,224,107,0.12)"
+                            ? "rgba(76,195,138,0.12)"
                             : "var(--bg-2)",
                         color:
                           d.eventType === "ftd"

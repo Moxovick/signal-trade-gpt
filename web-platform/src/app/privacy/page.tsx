@@ -65,7 +65,7 @@ export default async function PrivacyPage() {
           <div className="inline-flex items-center gap-2 px-3 h-8 mt-8 rounded-full text-xs uppercase tracking-widest border border-[var(--b-soft)] text-[var(--brand-gold)] bg-[var(--bg-1)]">
             {privacy.badge}
           </div>
-          <h1 className="mt-6 text-4xl md:text-5xl font-bold text-shimmer">{page.title}</h1>
+          <h1 className="mt-6 text-4xl md:text-5xl font-bold text-[var(--brand-gold)]">{page.title}</h1>
           <p className="mt-4 text-xs text-[var(--t-3)]">
             {privacy.updatedPrefix}{" "}
             {page.updatedAt.toLocaleDateString("ru", {

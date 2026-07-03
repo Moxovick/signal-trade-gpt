@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 const EVENT_COLOR: Record<string, { bg: string; fg: string }> = {
   registration: { bg: "rgba(136,188,255,0.10)", fg: "#88bcff" },
   email_confirm: { bg: "rgba(212,160,23,0.10)", fg: "var(--brand-gold)" },
-  ftd: { bg: "rgba(142,224,107,0.10)", fg: "var(--green)" },
+  ftd: { bg: "rgba(76,195,138,0.10)", fg: "var(--green)" },
   redeposit: { bg: "rgba(245,232,192,0.10)", fg: "var(--t-1)" },
   commission: { bg: "rgba(212,160,23,0.18)", fg: "var(--brand-gold-bright)" },
   withdrawal: { bg: "rgba(220,90,90,0.10)", fg: "var(--red)" },

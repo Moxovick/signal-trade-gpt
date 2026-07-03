@@ -29,7 +29,7 @@ export default async function AdminDepositsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black tracking-wider" style={{ fontFamily: "var(--font-bebas)" }}>
+          <h1 className="text-2xl font-black tracking-wider">
             {td.title ?? "ДЕПОЗИТЫ"}
           </h1>
           <p className="text-sm text-[#888]">{td.subtitle ?? "Депозиты пользователей"}</p>

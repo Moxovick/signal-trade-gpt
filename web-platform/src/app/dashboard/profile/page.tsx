@@ -80,12 +80,10 @@ export default async function ProfilePage() {
 
       {/* ── Hero card ──────────────────────────────────────────────────── */}
       <div
-        className="rounded-3xl border p-6 relative overflow-hidden"
+        className="rounded-2xl border p-6 relative overflow-hidden"
         style={{
-          borderColor: tier >= 1 ? "rgba(245,232,192,0.30)" : "var(--b-soft)",
-          background: tier >= 1
-            ? "linear-gradient(135deg,rgba(212,160,23,0.08) 0%,var(--bg-1) 60%)"
-            : "var(--bg-1)",
+          borderColor: tier >= 1 ? "rgba(245,236,217,0.14)" : "rgba(245,236,217,0.08)",
+          background: "var(--bg-1)",
         }}
       >
         <div className="flex flex-col sm:flex-row sm:items-center gap-5">

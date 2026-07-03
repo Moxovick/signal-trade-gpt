@@ -33,16 +33,17 @@ from database.models import Signal
 from i18n import t, DEFAULT_LOCALE
 
 
-# ── palette (must mirror web/globals.css) ────────────────────────────────────
+# ── palette (must mirror web/globals.css — Variant A) ────────────────────────
 GOLD = "#d4a017"
 GOLD_SOFT = "#b88c14"
-BG_0 = "#08060a"
-BG_1 = "#100c10"
-BG_2 = "#181218"
-TEXT_1 = "#f5ecd9"
-TEXT_2 = "#b6a586"
-GREEN = "#8ee06b"
-RED = "#ff6b3d"
+BG_0 = "#0C0A09"
+BG_1 = "#15110E"
+BG_2 = "#1C1611"
+TEXT_1 = "#F4ECDD"
+TEXT_2 = "#A99A82"
+TEXT_3 = "#6F6353"
+GREEN = "#4CC38A"
+RED = "#E8623A"
 
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
@@ -857,7 +858,7 @@ def make_achievements_grid(items: list[tuple[str, str, bool]], locale: str = DEF
         d.rounded_rectangle(
             [x, y, x + cell_w, y + cell_h], radius=18, outline=outline, width=2
         )
-        text_color = TEXT_1 if ok else "#5a5050"
+        text_color = TEXT_1 if ok else TEXT_3
         # try color emoji rendering with downscale; fall back to ASCII placeholder
         emoji_drawn = False
         try:
@@ -887,7 +888,7 @@ def make_achievements_grid(items: list[tuple[str, str, bool]], locale: str = DEF
         tw = d.textlength(title, font=f_name)
         d.text((x + (cell_w - tw) // 2, y + cell_h - 38), title, font=f_name, fill=text_color)
         if not ok:
-            d.text((x + cell_w - 30, y + 12), "✖", font=f_name, fill="#3a3030")
+            d.text((x + cell_w - 30, y + 12), "✖", font=f_name, fill=BG_2)
 
     _watermark(d, w, h)
     buf = io.BytesIO()

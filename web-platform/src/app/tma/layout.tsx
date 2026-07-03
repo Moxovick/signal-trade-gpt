@@ -32,7 +32,7 @@ export default async function TmaLayout({ children }: { children: React.ReactNod
         className="min-h-screen text-[var(--t-1)]"
         style={{
           background:
-            "radial-gradient(ellipse at top, rgba(212,160,23,0.06), transparent 60%), var(--bg-0)",
+            "var(--bg-0)",
         }}
       >
         {children}

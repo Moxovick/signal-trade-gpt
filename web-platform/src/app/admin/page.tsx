@@ -151,9 +151,7 @@ export default async function AdminDashboard() {
                         style={{
                           width: `${pct}%`,
                           background:
-                            i === stages.length - 1
-                              ? "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))"
-                              : "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold))",
+                            "var(--brand-gold)",
                           opacity: 0.85,
                         }}
                       />
@@ -213,7 +211,7 @@ export default async function AdminDashboard() {
                       className="h-full"
                       style={{
                         width: `${pct}%`,
-                        background: "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold))",
+                        background: "var(--brand-gold)",
                       }}
                     />
                   </div>
@@ -299,7 +297,7 @@ export default async function AdminDashboard() {
                     style={{
                       background:
                         a.status === "verified"
-                          ? "rgba(142,224,107,0.10)"
+                          ? "rgba(76,195,138,0.10)"
                           : "rgba(212,160,23,0.10)",
                       color: a.status === "verified" ? "var(--green)" : "var(--brand-gold)",
                     }}

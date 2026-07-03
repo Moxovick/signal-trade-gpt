@@ -504,7 +504,7 @@ const EXPIRATION_VALUES: Record<PairBand, string[]> = {
 
 const BAND_META_BASE: Record<PairBand, { color: string; bg: string }> = {
   otc: { color: "#8888ff", bg: "rgba(136,136,255,0.08)" },
-  exchange: { color: "#8ee06b", bg: "rgba(142,224,107,0.08)" },
+  exchange: { color: "#8ee06b", bg: "rgba(76,195,138,0.08)" },
   elite: { color: "#d4a017", bg: "rgba(212,160,23,0.08)" },
 };
 
@@ -1085,7 +1085,7 @@ export function SignalRequestButton({
                     background: isActive
                       ? "rgba(212,160,23,0.15)"
                       : isDone
-                        ? "rgba(142,224,107,0.10)"
+                        ? "rgba(76,195,138,0.10)"
                         : "var(--bg-2)",
                     color: isActive
                       ? "var(--brand-gold)"
@@ -1180,119 +1180,200 @@ export function SignalRequestButton({
           </div>
         ) : (
           <div
-            className="rounded-2xl border overflow-hidden w-full"
             style={{
-              borderColor: `color-mix(in srgb, ${lastSignal.direction === "CALL" ? "#00e5a0" : "#ff6b3d"} 40%, transparent)`,
-              background: lastSignal.direction === "CALL"
-                ? "rgba(0,229,160,0.03)"
-                : "rgba(255,107,61,0.03)",
+              background: "#15110e",
+              border: "1px solid rgba(245,236,217,0.08)",
+              borderRadius: 16,
+              overflow: "hidden",
             }}
           >
-            <div className="px-5 py-4">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center"
-                    style={{
-                      background: lastSignal.direction === "CALL"
-                        ? "rgba(0,229,160,0.12)"
-                        : "rgba(255,107,61,0.12)",
-                      color: lastSignal.direction === "CALL" ? "var(--green)" : "var(--red)",
-                    }}
-                  >
-                    {lastSignal.direction === "CALL" ? (
-                      <TrendingUp size={22} />
-                    ) : (
-                      <TrendingDown size={22} />
-                    )}
-                  </div>
-                  <div>
-                    <div
-                      className="text-lg font-bold"
-                      style={{ fontFamily: "var(--font-jetbrains)" }}
-                    >
-                      {lastSignal.pair}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span
-                        className="text-xs font-semibold"
-                        style={{ color: lastSignal.direction === "CALL" ? "var(--green)" : "var(--red)" }}
-                      >
-                        {lastSignal.direction === "CALL" ? "CALL" : "PUT"}
-                      </span>
-                      <span className="text-[10px] text-[var(--t-3)]">
-                        {lastSignal.expiration}
-                      </span>
-                    </div>
-                  </div>
+            {/* Header */}
+            <div
+              style={{
+                padding: "20px 22px 16px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottom: "1px solid rgba(245,236,217,0.06)",
+              }}
+            >
+              <div style={{ display: "flex", gap: 13, alignItems: "center" }}>
+                <div
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 11,
+                    background: "#1c1611",
+                    border: "1px solid rgba(245,236,217,0.08)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 800,
+                    fontSize: 13,
+                    color: "#d4a017",
+                    letterSpacing: "0.02em",
+                  }}
+                >
+                  {lastSignal.pair.replace(/ \(OTC\)/, "").includes("/")
+                    ? lastSignal.pair.replace(/ \(OTC\)/, "").split("/").map(s => s[0]).join("")
+                    : lastSignal.pair.replace(/ \(OTC\)/, "").slice(0, 2).toUpperCase()}
                 </div>
-
-                {/* Confidence */}
-                <div className="text-right">
-                  <div
-                    className="text-2xl font-bold tabular-nums"
-                    style={{ color: "var(--brand-gold)", fontFamily: "var(--font-jetbrains)" }}
-                  >
-                    {lastSignal.confidence}%
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 20, letterSpacing: "-0.01em" }}>
+                    {lastSignal.pair.replace(/ \(OTC\)/, "")}
                   </div>
-                  <div className="text-[10px] text-[var(--t-3)] uppercase tracking-wider">
-                    {t.signalRequest.accuracy}
+                  <div style={{ display: "flex", gap: 9, alignItems: "center", marginTop: 4 }}>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#A99A82",
+                        border: "1px solid rgba(245,236,217,0.14)",
+                        borderRadius: 5,
+                        padding: "2px 8px",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                      }}
+                    >
+                      {t.signalRequest.tierExchange ?? "Биржевой"}
+                    </span>
+                    <span style={{ fontSize: 12.5, color: "#6F6353" }}>
+                      {lastSignal.expiration}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Chart */}
-              {hasChart && lastSignal.chartData && (
-                <div className="mb-3">
-                  <MiniChart
-                    candles={lastSignal.chartData.candles}
-                    direction={lastSignal.direction}
-                    support={lastSignal.chartData.levels.support}
-                    resistance={lastSignal.chartData.levels.resistance}
-                  />
-                  <div className="flex gap-4 mt-2 text-[10px] text-[var(--t-3)]" style={{ fontFamily: "var(--font-jetbrains)" }}>
-                    <span>RSI <span className="text-[var(--t-2)]">{lastSignal.chartData.indicators.rsi}</span></span>
-                    <span>EMA20 <span className="text-[var(--t-2)]">{lastSignal.chartData.indicators.ema20.toFixed(4)}</span></span>
-                    <span>EMA50 <span className="text-[var(--t-2)]">{lastSignal.chartData.indicators.ema50.toFixed(4)}</span></span>
-                  </div>
-                </div>
-              )}
+              {/* Direction chip */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 9,
+                  background: lastSignal.direction === "CALL" ? "rgba(76,195,138,0.12)" : "rgba(232,98,58,0.12)",
+                  border: `1px solid ${lastSignal.direction === "CALL" ? "rgba(76,195,138,0.3)" : "rgba(232,98,58,0.3)"}`,
+                  borderRadius: 9,
+                  padding: "8px 13px",
+                }}
+              >
+                <span style={{ fontWeight: 700, fontSize: 14, color: lastSignal.direction === "CALL" ? "#4CC38A" : "#E8623A", letterSpacing: "0.02em" }}>
+                  {lastSignal.direction === "CALL" ? (t.liveSignalHero?.directionUp ?? "ВВЕРХ") : (t.liveSignalHero?.directionDown ?? "ВНИЗ")}
+                </span>
+                {lastSignal.direction === "CALL" ? (
+                  <TrendingUp size={13} color="#4CC38A" strokeWidth={3} />
+                ) : (
+                  <TrendingDown size={13} color="#E8623A" strokeWidth={3} />
+                )}
+              </div>
+            </div>
 
-              {/* Entry price for non-OTC */}
-              {lastSignal.entryPrice != null && (
-                <div
-                  className="flex items-center gap-2 text-xs text-[var(--t-2)] mb-3 px-3 py-2 rounded-lg"
-                  style={{ background: "rgba(212,160,23,0.06)", fontFamily: "var(--font-jetbrains)" }}
-                >
-                  <Target size={12} className="text-[var(--brand-gold)]" />
-                  {t.signalRequest.entry} <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryPrice.toFixed(5)}</span>
+            {/* Chart */}
+            {hasChart && lastSignal.chartData && (
+              <div style={{ padding: "18px 22px 6px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, color: "#6F6353", textTransform: "uppercase", letterSpacing: "0.14em" }}>
+                    {t.liveSignalHero?.chart ?? "График"} · M{lastSignal.expiration.replace(/[^0-9]/g, "")}
+                  </span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 11, color: "#A99A82" }}>{t.signalRequest.accuracy}</span>
+                    <span style={{ fontFamily: "var(--font-jetbrains)", fontWeight: 700, fontSize: 15, color: lastSignal.direction === "CALL" ? "#4CC38A" : "#E8623A" }}>
+                      {lastSignal.confidence}%
+                    </span>
+                  </span>
                 </div>
-              )}
+                <MiniChart
+                  candles={lastSignal.chartData.candles}
+                  direction={lastSignal.direction}
+                  support={lastSignal.chartData.levels.support}
+                  resistance={lastSignal.chartData.levels.resistance}
+                />
+              </div>
+            )}
 
-              {/* Entry time */}
-              {lastSignal.entryTime && (
-                <div
-                  className="flex items-center gap-2 text-xs text-[var(--t-2)] mb-3 px-3 py-2 rounded-lg"
-                  style={{ background: "rgba(212,160,23,0.06)", fontFamily: "var(--font-jetbrains)" }}
-                >
-                  <Clock size={12} className="text-[var(--brand-gold)]" />
-                  {t.signalRequest.entryTime} <span className="text-[var(--brand-gold)] font-semibold">{lastSignal.entryTime}</span>
+            {/* Indicator grid */}
+            {hasChart && lastSignal.chartData && (
+              <div
+                style={{
+                  margin: "8px 22px 0",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: 1,
+                  background: "rgba(245,236,217,0.06)",
+                  border: "1px solid rgba(245,236,217,0.06)",
+                  borderRadius: 11,
+                  overflow: "hidden",
+                }}
+              >
+                <div style={{ background: "#15110e", padding: "13px 15px" }}>
+                  <div style={{ fontSize: 10.5, color: "#6F6353", textTransform: "uppercase", letterSpacing: "0.1em" }}>RSI 14</div>
+                  <div style={{ fontFamily: "var(--font-jetbrains)", fontWeight: 500, fontSize: 16, marginTop: 3 }}>{lastSignal.chartData.indicators.rsi}</div>
                 </div>
-              )}
+                <div style={{ background: "#15110e", padding: "13px 15px" }}>
+                  <div style={{ fontSize: 10.5, color: "#6F6353", textTransform: "uppercase", letterSpacing: "0.1em" }}>EMA 20</div>
+                  <div style={{ fontFamily: "var(--font-jetbrains)", fontWeight: 500, fontSize: 16, marginTop: 3 }}>{lastSignal.chartData.indicators.ema20.toFixed(4)}</div>
+                </div>
+                <div style={{ background: "#15110e", padding: "13px 15px" }}>
+                  <div style={{ fontSize: 10.5, color: "#6F6353", textTransform: "uppercase", letterSpacing: "0.1em" }}>EMA 50</div>
+                  <div style={{ fontFamily: "var(--font-jetbrains)", fontWeight: 500, fontSize: 16, marginTop: 3 }}>{lastSignal.chartData.indicators.ema50.toFixed(4)}</div>
+                </div>
+                <div style={{ background: "#15110e", padding: "13px 15px" }}>
+                  <div style={{ fontSize: 10.5, color: "#6F6353", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t.signalHistory?.support ?? "Поддержка"}</div>
+                  <div style={{ fontFamily: "var(--font-jetbrains)", fontWeight: 500, fontSize: 16, color: "#5B8DEF", marginTop: 3 }}>{lastSignal.chartData.levels.support.toFixed(4)}</div>
+                </div>
+                <div style={{ background: "#15110e", padding: "13px 15px" }}>
+                  <div style={{ fontSize: 10.5, color: "#6F6353", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t.signalHistory?.resistance ?? "Сопротивление"}</div>
+                  <div style={{ fontFamily: "var(--font-jetbrains)", fontWeight: 500, fontSize: 16, color: "#E8623A", marginTop: 3 }}>{lastSignal.chartData.levels.resistance.toFixed(4)}</div>
+                </div>
+                <div style={{ background: "#1a1510", padding: "13px 15px" }}>
+                  <div style={{ fontSize: 10.5, color: "#d4a017", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t.signalHistory?.entry ?? "Точка входа"}</div>
+                  <div style={{ fontFamily: "var(--font-jetbrains)", fontWeight: 700, fontSize: 16, color: "#d4a017", marginTop: 3 }}>{lastSignal.chartData.entryPrice.toFixed(4)}</div>
+                </div>
+              </div>
+            )}
 
-              {/* Analysis */}
-              {lastSignal.analysis && (
-                <div
-                  className="rounded-xl px-4 py-3 text-[12px] leading-relaxed text-[var(--t-2)] whitespace-pre-line"
-                  style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--b-soft)" }}
-                >
-                  <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] font-semibold mb-1.5">
-                    {t.signalRequest.analytics}
-                  </div>
+            {/* Entry time */}
+            {lastSignal.entryTime && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: "#100d0b",
+                  border: "1px solid rgba(245,236,217,0.06)",
+                  borderRadius: 11,
+                  padding: "12px 16px",
+                  margin: "14px 22px 0",
+                  fontSize: 12,
+                  color: "#A99A82",
+                }}
+              >
+                <Clock size={12} color="#d4a017" />
+                <span>{t.signalRequest.entryTime}</span>
+                <span style={{ fontFamily: "var(--font-jetbrains)", fontWeight: 700, color: "#d4a017" }}>{lastSignal.entryTime}</span>
+              </div>
+            )}
+
+            {/* Analysis */}
+            {lastSignal.analysis && (
+              <div style={{ padding: "22px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#d4a017", textTransform: "uppercase", letterSpacing: "0.16em" }}>
+                  {t.signalRequest.analytics}
+                </div>
+                <p style={{ fontSize: 14, color: "#A99A82", lineHeight: 1.7, margin: "12px 0 0" }}>
                   {lastSignal.analysis}
-                </div>
-              )}
+                </p>
+              </div>
+            )}
+
+            {/* Bottom accent bar */}
+            <div style={{ height: 3, background: "rgba(245,236,217,0.06)" }}>
+              <div
+                style={{
+                  height: "100%",
+                  width: "100%",
+                  background: lastSignal.direction === "CALL" ? "#4CC38A" : "#E8623A",
+                }}
+              />
             </div>
           </div>
         )}
@@ -1302,7 +1383,7 @@ export function SignalRequestButton({
           onClick={reset}
           className="w-full h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90"
           style={{
-            background: "linear-gradient(135deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+            background: "#d4a017",
             color: "#1a1208",
           }}
         >

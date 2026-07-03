@@ -91,7 +91,7 @@ export default async function FaqPage() {
           <div className="inline-flex items-center gap-2 px-3 h-8 mt-8 rounded-full text-xs uppercase tracking-widest border border-[var(--b-soft)] text-[var(--brand-gold)] bg-[var(--bg-1)]">
             {faq.badge}
           </div>
-          <h1 className="mt-6 text-5xl md:text-6xl font-bold leading-[1.05] text-shimmer">
+          <h1 className="mt-6 text-5xl md:text-6xl font-bold leading-[1.05] text-[var(--brand-gold)]">
             {faq.title}
           </h1>
           <p className="mt-5 text-[var(--t-2)] max-w-xl mx-auto">

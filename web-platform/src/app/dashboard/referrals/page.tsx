@@ -153,11 +153,8 @@ export default async function ReferralsPage() {
         <div
           className="rounded-2xl border p-4 flex items-start gap-3"
           style={{
-            borderColor: withdrawable > 0 ? "var(--b-hard)" : "var(--b-soft)",
-            background:
-              withdrawable > 0
-                ? "linear-gradient(135deg,rgba(142,224,107,0.06) 0%,var(--bg-1) 100%)"
-                : "var(--bg-1)",
+            borderColor: withdrawable > 0 ? "rgba(76,195,138,0.2)" : "rgba(245,236,217,0.08)",
+            background: "var(--bg-1)",
           }}
         >
           <div
@@ -165,7 +162,7 @@ export default async function ReferralsPage() {
             style={{
               background:
                 withdrawable > 0
-                  ? "rgba(142,224,107,0.12)"
+                  ? "rgba(76,195,138,0.12)"
                   : "rgba(212,160,23,0.10)",
             }}
           >

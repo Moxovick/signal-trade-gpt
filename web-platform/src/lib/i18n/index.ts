@@ -21,16 +21,22 @@ export async function getDictionary(locale: Locale): Promise<Dictionary> {
 }
 
 export async function getDictionaryForUser(userId: string): Promise<Dictionary> {
-  const { getPreferences } = await import("@/lib/user-preferences");
-  const prefs = await getPreferences(userId);
-  const locale: Locale = prefs.language === "uk" ? "uk" : "ru";
+  const locale = await getLocaleForUser(userId);
   return getDictionary(locale);
 }
 
+let _localeCache: { userId: string; locale: Locale; ts: number } | null = null;
+
 export async function getLocaleForUser(userId: string): Promise<Locale> {
+  // Deduplicate within the same request (same userId within 50ms window)
+  if (_localeCache && _localeCache.userId === userId && Date.now() - _localeCache.ts < 50) {
+    return _localeCache.locale;
+  }
   const { getPreferences } = await import("@/lib/user-preferences");
   const prefs = await getPreferences(userId);
-  return prefs.language === "uk" ? "uk" : "ru";
+  const locale: Locale = prefs.language === "uk" ? "uk" : "ru";
+  _localeCache = { userId, locale, ts: Date.now() };
+  return locale;
 }
 
 export async function getLocaleFromCookies(): Promise<Locale> {

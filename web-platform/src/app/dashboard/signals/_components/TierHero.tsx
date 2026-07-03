@@ -59,14 +59,12 @@ export function TierHero({
 
   return (
     <div
-      className="rounded-3xl p-6 md:p-7 border relative overflow-hidden"
+      className="rounded-2xl p-6 md:p-7 border relative overflow-hidden"
       style={{
         borderColor: isPro
-          ? "rgba(245,232,192,0.40)"
-          : "var(--b-soft)",
-        background: isPro
-          ? "linear-gradient(135deg, rgba(212,160,23,0.10), rgba(245,232,192,0.04) 60%, transparent)"
-          : "var(--bg-1)",
+          ? "rgba(245,236,217,0.14)"
+          : "rgba(245,236,217,0.08)",
+        background: "var(--bg-1)",
       }}
     >
       <div className="grid md:grid-cols-[1fr_auto] gap-6 items-start">
@@ -104,7 +102,7 @@ export function TierHero({
                   {copied === "id" ? <Check size={14} /> : <Copy size={14} />}
                 </button>
                 {poStatus === "verified" && (
-                  <span className="text-[10px] uppercase tracking-wider text-[var(--green)] bg-[rgba(142,224,107,0.10)] px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] uppercase tracking-wider text-[var(--green)] bg-[rgba(76,195,138,0.10)] px-2 py-0.5 rounded-full">
                     verified
                   </span>
                 )}
@@ -146,8 +144,7 @@ export function TierHero({
                   className="h-full transition-all duration-500"
                   style={{
                     width: `${progressPct}%`,
-                    background:
-                      "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+                    background: "var(--brand-gold)",
                   }}
                 />
               </div>
@@ -186,7 +183,7 @@ export function TierHero({
             href={referralUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-semibold bg-[var(--brand-gold)] text-[#1a1208] hover:bg-[var(--brand-gold-bright)] shadow-[0_0_24px_rgba(212,160,23,0.35)] transition-all"
+            className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl text-sm font-semibold bg-[var(--brand-gold)] text-[#1a1208] hover:opacity-90 transition-all"
           >
             {t.tierHero.openPocketOption}
             <ExternalLink size={14} />
@@ -196,7 +193,7 @@ export function TierHero({
               href={referralUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm bg-transparent text-[var(--brand-gold)] border border-[var(--b-hard)] hover:border-[var(--b-glow)] hover:bg-[rgba(212,160,23,0.05)] transition-all"
+              className="flex-1 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl text-sm bg-transparent text-[var(--brand-gold)] border border-[rgba(245,236,217,0.14)] hover:border-[rgba(245,236,217,0.22)] hover:bg-[rgba(212,160,23,0.05)] transition-all"
             >
               {t.tierHero.depositToTier} {TIER_LABELS[tier + 1] ?? t.tierHero.tierPro}
             </a>

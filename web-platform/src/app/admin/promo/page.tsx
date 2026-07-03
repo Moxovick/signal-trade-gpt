@@ -15,7 +15,7 @@ export default async function AdminPromoPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black tracking-wider" style={{ fontFamily: "var(--font-bebas)" }}>
+          <h1 className="text-2xl font-black tracking-wider">
             {tp.title ?? "ПРОМО-КОДЫ"}
           </h1>
           <p className="text-sm text-[#888]">{tp.subtitle ?? "Управление промо-кодами и акциями"}</p>

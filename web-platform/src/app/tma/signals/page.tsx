@@ -210,7 +210,7 @@ const EXPIRATIONS: Record<PairBand, { value: string; labelKey: keyof { sec30: st
 
 const BANDS: { key: PairBand; bandKey: "otc" | "exchange" | "elite"; minTier: number; color: string }[] = [
   { key: "otc", bandKey: "otc", minTier: 0, color: "#8888ff" },
-  { key: "exchange", bandKey: "exchange", minTier: 1, color: "#8ee06b" },
+  { key: "exchange", bandKey: "exchange", minTier: 1, color: "#4CC38A" },
   { key: "elite", bandKey: "elite", minTier: 2, color: "#d4a017" },
 ];
 
@@ -366,10 +366,10 @@ function PairIconSmall({ display, size = 32 }: { display: string; size?: number 
 // ─── Helpers ───
 
 function getPayoutColor(pct: number): string {
-  if (pct >= 80) return "#8ee06b";
+  if (pct >= 80) return "var(--green)";
   if (pct >= 60) return "#e6b840";
   if (pct >= 40) return "#c4b496";
-  return "#ff6b3d";
+  return "var(--red)";
 }
 
 // ─── Page ───
@@ -543,7 +543,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
             <div className="h-full rounded-full transition-all duration-500"
               style={{
                 width: `${progress}%`,
-                background: "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+                background: "var(--brand-gold)",
               }}
             />
           </div>
@@ -619,7 +619,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
           onClick={handleReset}
           className="w-full h-12 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
           style={{
-            background: "linear-gradient(135deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+            background: "var(--brand-gold)",
             color: "#1a1208",
           }}
         >
@@ -762,7 +762,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
                       style={{
                         background: limitReached
                           ? "var(--bg-3)"
-                          : "linear-gradient(135deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+                          : "var(--brand-gold)",
                         color: limitReached ? "var(--t-3)" : "#1a1208",
                       }}
                     >

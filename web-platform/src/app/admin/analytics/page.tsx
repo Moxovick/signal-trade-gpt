@@ -123,7 +123,7 @@ export default async function AdminAnalyticsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-black tracking-wider" style={{ fontFamily: "var(--font-bebas)" }}>
+        <h1 className="text-2xl font-black tracking-wider">
           {tan.title ?? "ПОЛНАЯ АНАЛИТИКА"}
         </h1>
         <p className="text-sm text-[#888]">{tan.subtitle ?? "Все метрики платформы в одном месте"}</p>
@@ -134,7 +134,7 @@ export default async function AdminAnalyticsPage() {
           <div key={section.title}>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-2 h-2 rounded-full" style={{ background: section.color }} />
-              <h2 className="text-sm font-bold tracking-wider" style={{ fontFamily: "var(--font-bebas)", color: section.color }}>
+              <h2 className="text-sm font-bold tracking-wider" style={{ color: section.color }}>
                 {section.title}
               </h2>
             </div>

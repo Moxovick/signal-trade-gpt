@@ -193,7 +193,7 @@ function Banner() {
   if (!visible) return null;
 
   return (
-    <div className="mb-6 rounded-xl border border-[var(--brand-gold)]/30 bg-[var(--brand-gold)]/5 px-5 py-4 relative">
+    <div className="mb-6 rounded-xl border px-5 py-4 relative" style={{ borderColor: "rgba(212,160,23,0.2)", background: "rgba(212,160,23,0.04)" }}>
       {/* Close button */}
       {step !== "linked" && (
         <button

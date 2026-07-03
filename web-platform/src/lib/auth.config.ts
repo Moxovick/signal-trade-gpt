@@ -24,7 +24,7 @@ export const authConfig: NextAuthConfig = {
       if (
         token.id &&
         trigger !== "signIn" &&
-        (typeof token.tierRefreshedAt !== "number" || Date.now() - token.tierRefreshedAt > 60_000)
+        (typeof token.tierRefreshedAt !== "number" || Date.now() - token.tierRefreshedAt > 300_000)
       ) {
         try {
           const { prisma } = await import("@/lib/prisma");

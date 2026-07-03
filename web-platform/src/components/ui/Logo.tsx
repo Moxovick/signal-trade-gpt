@@ -52,9 +52,8 @@ export function Logo({ href = "/", size = "md", withText = true, className }: Pr
       </svg>
       {withText && (
         <span
-          className={`font-display tracking-widest text-[var(--t-1)] ${s.text}`}
+          className={`font-sans tracking-widest text-[var(--t-1)] ${s.text}`}
           style={{
-            fontFamily: "var(--font-bebas, 'Bebas Neue', sans-serif)",
             letterSpacing: "0.16em",
           }}
         >

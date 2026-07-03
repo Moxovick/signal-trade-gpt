@@ -99,9 +99,7 @@ export default async function SignalsPage() {
                   className="h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${Math.min(100, (used / dailyLimit) * 100)}%`,
-                    background: limitReached
-                      ? "var(--red)"
-                      : "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold-bright))",
+                    background: limitReached ? "var(--red)" : "var(--brand-gold)",
                   }}
                 />
               </div>

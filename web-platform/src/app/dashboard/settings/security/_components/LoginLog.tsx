@@ -34,13 +34,13 @@ const META: Record<
     label: "Успешный вход",
     icon: CheckCircle2,
     color: "var(--green)",
-    bg: "rgba(142,224,107,0.10)",
+    bg: "rgba(76,195,138,0.10)",
   },
   login_fail: {
     label: "Неудачный вход",
     icon: XCircle,
     color: "var(--red)",
-    bg: "rgba(255,107,61,0.10)",
+    bg: "rgba(232,98,58,0.10)",
   },
   password_change: {
     label: "Смена пароля",
@@ -64,7 +64,7 @@ const META: Record<
     label: "Код подтверждён",
     icon: ShieldCheck,
     color: "var(--green)",
-    bg: "rgba(142,224,107,0.10)",
+    bg: "rgba(76,195,138,0.10)",
   },
   otp_expired: {
     label: "Код просрочен",

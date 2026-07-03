@@ -364,9 +364,22 @@ export async function applyPostback(parsed: ParsedPostback): Promise<{
   let poAccountId: string | null = null;
 
   if (parsed.poTraderId) {
-    const acc = await prisma.pocketOptionAccount.findUnique({
-      where: { poTraderId: parsed.poTraderId },
+    const trimmedTraderId = parsed.poTraderId.trim();
+    // Primary: exact match on unique index
+    let acc = await prisma.pocketOptionAccount.findUnique({
+      where: { poTraderId: trimmedTraderId },
     });
+    // Fallback: case-insensitive / whitespace-tolerant search
+    if (!acc) {
+      acc = await prisma.pocketOptionAccount.findFirst({
+        where: {
+          poTraderId: {
+            equals: trimmedTraderId,
+            mode: "insensitive",
+          },
+        },
+      });
+    }
     if (acc) {
       poAccountId = acc.id;
       userId = acc.userId;

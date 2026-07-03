@@ -130,14 +130,13 @@ export function AdminSidebar({ badges }: Props) {
   return (
     <aside
       className="w-60 shrink-0 flex flex-col border-r border-[var(--b-soft)]"
-      style={{ background: "rgba(8,6,10,0.92)", backdropFilter: "blur(16px)" }}
+      style={{ background: "rgba(12,10,9,0.92)", backdropFilter: "blur(16px)" }}
     >
       {/* Header */}
       <div className="px-4 pt-5 pb-4 border-b border-[var(--b-soft)]">
         <Logo size="sm" />
         <div
           className="text-[10px] font-black tracking-[0.25em] text-[var(--brand-gold)] mt-2 opacity-70"
-          style={{ fontFamily: "var(--font-bebas)" }}
         >
           ADMIN PANEL
         </div>
@@ -199,7 +198,7 @@ export function AdminSidebar({ badges }: Props) {
                       <span className="flex-1 truncate">{label}</span>
 
                       {badge != null && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[rgba(255,107,61,0.15)] text-[var(--red)] shrink-0">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[rgba(232,98,58,0.15)] text-[var(--red)] shrink-0">
                           {badge}
                         </span>
                       )}

@@ -183,7 +183,7 @@ export function PostbackSetupClient({
           <span
             className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${
               secretSet
-                ? "bg-[rgba(142,224,107,0.10)] text-[var(--green)]"
+                ? "bg-[rgba(76,195,138,0.10)] text-[var(--green)]"
                 : "bg-[rgba(255,90,90,0.10)] text-[var(--red)]"
             }`}
           >

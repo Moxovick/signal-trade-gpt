@@ -19,8 +19,7 @@ const VARIANT: Record<NonNullable<Props["variant"]>, string> = {
     "bg-[var(--bg-1)] border border-[var(--b-soft)] rounded-2xl",
   glass: "glass rounded-2xl",
   highlight:
-    "rounded-2xl border border-[var(--b-hard)] " +
-    "bg-[linear-gradient(135deg,rgba(212,160,23,0.06)_0%,var(--bg-1)_100%)]",
+    "rounded-2xl border border-[rgba(245,236,217,0.14)] bg-[var(--bg-1)]",
 };
 
 export function Card({
@@ -32,7 +31,7 @@ export function Card({
   ...rest
 }: Props) {
   const hoverCls = hover
-    ? "transition-all duration-300 hover:border-[var(--b-hard)] hover:shadow-[var(--glow-gold-soft)] hover:-translate-y-0.5"
+    ? "transition-all duration-300 hover:border-[rgba(212,160,23,0.3)] hover:-translate-y-0.5"
     : "";
   return (
     <div

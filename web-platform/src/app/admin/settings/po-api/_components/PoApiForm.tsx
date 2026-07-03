@@ -46,7 +46,7 @@ function SourceBadge({ source }: { source: Source }) {
   const { t } = useI18n();
   const sourceBadges = (t?.admin?.poApi as Record<string, Record<string, string>> | undefined)?.sourceBadges ?? {};
   const colour: Record<Source, string> = {
-    db: "bg-[rgba(142,224,107,0.10)] text-[var(--green)]",
+    db: "bg-[rgba(76,195,138,0.10)] text-[var(--green)]",
     env: "bg-[rgba(212,160,23,0.12)] text-[var(--brand-gold)]",
     unset: "bg-[rgba(255,90,90,0.10)] text-[var(--red)]",
   };

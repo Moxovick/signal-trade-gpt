@@ -205,7 +205,7 @@ type Props = {
 // TIER_BAND_LABELS computed inside component using t
 const TIER_BAND_COLORS: Record<string, { color: string; bg: string }> = {
   otc:      { color: "#8888ff", bg: "rgba(136,136,255,0.10)" },
-  exchange: { color: "#8ee06b", bg: "rgba(142,224,107,0.10)" },
+  exchange: { color: "#8ee06b", bg: "rgba(76,195,138,0.10)" },
   elite:    { color: "#d4a017", bg: "rgba(212,160,23,0.10)"  },
 };
 
@@ -257,8 +257,8 @@ export function SignalHistoryList({ signals }: Props) {
 
         const directionColor = isCall ? "var(--green)" : "var(--red)";
         const directionBg = isCall
-          ? "rgba(142,224,107,0.10)"
-          : "rgba(255,107,61,0.10)";
+          ? "rgba(76,195,138,0.10)"
+          : "rgba(232,98,58,0.10)";
 
         const confColor =
           conf >= 90
@@ -286,7 +286,7 @@ export function SignalHistoryList({ signals }: Props) {
                 "flex items-center gap-3 rounded-xl border bg-[var(--bg-1)] px-4 transition-colors hover:bg-[var(--bg-2)]",
                 isExpandable ? "cursor-pointer" : "",
                 isNewest
-                  ? "py-4 border-[var(--b-hard)] shadow-[var(--glow-gold-soft)]"
+                  ? "py-4 border-[var(--b-hard)]"
                   : "py-3 border-[var(--b-soft)] hover:border-[var(--b-hard)]",
                 isExpanded ? "rounded-b-none border-b-0" : "",
               ].join(" ")}

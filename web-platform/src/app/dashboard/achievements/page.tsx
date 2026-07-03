@@ -166,9 +166,7 @@ export default async function DashboardAchievementsPage() {
             className="h-full transition-all duration-700"
             style={{
               width: `${progressPct}%`,
-              background:
-                "linear-gradient(90deg, var(--brand-gold-deep), var(--brand-gold), var(--brand-gold-bright))",
-              boxShadow: "0 0 12px rgba(212, 160, 23, 0.45)",
+              background: "var(--brand-gold)",
             }}
           />
         </div>

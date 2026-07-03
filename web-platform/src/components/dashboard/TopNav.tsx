@@ -99,7 +99,7 @@ export function DashboardTopNav({
   return (
     <header
       className="sticky top-0 z-40 backdrop-blur-md border-b border-[var(--b-soft)]"
-      style={{ background: "rgba(8,6,10,0.88)" }}
+      style={{ background: "rgba(12,10,9,0.88)" }}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="h-14 flex items-center justify-between gap-2">
@@ -128,9 +128,7 @@ export function DashboardTopNav({
                   {active && (
                     <span
                       className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full"
-                      style={{
-                        background: "linear-gradient(90deg, transparent, var(--brand-gold), transparent)",
-                      }}
+                      style={{ background: "var(--brand-gold)" }}
                     />
                   )}
                 </Link>
@@ -199,7 +197,7 @@ export function DashboardTopNav({
             {/* Logout — desktop */}
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="hidden sm:inline-flex p-2 rounded-lg text-[var(--t-3)] hover:text-[var(--red)] hover:bg-[rgba(255,107,61,0.08)] transition-all"
+              className="hidden sm:inline-flex p-2 rounded-lg text-[var(--t-3)] hover:text-[var(--red)] hover:bg-[rgba(232,98,58,0.08)] transition-all"
               aria-label={t.dashboardNav.logout}
             >
               <LogOut size={17} />
@@ -313,7 +311,7 @@ export function DashboardTopNav({
             {/* Logout — mobile */}
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--red)] hover:bg-[rgba(255,107,61,0.08)] transition-colors w-full text-left"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-[var(--red)] hover:bg-[rgba(232,98,58,0.08)] transition-colors w-full text-left"
             >
               <LogOut size={14} />
               {t.dashboardNav.logout}

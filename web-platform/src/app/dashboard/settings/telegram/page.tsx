@@ -40,9 +40,7 @@ export default async function TelegramSettingsPage() {
         className="rounded-2xl border p-5"
         style={{
           borderColor: initialLink ? "var(--b-hard)" : "var(--b-soft)",
-          background: initialLink
-            ? "linear-gradient(135deg,rgba(212,160,23,0.06) 0%,var(--bg-1) 100%)"
-            : "var(--bg-1)",
+          background: "var(--bg-1)",
         }}
       >
         <div className="flex items-start gap-4">
@@ -64,7 +62,7 @@ export default async function TelegramSettingsPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base font-semibold">Telegram</h2>
               {initialLink && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--green)] bg-[rgba(142,224,107,0.12)] px-2 py-0.5 rounded-full">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--green)] bg-[rgba(76,195,138,0.12)] px-2 py-0.5 rounded-full">
                   <CheckCircle2 size={10} />
                   {t.telegramSettings.linked}
                 </span>

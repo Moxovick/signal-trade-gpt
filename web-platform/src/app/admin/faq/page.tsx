@@ -131,7 +131,7 @@ export default function AdminFaqPage() {
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
                         f.isActive
-                          ? "bg-[rgba(142,224,107,0.12)] text-[#8ee06b]"
+                          ? "bg-[rgba(76,195,138,0.12)] text-[#8ee06b]"
                           : "bg-[var(--bg-2)] text-[var(--t-3)]"
                       }`}
                     >

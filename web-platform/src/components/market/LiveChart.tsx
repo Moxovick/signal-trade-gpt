@@ -64,7 +64,6 @@ export function LiveChart() {
         <div className="flex items-center gap-3">
           <div
             className="text-xl font-bold text-[var(--brand-gold)]"
-            style={{ fontFamily: "var(--font-bebas)" }}
           >
             LIVE · {pair}
           </div>
@@ -86,7 +85,7 @@ export function LiveChart() {
             className="text-[10px] uppercase px-1.5 py-0.5 rounded"
             style={{
               background:
-                source === "synthetic" ? "rgba(212,160,23,0.10)" : "rgba(142,224,107,0.10)",
+                source === "synthetic" ? "rgba(212,160,23,0.10)" : "rgba(76,195,138,0.10)",
               color: source === "synthetic" ? "var(--brand-gold)" : "var(--green)",
             }}
           >

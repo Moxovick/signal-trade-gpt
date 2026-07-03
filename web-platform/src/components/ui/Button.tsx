@@ -33,12 +33,10 @@ const SIZE_CLASS: Record<Size, string> = {
 
 const VARIANT_CLASS: Record<Variant, string> = {
   primary:
-    "bg-[var(--brand-gold)] text-[#1a1208] hover:bg-[var(--brand-gold-bright)] " +
-    "shadow-[0_0_24px_rgba(212,160,23,0.35)] hover:shadow-[0_0_36px_rgba(212,160,23,0.55)] " +
-    "font-semibold",
+    "bg-[var(--brand-gold)] text-[#1a1208] hover:opacity-90 font-semibold",
   secondary:
-    "bg-transparent text-[var(--brand-gold)] border border-[var(--b-hard)] " +
-    "hover:border-[var(--b-glow)] hover:bg-[rgba(212,160,23,0.05)]",
+    "bg-transparent text-[var(--brand-gold)] border border-[rgba(245,236,217,0.14)] " +
+    "hover:border-[rgba(245,236,217,0.22)] hover:bg-[rgba(212,160,23,0.05)]",
   ghost:
     "bg-transparent text-[var(--t-2)] hover:text-[var(--t-1)] hover:bg-[var(--bg-2)]",
   danger:
