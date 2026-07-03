@@ -185,6 +185,17 @@ export async function POST(req: NextRequest, ctx: Params) {
     }
   }
 
+  // Sync User.depositTotal from PO account so dashboard/admin show correct value.
+  if (
+    (postback.eventType === "ftd" || postback.eventType === "redeposit") &&
+    amount > 0
+  ) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { depositTotal: { increment: amount } },
+    });
+  }
+
   const newTier = await recomputeUserTier(user.id);
 
   return NextResponse.json({
