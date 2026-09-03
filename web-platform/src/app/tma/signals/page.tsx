@@ -8,6 +8,7 @@ import {
   Clock,
   RefreshCw,
   Target,
+  Search,
 } from "lucide-react";
 import { TmaShell, type TmaUser } from "../_components/TmaShell";
 import { useTma } from "../_components/TmaProvider";
@@ -400,6 +401,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [limitReached, setLimitReached] = useState(false);
   const [analysisStep, setAnalysisStep] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // remaining and limitReached are updated by the API response; user.tier is used for band lock UI
 
@@ -407,8 +409,9 @@ function SignalsPicker({ user }: { user: TmaUser }) {
     return ALL_PAIRS
       .filter((p) => p.band === activeTab)
       .filter((p) => categoryFilter === "all" || p.category === categoryFilter)
+      .filter((p) => !searchQuery || p.display.toLowerCase().includes(searchQuery.toLowerCase()))
       .sort((a, b) => b.payout - a.payout);
-  }, [activeTab, categoryFilter]);
+  }, [activeTab, categoryFilter, searchQuery]);
 
   const availableCategories = useMemo(() => {
     const cats = new Set(ALL_PAIRS.filter((p) => p.band === activeTab).map((p) => p.category));
@@ -420,6 +423,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
     setCategoryFilter("all");
     setSelectedPair(null);
     setSelectedExpiration(null);
+    setSearchQuery("");
   }, []);
 
   const handlePairSelect = useCallback((pair: PairInfo) => {
@@ -695,6 +699,28 @@ function SignalsPicker({ user }: { user: TmaUser }) {
             </button>
           );
         })}
+      </div>
+
+      {/* Search input */}
+      <div className="flex items-center gap-2 rounded-xl border border-[var(--b-soft)] bg-[var(--bg-1)] px-3 py-2">
+        <Search size={14} className="text-[var(--t-3)] shrink-0" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={t.tma.signals.picker.searchPlaceholder}
+          className="flex-1 bg-transparent border-none outline-none text-sm text-[var(--t-1)]"
+          style={{ WebkitAppearance: "none" }}
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="text-[var(--t-3)] text-xs p-0.5"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* Pair list */}

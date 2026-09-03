@@ -20,6 +20,7 @@ import logging
 from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message
 from aiogram.enums import ParseMode
 
@@ -37,6 +38,10 @@ from database.db import (
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+
+class BroadcastConfirm(StatesGroup):
+    waiting_confirmation = State()
 
 
 def _admin_ids() -> set[int]:
@@ -99,7 +104,7 @@ async def cmd_admin(message: Message) -> None:
 
 
 @router.message(Command("broadcast"))
-async def cmd_broadcast(message: Message, command: CommandObject) -> None:
+async def cmd_broadcast(message: Message, command: CommandObject, state: FSMContext) -> None:
     if not _is_admin(message.from_user.id):
         await message.answer(t("admin.access_denied", "ru"))
         return
@@ -107,6 +112,32 @@ async def cmd_broadcast(message: Message, command: CommandObject) -> None:
     if not broadcast_text:
         await message.answer("Usage: /broadcast &lt;text&gt;", parse_mode=ParseMode.HTML)
         return
+
+    user_ids = await _all_user_ids()
+    preview = (
+        f"<b>Предпросмотр рассылки</b>\n"
+        f"Получателей: <b>{len(user_ids)}</b>\n\n"
+        f"Текст:\n{broadcast_text}\n\n"
+        f"Отправь <b>YES</b> для подтверждения или что-нибудь другое для отмены."
+    )
+    await state.set_state(BroadcastConfirm.waiting_confirmation)
+    await state.update_data(broadcast_text=broadcast_text)
+    await message.answer(preview, parse_mode=ParseMode.HTML)
+
+
+@router.message(BroadcastConfirm.waiting_confirmation)
+async def broadcast_confirm(message: Message, state: FSMContext) -> None:
+    if not _is_admin(message.from_user.id):
+        await state.clear()
+        return
+    if (message.text or "").strip() != "YES":
+        await state.clear()
+        await message.answer("Рассылка отменена.")
+        return
+
+    data = await state.get_data()
+    await state.clear()
+    broadcast_text = data.get("broadcast_text", "")
 
     user_ids = await _all_user_ids()
     sent = 0

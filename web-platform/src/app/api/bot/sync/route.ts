@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
             tier: true,
             tierOverride: true,
             telegramId: true,
-            _count: { select: { signalsCreated: true } },
+            signalsReceived: true,
           },
         },
       },
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
     prisma.activityLog.groupBy({
       by: ["userId"],
       where: {
-        action: { in: ["signal_view", "signal_received"] },
+        action: { in: ["signal_received", "signal_request"] },
         createdAt: { gte: startOfDay },
       },
       _count: true,
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
     tierOverride: a.user.tierOverride,
     totalDeposit: Number(a.totalDeposit),
     telegramId: a.user.telegramId ? a.user.telegramId.toString() : null,
-    signalsCount: a.user._count.signalsCreated,
+    signalsCount: a.user.signalsReceived ?? 0,
     signalsTodayUsed: usageByUserId.get(a.userId) ?? 0,
   }));
 

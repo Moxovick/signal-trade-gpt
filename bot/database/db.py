@@ -25,7 +25,7 @@ async def init_db(database_url: str) -> None:
     if _pool is not None:
         return
 
-    kwargs: dict = {"min_size": 2, "max_size": 10}
+    kwargs: dict = {"min_size": 2, "max_size": 10, "statement_cache_size": 0}
     # Neon and most cloud Postgres require SSL
     if "sslmode=require" in database_url or "sslmode=verify" in database_url:
         ssl_ctx = ssl.create_default_context()
@@ -57,6 +57,14 @@ def _get_pool() -> asyncpg.Pool:
     return _pool
 
 
+def _safe_get(row: asyncpg.Record, key: str, default: Any = None) -> Any:
+    """Safely get a value from asyncpg.Record (which doesn't support .get())."""
+    try:
+        return row[key]
+    except (KeyError, IndexError):
+        return default
+
+
 def _row_to_user(row: asyncpg.Record) -> User:
     return User(
         telegram_id=int(row["telegramId"]) if row["telegramId"] is not None else 0,
@@ -65,14 +73,14 @@ def _row_to_user(row: asyncpg.Record) -> User:
         referral_code=row["referralCode"],
         referred_by=None,  # not trivially available (stored as CUID, not telegram_id)
         tier=row["tier"] or 0,
-        po_trader_id=row.get("poTraderId"),
-        click_id=row.get("clickId"),
+        po_trader_id=_safe_get(row, "poTraderId"),
+        click_id=_safe_get(row, "clickId"),
         deposit_total=float(row["depositTotal"]) if row["depositTotal"] is not None else 0.0,
         notifications_enabled=True,  # TODO: read from notificationSettings JSON if added
         is_premium=(row["tier"] or 0) > 0,
         signals_received=row["signalsReceived"] or 0,
-        wins=row.get("wins", 0) or 0,
-        losses=row.get("losses", 0) or 0,
+        wins=_safe_get(row, "wins", 0) or 0,
+        losses=_safe_get(row, "losses", 0) or 0,
     )
 
 
@@ -88,6 +96,16 @@ async def get_user(telegram_id: int) -> Optional[User]:
         telegram_id,
     )
     return _row_to_user(row) if row else None
+
+
+async def get_user_web_id(telegram_id: int) -> Optional[str]:
+    """Return the user's CUID (web platform id) for use as PO click_id."""
+    pool = _get_pool()
+    row = await pool.fetchrow(
+        'SELECT id FROM "users" WHERE "telegramId" = $1',
+        telegram_id_to_bigint(telegram_id),
+    )
+    return row["id"] if row else None
 
 
 async def create_user(user: User) -> None:
@@ -129,7 +147,21 @@ def telegram_id_to_bigint(tid: int) -> int:
     return int(tid)
 
 
-async def set_po_trader_id(telegram_id: int, po_trader_id: str) -> None:
+async def set_po_trader_id(
+    telegram_id: int,
+    po_trader_id: str,
+    *,
+    verified: bool = False,
+    deposit_total: float = 0.0,
+) -> bool:
+    """Link a PocketOption trader ID to a user.
+
+    When `verified=True` (PO API confirmed the ID), the account status is set
+    to 'verified' and totalDeposit is stored. Otherwise status stays 'pending'.
+
+    Returns True on success, False if the trader ID is already linked to
+    another user (UNIQUE constraint violation on poTraderId).
+    """
     pool = _get_pool()
     # Get user CUID first
     row = await pool.fetchrow(
@@ -137,25 +169,45 @@ async def set_po_trader_id(telegram_id: int, po_trader_id: str) -> None:
         telegram_id_to_bigint(telegram_id),
     )
     if not row:
-        return
+        return False
     user_id = row["id"]
 
-    await pool.execute(
-        """
-        INSERT INTO "po_accounts" (id, "userId", "poTraderId", "createdAt", "updatedAt")
-        VALUES ($1, $2, $3, NOW(), NOW())
-        ON CONFLICT ("userId") DO UPDATE SET "poTraderId" = $3, "updatedAt" = NOW()
-        """,
-        _generate_cuid(),
-        user_id,
-        po_trader_id,
-    )
+    status = "verified" if verified else "pending"
+    from decimal import Decimal
+    deposit_dec = Decimal(str(deposit_total))
+
+    try:
+        await pool.execute(
+            """
+            INSERT INTO "po_accounts" (id, "userId", "poTraderId", status, source,
+                                       "totalDeposit", "createdAt", "updatedAt")
+            VALUES ($1, $2, $3, $4::"POAccountStatus", 'bot', $5, NOW(), NOW())
+            ON CONFLICT ("userId") DO UPDATE
+              SET "poTraderId" = $3,
+                  status = $4::"POAccountStatus",
+                  source = 'bot',
+                  "totalDeposit" = GREATEST("po_accounts"."totalDeposit", $5),
+                  "updatedAt" = NOW()
+            """,
+            _generate_cuid(),
+            user_id,
+            po_trader_id,
+            status,
+            deposit_dec,
+        )
+    except asyncpg.UniqueViolationError:
+        logger.warning(
+            "PO trader ID %s already linked to another user (telegram_id=%s)",
+            po_trader_id, telegram_id,
+        )
+        return False
+    return True
 
 
 async def set_tier(telegram_id: int, tier: int) -> None:
     pool = _get_pool()
     await pool.execute(
-        'UPDATE "users" SET tier = $1, "lastLogin" = NOW() WHERE "telegramId" = $2',
+        'UPDATE "users" SET tier = $1 WHERE "telegramId" = $2',
         tier,
         telegram_id_to_bigint(telegram_id),
     )
@@ -172,7 +224,7 @@ async def increment_signals_received(telegram_id: int) -> None:
 async def set_signals_received(telegram_id: int, count: int) -> None:
     pool = _get_pool()
     await pool.execute(
-        'UPDATE "users" SET "signalsReceived" = $1, "lastLogin" = NOW() WHERE "telegramId" = $2',
+        'UPDATE "users" SET "signalsReceived" = $1 WHERE "telegramId" = $2',
         count,
         telegram_id_to_bigint(telegram_id),
     )
@@ -243,7 +295,7 @@ async def get_user_by_referral_code(code: str) -> Optional[User]:
 async def set_click_id(telegram_id: int, click_id: str) -> None:
     pool = _get_pool()
     await pool.execute(
-        'UPDATE "users" SET "clickId" = $1, "lastLogin" = NOW() WHERE "telegramId" = $2',
+        'UPDATE "users" SET "clickId" = $1 WHERE "telegramId" = $2',
         click_id,
         telegram_id_to_bigint(telegram_id),
     )
@@ -290,7 +342,7 @@ async def set_deposit_total(telegram_id: int, deposit_total: float) -> None:
     pool = _get_pool()
     from decimal import Decimal
     await pool.execute(
-        'UPDATE "users" SET "depositTotal" = $1, "lastLogin" = NOW() WHERE "telegramId" = $2',
+        'UPDATE "users" SET "depositTotal" = $1 WHERE "telegramId" = $2',
         Decimal(str(deposit_total)),
         telegram_id_to_bigint(telegram_id),
     )
@@ -393,8 +445,8 @@ async def reset_daily_signals_if_expired(telegram_id: int) -> None:
     now = datetime.now(timezone.utc)
     if (now - reset_at).total_seconds() >= 86400:
         await pool.execute(
-            """UPDATE "users" SET "dailySignalsUsed" = 0, "dailySignalsResetAt" = NULL,
-               "lastLogin" = NOW() WHERE "telegramId" = $1""",
+            """UPDATE "users" SET "dailySignalsUsed" = 0, "dailySignalsResetAt" = NULL
+               WHERE "telegramId" = $1""",
             telegram_id_to_bigint(telegram_id),
         )
 
@@ -442,13 +494,12 @@ async def log_activity(
 
 
 async def increment_daily_signal(telegram_id: int) -> None:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     pool = _get_pool()
     await pool.execute(
         """UPDATE "users"
            SET "dailySignalsUsed" = "dailySignalsUsed" + 1,
-               "dailySignalsResetAt" = COALESCE("dailySignalsResetAt", $1),
-               "lastLogin" = NOW()
+               "dailySignalsResetAt" = COALESCE("dailySignalsResetAt", $1)
            WHERE "telegramId" = $2""",
         now,
         telegram_id_to_bigint(telegram_id),

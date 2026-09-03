@@ -807,6 +807,7 @@ const dict = {
     // Column headers
     colAsset: "Актив",
     colPayout: "Выплата",
+    searchPlaceholder: "Поиск пары...",
     remaining: "осталось",
     // Expiration step
     selectExpiration: "Выберите время экспирации",
@@ -2086,6 +2087,7 @@ const dict = {
         remaining: "Осталось:",
         unlimited: "Безлимит",
         noPairsInCategory: "Нет пар в этой категории",
+        searchPlaceholder: "Поиск пары...",
         expiration: "Экспирация",
       },
       errors: {

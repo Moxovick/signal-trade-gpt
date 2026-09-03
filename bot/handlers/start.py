@@ -23,6 +23,7 @@ from database.db import (
     create_user,
     get_user,
     get_user_by_referral_code,
+    get_user_web_id,
     log_activity,
     set_click_id,
 )
@@ -34,6 +35,24 @@ from services.keyboards import MAIN_MENU, start_inline
 
 logger = logging.getLogger(__name__)
 router = Router()
+
+
+import re as _re
+
+
+def _personalize_po_url(template_url: str, user_web_id: str) -> str:
+    """Replace click_id placeholder in PO referral URL with the user's web CUID.
+
+    Handles both ``{click_id}`` placeholders and static ``cid=VALUE`` params.
+    """
+    url = template_url
+    # Replace {click_id} template placeholder
+    if "{click_id}" in url:
+        url = url.replace("{click_id}", user_web_id)
+    else:
+        # Replace existing static cid=VALUE with user's CUID
+        url = _re.sub(r'([?&])cid=[^&]*', rf'\1cid={user_web_id}', url)
+    return url
 
 
 def _format_welcome(first_name: str, ref_code: str, bot_username: str, locale: str = "ru") -> str:
@@ -233,20 +252,24 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     # ── New user — full onboarding ──
     bot_info = await message.bot.get_me()
 
+    # Build personalized PO URL with user's web ID as click_id
+    web_id = await get_user_web_id(user_id)
+    po_url = _personalize_po_url(settings.pocket_option_url, web_id) if web_id else settings.pocket_option_url
+
     try:
         card_path = get_brand_card_path()
         await message.answer_photo(
             FSInputFile(card_path),
             caption=_format_welcome(first_name, user.referral_code, bot_info.username, locale),
             parse_mode=ParseMode.HTML,
-            reply_markup=start_inline(settings.pocket_option_url, settings.webapp_url),
+            reply_markup=start_inline(po_url, settings.webapp_url),
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Could not render brand card: %s — falling back to text", exc)
         await message.answer(
             _format_welcome(first_name, user.referral_code, bot_info.username, locale),
             parse_mode=ParseMode.HTML,
-            reply_markup=start_inline(settings.pocket_option_url, settings.webapp_url),
+            reply_markup=start_inline(po_url, settings.webapp_url),
         )
 
     await message.answer(
@@ -256,7 +279,7 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
 
     if not user.po_trader_id:
         from handlers.onboarding import trigger_for_new_user
-        await trigger_for_new_user(message)
+        await trigger_for_new_user(message, po_url=po_url)
 
 
 @router.message(Command("help"))

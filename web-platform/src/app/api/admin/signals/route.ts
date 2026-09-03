@@ -71,8 +71,7 @@ export async function PUT(req: NextRequest) {
     const signal = await prisma.signal.update({ where: { id }, data });
     return NextResponse.json({ signal });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[admin/signals PUT]", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("[admin/signals PUT]", err);
+    return NextResponse.json({ error: "internal_error" }, { status: 500 });
   }
 }

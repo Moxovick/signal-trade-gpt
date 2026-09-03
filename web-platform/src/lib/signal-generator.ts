@@ -668,7 +668,7 @@ export async function generateSignalForUser(
       const currentUsed = await tx.activityLog.count({
         where: {
           userId,
-          action: { in: ["signal_view", "signal_received"] },
+          action: { in: ["signal_received", "signal_request"] },
           createdAt: { gte: startOfDay },
         },
       });

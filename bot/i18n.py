@@ -80,6 +80,17 @@ _RU: dict[str, str] = {
     "tier.limit_per_day": "{limit}/день",
     "tier.max_reached": "🏆 Максимальный уровень достигнут!",
     "tier.distance_to_next": "До {next_name} осталось: ${needed:.0f}",
+    "tier.per_day": "день",
+    "tier.upgrade_message": (
+        "<b>🎉 Уровень разблокирован: {name}!</b>\n"
+        "\n"
+        "Депозит на PocketOption: <b>${deposit}</b>\n"
+        "\n"
+        "Доступные сигналы: <b>{signal_access}</b>\n"
+        "Лимит: <b>{limit_text}</b>\n"
+        "\n"
+        "Нажми «🎯 Получить сигнал» в меню, чтобы запросить сигнал."
+    ),
 
     # ── common / shared ───────────────────────────────────────────────────────
     "common.trader": "Трейдер",
@@ -239,6 +250,10 @@ _RU: dict[str, str] = {
     "signal.choose_expiration": "⏱ <b>Выбери экспирацию:</b>",
     "signal.pair_payout": "🎯 <b>{pair_name}</b>  ·  Выплата: <b>+{payout}%</b>",
     "signal.no_pairs_in_category": "Нет доступных пар в этой категории.",
+    "signal.search_pair": "🔍 Поиск пары",
+    "signal.search_prompt": "Введите название пары (например: EUR, BTC, Gold):",
+    "signal.no_search_results": "❌ Ничего не найдено. Попробуйте другой запрос.",
+    "signal.search_results_count": "🔍 Найдено: {count}",
     "signal.pair_not_found": "Пара не найдена.",
     "signal.generating": "Подожди — предыдущий сигнал ещё генерируется.",
     "signal.generation_error": "Произошла ошибка при генерации сигнала. Попробуй позже.",
@@ -448,6 +463,10 @@ _RU: dict[str, str] = {
         "Найти: PocketOption → Профиль → «Мой ID»."
     ),
     "link.cancelled": "Отменено.",
+    "link.already_taken": (
+        "❌ Этот Trader ID уже привязан к другому аккаунту.\n"
+        "Проверь правильность ID или обратись в поддержку."
+    ),
 
     # ── onboarding ────────────────────────────────────────────────────────────
     "onboarding.welcome": (
@@ -818,6 +837,17 @@ _UK: dict[str, str] = {
     "tier.limit_per_day": "{limit}/день",
     "tier.max_reached": "🏆 Максимальний рівень досягнуто!",
     "tier.distance_to_next": "До {next_name} залишилось: ${needed:.0f}",
+    "tier.per_day": "день",
+    "tier.upgrade_message": (
+        "<b>🎉 Рівень розблоковано: {name}!</b>\n"
+        "\n"
+        "Депозит на PocketOption: <b>${deposit}</b>\n"
+        "\n"
+        "Доступні сигнали: <b>{signal_access}</b>\n"
+        "Ліміт: <b>{limit_text}</b>\n"
+        "\n"
+        "Натисни «🎯 Отримати сигнал» у меню, щоб запросити сигнал."
+    ),
 
     # ── common / shared ───────────────────────────────────────────────────────
     "common.trader": "Трейдер",
@@ -974,6 +1004,10 @@ _UK: dict[str, str] = {
     "signal.choose_expiration": "⏱ <b>Обери експірацію:</b>",
     "signal.pair_payout": "🎯 <b>{pair_name}</b>  ·  Виплата: <b>+{payout}%</b>",
     "signal.no_pairs_in_category": "Немає доступних пар у цій категорії.",
+    "signal.search_pair": "🔍 Пошук пари",
+    "signal.search_prompt": "Введіть назву пари (наприклад: EUR, BTC, Gold):",
+    "signal.no_search_results": "❌ Нічого не знайдено. Спробуйте інший запит.",
+    "signal.search_results_count": "🔍 Знайдено: {count}",
     "signal.pair_not_found": "Пару не знайдено.",
     "signal.generating": "Зачекай — попередній сигнал ще генерується.",
     "signal.generation_error": "Сталася помилка при генерації сигналу. Спробуй пізніше.",
@@ -1182,6 +1216,10 @@ _UK: dict[str, str] = {
         "Знайти: PocketOption → Профіль → «Мій ID»."
     ),
     "link.cancelled": "Скасовано.",
+    "link.already_taken": (
+        "❌ Цей Trader ID вже прив'язаний до іншого акаунту.\n"
+        "Перевір правильність ID або зверніся до підтримки."
+    ),
 
     # ── onboarding ────────────────────────────────────────────────────────────
     "onboarding.welcome": (

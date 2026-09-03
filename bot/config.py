@@ -13,6 +13,9 @@ class Settings(BaseSettings):
         env="POCKET_OPTION_URL",
     )
 
+    # Public URL of the web platform (used in onboarding links etc.).
+    site_url: str = Field("https://spacesignal.net", env="SITE_URL")
+
     # Public URL of the Telegram Mini App (root /tma route on the web platform).
     # Empty disables Mini App buttons in the bot.
     webapp_url: str = Field(

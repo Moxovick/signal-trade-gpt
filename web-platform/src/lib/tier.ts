@@ -45,15 +45,26 @@ import { prisma } from "@/lib/prisma";
 
 /**
  * Load tier thresholds from SiteSettings (DB), falling back to defaults.
+ * Cached for 60 seconds — thresholds change rarely (admin action only).
  */
+let _thresholdsCache: { value: TierThresholds; expiresAt: number } | null = null;
+
 export async function getTierThresholds(): Promise<TierThresholds> {
+  if (_thresholdsCache && Date.now() < _thresholdsCache.expiresAt) {
+    return _thresholdsCache.value;
+  }
   const setting = await prisma.siteSettings.findUnique({
     where: { key: SITE_SETTING_TIER_THRESHOLDS },
   });
-  if (!setting) return DEFAULT_TIER_THRESHOLDS;
-  const v = setting.value as unknown;
-  if (typeof v !== "object" || v === null) return DEFAULT_TIER_THRESHOLDS;
-  return v as TierThresholds;
+  let result = DEFAULT_TIER_THRESHOLDS;
+  if (setting) {
+    const v = setting.value as unknown;
+    if (typeof v === "object" && v !== null) {
+      result = v as TierThresholds;
+    }
+  }
+  _thresholdsCache = { value: result, expiresAt: Date.now() + 60_000 };
+  return result;
 }
 
 type DepositLike = DecimalLike | number | string;

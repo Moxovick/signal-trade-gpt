@@ -52,13 +52,13 @@ export async function getAccessReport(userId: string): Promise<AccessReport | nu
     orderBy: [{ minTier: "asc" }, { name: "asc" }],
   });
 
-  // Daily usage — count "signal_view" / "signal_received" entries today.
+  // Daily usage — count "signal_received" / "signal_request" entries today.
   const startOfDay = new Date();
   startOfDay.setUTCHours(0, 0, 0, 0);
   const used = await prisma.activityLog.count({
     where: {
       userId,
-      action: { in: ["signal_view", "signal_received"] },
+      action: { in: ["signal_received", "signal_request"] },
       createdAt: { gte: startOfDay },
     },
   });

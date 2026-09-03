@@ -192,14 +192,16 @@ export async function POST(req: NextRequest, ctx: Params) {
     }
   }
 
-  // Sync User.depositTotal from PO account so dashboard/admin show correct value.
-  if (
-    (postback.eventType === "ftd" || postback.eventType === "redeposit") &&
-    amount > 0
-  ) {
+  // Sync User.depositTotal from PO account absolute value (not increment,
+  // to avoid double-counting if postback was already partially applied).
+  const updatedAccount = await prisma.pocketOptionAccount.findUnique({
+    where: { id: account.id },
+    select: { totalDeposit: true },
+  });
+  if (updatedAccount) {
     await prisma.user.update({
       where: { id: user.id },
-      data: { depositTotal: { increment: amount } },
+      data: { depositTotal: Number(updatedAccount.totalDeposit) },
     });
   }
 

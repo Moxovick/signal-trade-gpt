@@ -764,6 +764,7 @@ const dict = {
     groupForexPairs: "Валютні пари",
     colAsset: "Актив",
     colPayout: "Виплата",
+    searchPlaceholder: "Пошук пари...",
     remaining: "залишилось",
     selectExpiration: "Оберіть час експірації",
     expirationLabel: "експірація",
@@ -1976,6 +1977,7 @@ const dict = {
         remaining: "Залишилось:",
         unlimited: "Безліміт",
         noPairsInCategory: "Немає пар у цій категорії",
+        searchPlaceholder: "Пошук пари...",
         expiration: "Експірація",
       },
       errors: {

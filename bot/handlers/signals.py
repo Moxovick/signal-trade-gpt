@@ -8,15 +8,17 @@ import logging
 import random
 from typing import Any
 
-import httpx
 from aiogram import Bot, F, Router
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import CallbackQuery, Message
 from aiogram.enums import ParseMode
 from aiogram.types import BufferedInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import settings
+from http_client import get_http_client
 from i18n import t
 from i18n_helpers import get_locale
 from constants import (
@@ -52,8 +54,15 @@ from services.signal_generator import generate_signal, generate_signal_for_pair
 logger = logging.getLogger(__name__)
 router = Router()
 
+
+class SignalSearch(StatesGroup):
+    waiting_for_query = State()
+
+
 # Per-user lock to prevent concurrent signal requests bypassing daily limits.
+# Bounded: locks are removed after use when no other coroutine is waiting.
 _user_locks: dict[int, asyncio.Lock] = {}
+_MAX_USER_LOCKS = 1000
 
 def _analysis_steps(locale: str) -> list[str]:
     return [
@@ -313,6 +322,11 @@ async def cb_signal_subcategory(query: CallbackQuery) -> None:
         return
 
     builder = InlineKeyboardBuilder()
+    # Search button at top (full-width via adjust below)
+    builder.button(
+        text=t("signal.search_pair", locale),
+        callback_data=f"sig_search:{sig_tier}:{subcategory}",
+    )
     for p in pairs:
         payout = p["payout"]
         btn_text = f"{p['name']}  ({payout}%)"
@@ -321,7 +335,9 @@ async def cb_signal_subcategory(query: CallbackQuery) -> None:
             callback_data=f"sig_pair:{sig_tier}:{p['symbol']}",
         )
     builder.button(text=t("keyboard.back", locale), callback_data=f"sig_cat:{sig_tier}")
-    builder.adjust(2)
+    # First row = 1 (search), then pairs in 2-column, last row = 1 (back)
+    sizes = [1] + [2] * ((len(pairs) + 1) // 2) + [1]
+    builder.adjust(*sizes)
 
     cat_label = subcategory_label(subcategory, locale)
     choose_pair = t("signal.choose_pair", locale)
@@ -337,6 +353,85 @@ async def cb_signal_subcategory(query: CallbackQuery) -> None:
             parse_mode=ParseMode.HTML,
             reply_markup=builder.as_markup(),
         )
+
+
+# ── Search: user wants to search pairs by name ───────────────────────────────
+
+
+@router.callback_query(F.data.startswith("sig_search:"))
+async def cb_signal_search(query: CallbackQuery, state: FSMContext) -> None:
+    """User tapped search → ask for pair name."""
+    await query.answer()
+    if query.from_user is None:
+        return
+
+    locale = get_locale(query.from_user)
+    parts = query.data.split(":", 2)
+    if len(parts) < 3:
+        return
+    sig_tier = parts[1]
+    subcategory = parts[2]
+
+    await state.update_data(sig_search_tier=sig_tier, sig_search_sub=subcategory)
+    await state.set_state(SignalSearch.waiting_for_query)
+    await query.message.answer(t("signal.search_prompt", locale))
+
+
+@router.message(SignalSearch.waiting_for_query, F.text)
+async def handle_search_query(message: Message, state: FSMContext) -> None:
+    """Filter pairs by search query and show results."""
+    locale = get_locale(message.from_user)
+    query_text = (message.text or "").strip()
+
+    if query_text.startswith("/"):
+        await state.clear()
+        return
+
+    # Cancel FSM if user tapped a menu button
+    from services.keyboards import MENU_BUTTONS
+    if query_text in MENU_BUTTONS:
+        await state.clear()
+        from handlers.menu import dispatch_menu_button
+        await dispatch_menu_button(message, state)
+        return
+
+    data = await state.get_data()
+    sig_tier = data.get("sig_search_tier", "otc")
+    subcategory = data.get("sig_search_sub", "forex")
+
+    # Search across ALL pairs in this tier (not just subcategory)
+    all_tier_pairs = PAIRS_BY_TIER.get(sig_tier, [])
+    query_lower = query_text.lower()
+    matches = [p for p in all_tier_pairs if query_lower in p["name"].lower()]
+
+    await state.clear()
+
+    if not matches:
+        builder = InlineKeyboardBuilder()
+        builder.button(text=t("keyboard.back", locale), callback_data=f"sig_sub:{sig_tier}:{subcategory}")
+        await message.answer(
+            t("signal.no_search_results", locale),
+            reply_markup=builder.as_markup(),
+        )
+        return
+
+    builder = InlineKeyboardBuilder()
+    for p in matches[:20]:
+        payout = p["payout"]
+        btn_text = f"{p['name']}  ({payout}%)"
+        builder.button(
+            text=btn_text,
+            callback_data=f"sig_pair:{sig_tier}:{p['symbol']}",
+        )
+    builder.button(text=t("keyboard.back", locale), callback_data=f"sig_sub:{sig_tier}:{subcategory}")
+    builder.adjust(2)
+
+    count_text = t("signal.search_results_count", locale, count=len(matches))
+    await message.answer(
+        f"{count_text}\n\n{t('signal.choose_pair', locale)}",
+        parse_mode=ParseMode.HTML,
+        reply_markup=builder.as_markup(),
+    )
 
 
 # ── Step 4: User picks pair → show expirations ──────────────────────────────
@@ -411,15 +506,15 @@ async def _mirror_signal_to_web(telegram_id: int, pair: str, expiration: str) ->
     }
     payload = {"telegramId": telegram_id, "pair": pair, "expiration": expiration}
     try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            if resp.status_code >= 400:
-                logger.warning(
-                    "mirror_signal_to_web: non-2xx %s for telegram_id=%s: %s",
-                    resp.status_code,
-                    telegram_id,
-                    resp.text[:200],
-                )
+        client = get_http_client()
+        resp = await client.post(url, json=payload, headers=headers)
+        if resp.status_code >= 400:
+            logger.warning(
+                "mirror_signal_to_web: non-2xx %s for telegram_id=%s: %s",
+                resp.status_code,
+                telegram_id,
+                resp.text[:200],
+            )
     except Exception:
         logger.warning(
             "mirror_signal_to_web: request failed for telegram_id=%s", telegram_id, exc_info=True
@@ -449,8 +544,24 @@ async def _show_analysis_animation(
 
 def _get_user_lock(user_id: int) -> asyncio.Lock:
     if user_id not in _user_locks:
+        # Evict oldest entries if cache is full
+        if len(_user_locks) >= _MAX_USER_LOCKS:
+            # Remove first (oldest) entries that are not locked
+            to_remove = [
+                k for k in list(_user_locks)[:len(_user_locks) - _MAX_USER_LOCKS + 1]
+                if not _user_locks[k].locked()
+            ]
+            for k in to_remove:
+                del _user_locks[k]
         _user_locks[user_id] = asyncio.Lock()
     return _user_locks[user_id]
+
+
+def _release_user_lock(user_id: int) -> None:
+    """Remove lock from cache if no one else is waiting on it."""
+    lock = _user_locks.get(user_id)
+    if lock is not None and not lock.locked():
+        _user_locks.pop(user_id, None)
 
 
 @router.callback_query(F.data.startswith("sig_exp:"))
@@ -476,109 +587,112 @@ async def cb_signal_expiration(query: CallbackQuery) -> None:
         await query.message.answer(t("signal.generating", locale))
         return
 
-    async with lock:
-        # Validate user again
-        error, user = await _validate_user(user_id, locale)
-        if error:
-            await query.message.answer(error, parse_mode=ParseMode.HTML)
-            return
+    try:
+        async with lock:
+            # Validate user again
+            error, user = await _validate_user(user_id, locale)
+            if error:
+                await query.message.answer(error, parse_mode=ParseMode.HTML)
+                return
 
-        # Check daily limit
-        limit_error = await _check_daily_limit(user, locale)
-        if limit_error:
-            await query.message.answer(limit_error, parse_mode=ParseMode.HTML)
-            return
+            # Check daily limit
+            limit_error = await _check_daily_limit(user, locale)
+            if limit_error:
+                await query.message.answer(limit_error, parse_mode=ParseMode.HTML)
+                return
 
-        # Verify tier access
-        allowed = web_sync.get_allowed_types(user.tier) or TIER_SIGNAL_TYPES.get(
-            user.tier, ["otc"]
-        )
-        if sig_tier not in allowed:
-            await query.message.answer(
-                t("signal.unavailable_tier", locale),
-                parse_mode=ParseMode.HTML,
+            # Verify tier access
+            allowed = web_sync.get_allowed_types(user.tier) or TIER_SIGNAL_TYPES.get(
+                user.tier, ["otc"]
             )
-            return
+            if sig_tier not in allowed:
+                await query.message.answer(
+                    t("signal.unavailable_tier", locale),
+                    parse_mode=ParseMode.HTML,
+                )
+                return
 
-        # Remove the expiration keyboard
-        try:
-            await query.message.edit_reply_markup(reply_markup=None)
-        except Exception:  # noqa: BLE001
-            pass
-
-        # Animation + generation in parallel
-        delay = random.uniform(settings.analysis_delay_min, settings.analysis_delay_max)
-        analysis_msg: Message | None = None
-
-        try:
-            animation_task = asyncio.create_task(
-                _show_analysis_animation(bot, user.telegram_id, delay, locale)
-            )
-
-            # Generate signal
-            signal = generate_signal_for_pair(sig_tier, pair_symbol, exp_code, locale)
-            sid = await save_signal(signal, telegram_id=user_id)
-            signal.id = sid
-
-            # Increment counters early — before chart/send so limit is
-            # enforced even if later steps fail.
-            await increment_daily_signal(user.telegram_id)
-            await increment_signals_received(user.telegram_id)
-
-            # Mirror to web platform for cross-platform history
-            asyncio.create_task(_mirror_signal_to_web(user_id, pair_symbol, exp_code))
-
-            analysis_msg = await animation_task
+            # Remove the expiration keyboard
             try:
-                await analysis_msg.delete()
+                await query.message.edit_reply_markup(reply_markup=None)
             except Exception:  # noqa: BLE001
                 pass
 
-            # Build chart
-            tier_str = signal.tier or "otc"
-            is_otc = tier_str in {"otc", "demo"}
+            # Animation + generation in parallel
+            delay = random.uniform(settings.analysis_delay_min, settings.analysis_delay_max)
+            analysis_msg: Message | None = None
 
-            if is_otc:
-                chart_bytes: bytes = make_otc_banner(signal, locale=locale)
-                caption = format_otc_minimal(signal, locale=locale)
-            else:
-                real_ohlc = await fetch_ohlc(signal.pair)
-                chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc, locale=locale)
-                caption = format_pro_signal_caption(signal, settings.pocket_option_url, locale=locale)
+            try:
+                animation_task = asyncio.create_task(
+                    _show_analysis_animation(bot, user.telegram_id, delay, locale)
+                )
 
-            # Activity log (fire-and-forget)
-            asyncio.create_task(log_activity(user_id, "signal_request", {
-                "pair": pair_symbol,
-                "tier": sig_tier,
-                "expiration": exp_code,
-            }))
+                # Generate signal
+                signal = generate_signal_for_pair(sig_tier, pair_symbol, exp_code, locale)
+                sid = await save_signal(signal, telegram_id=user_id)
+                signal.id = sid
 
-            # Send signal photo
-            await bot.send_photo(
-                chat_id=user.telegram_id,
-                photo=BufferedInputFile(
-                    chart_bytes, filename=f"signal_{signal.id}.png"
-                ),
-                caption=caption,
-                parse_mode=ParseMode.HTML,
-                reply_markup=signal_inline(
-                    settings.pocket_option_url, signal.id, locale=locale
-                ),
-            )
+                # Increment counters early — before chart/send so limit is
+                # enforced even if later steps fail.
+                await increment_daily_signal(user.telegram_id)
+                await increment_signals_received(user.telegram_id)
 
-            # Achievement check
-            updated_user = await get_user(user.telegram_id)
-            if updated_user:
-                await check_and_award(bot, updated_user)
+                # Mirror to web platform for cross-platform history
+                asyncio.create_task(_mirror_signal_to_web(user_id, pair_symbol, exp_code))
 
-        except Exception:
-            logger.exception("Signal request failed for user %s", user_id)
-            if analysis_msg is not None:
+                analysis_msg = await animation_task
                 try:
                     await analysis_msg.delete()
                 except Exception:  # noqa: BLE001
                     pass
-            await query.message.answer(t("signal.generation_error", locale))
+
+                # Build chart
+                tier_str = signal.tier or "otc"
+                is_otc = tier_str in {"otc", "demo"}
+
+                if is_otc:
+                    chart_bytes: bytes = make_otc_banner(signal, locale=locale)
+                    caption = format_otc_minimal(signal, locale=locale)
+                else:
+                    real_ohlc = await fetch_ohlc(signal.pair)
+                    chart_bytes = make_signal_chart_advanced(signal, ohlc=real_ohlc, locale=locale)
+                    caption = format_pro_signal_caption(signal, settings.pocket_option_url, locale=locale)
+
+                # Activity log (fire-and-forget)
+                asyncio.create_task(log_activity(user_id, "signal_request", {
+                    "pair": pair_symbol,
+                    "tier": sig_tier,
+                    "expiration": exp_code,
+                }))
+
+                # Send signal photo
+                await bot.send_photo(
+                    chat_id=user.telegram_id,
+                    photo=BufferedInputFile(
+                        chart_bytes, filename=f"signal_{signal.id}.png"
+                    ),
+                    caption=caption,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=signal_inline(
+                        settings.pocket_option_url, signal.id, locale=locale
+                    ),
+                )
+
+                # Achievement check
+                updated_user = await get_user(user.telegram_id)
+                if updated_user:
+                    await check_and_award(bot, updated_user)
+
+            except Exception:
+                logger.exception("Signal request failed for user %s", user_id)
+                if analysis_msg is not None:
+                    try:
+                        await analysis_msg.delete()
+                    except Exception:  # noqa: BLE001
+                        pass
+                await query.message.answer(t("signal.generation_error", locale))
+    finally:
+        _release_user_lock(user_id)
 
 
 # ── Legacy: full auto-flow (used by web API path) ───────────────────────────
@@ -594,11 +708,11 @@ async def _request_signal_via_api(telegram_id: int) -> dict[str, Any] | None:
     payload = {"telegramId": telegram_id}
 
     try:
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            data: dict[str, Any] = resp.json()
-            data["_status"] = resp.status_code
-            return data
+        client = get_http_client()
+        resp = await client.post(url, json=payload, headers=headers)
+        data: dict[str, Any] = resp.json()
+        data["_status"] = resp.status_code
+        return data
     except Exception:
         logger.exception("Web API signal request failed for telegram_id=%s", telegram_id)
         return None

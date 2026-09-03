@@ -11,6 +11,7 @@ from aiogram.types import MenuButtonWebApp, WebAppInfo
 
 from config import settings
 from database.db import init_db, close_db
+from http_client import close_http_client
 from handlers import admin, lang, link, menu, onboarding, signals, start, stats
 from middlewares import BannedUserMiddleware
 from services.scheduler import daily_brief_loop
@@ -113,6 +114,7 @@ async def main() -> None:
             return_exceptions=True,
         )
         await bot.session.close()
+        await close_http_client()
         await close_db()
         if PID_FILE.exists():
             PID_FILE.unlink()

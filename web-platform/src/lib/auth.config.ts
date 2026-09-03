@@ -53,9 +53,17 @@ export const authConfig: NextAuthConfig = {
       const isLoggedIn = !!auth?.user;
       const pathname = nextUrl.pathname;
 
+      if (pathname.startsWith("/admin")) {
+        if (!isLoggedIn) return false;
+        const role = auth?.user?.role;
+        if (role !== "admin") {
+          return Response.redirect(new URL("/dashboard", nextUrl));
+        }
+        return true;
+      }
+
       if (
         pathname.startsWith("/dashboard") ||
-        pathname.startsWith("/admin") ||
         pathname.startsWith("/onboarding")
       ) {
         return isLoggedIn;

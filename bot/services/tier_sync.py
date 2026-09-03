@@ -21,7 +21,7 @@ from aiogram.types import BufferedInputFile
 
 from config import settings
 from constants import TIER_DEPOSIT_THRESHOLDS, TIER_NAMES
-from database.db import set_deposit_total, set_signals_received, set_tier, _get_pool, telegram_id_to_bigint
+from database.db import set_deposit_total, set_signals_received, set_tier, _get_pool
 from services import web_sync
 from services.imagegen import make_tier_card
 
@@ -50,6 +50,12 @@ async def _local_state(po_trader_id: str) -> tuple[int, float, int | None] | Non
 
 
 async def _send_upgrade(bot: Bot, telegram_id: int, new_tier: int, deposit: float) -> None:
+    # Resolve user locale from DB preference
+    from database.db import get_user_locale
+    from i18n import t
+
+    locale = await get_user_locale(telegram_id) or "ru"
+
     name = USER_TIER_NAMES.get(new_tier, "—")
     next_threshold = USER_TIER_DEPOSIT_THRESHOLDS.get(new_tier + 1)
     try:
@@ -60,20 +66,13 @@ async def _send_upgrade(bot: Bot, telegram_id: int, new_tier: int, deposit: floa
 
     from constants import TIER_DAILY_LIMITS, TIER_SIGNAL_TYPES
     types = TIER_SIGNAL_TYPES.get(new_tier, ["otc"])
-    signal_access = " + ".join(t.upper() for t in types)
+    signal_access = " + ".join(tp.upper() for tp in types)
     daily_limit = TIER_DAILY_LIMITS.get(new_tier)
-    limit_text = "безлимит" if daily_limit is None else f"{daily_limit}/день"
+    limit_text = t("tier.unlimited", locale) if daily_limit is None else f"{daily_limit}/{t('tier.per_day', locale)}"
 
-    text = (
-        f"<b>🎉 Уровень разблокирован: {name}!</b>\n"
-        f"\n"
-        f"Депозит на PocketOption: <b>${deposit:,.2f}</b>\n"
-        f"\n"
-        f"Доступные сигналы: <b>{signal_access}</b>\n"
-        f"Лимит: <b>{limit_text}</b>\n"
-        "\n"
-        "Нажми «🎯 Получить сигнал» в меню, чтобы запросить сигнал."
-    )
+    text = t("tier.upgrade_message", locale,
+             name=name, deposit=f"{deposit:,.2f}",
+             signal_access=signal_access, limit_text=limit_text)
     if card:
         await bot.send_photo(
             telegram_id,
@@ -85,14 +84,20 @@ async def _send_upgrade(bot: Bot, telegram_id: int, new_tier: int, deposit: floa
         await bot.send_message(telegram_id, text, parse_mode=ParseMode.HTML)
 
 
-def _compute_tier_from_deposit(deposit: float) -> int:
-    """Mirror the web-platform computeTier logic locally."""
+def _compute_tier_from_deposit(deposit: float, *, has_po_account: bool = True) -> int:
+    """Mirror the web-platform computeTier logic locally.
+
+    If the user has no linked PocketOption account, they get tier 0.
+    Otherwise, iterate all thresholds to find the highest matching tier.
+    """
+    if not has_po_account:
+        return 0
     thresholds = USER_TIER_DEPOSIT_THRESHOLDS
-    if deposit >= thresholds.get(2, 100):
-        return 2
-    if deposit >= thresholds.get(1, 20):
-        return 1
-    return 0
+    tier = 0
+    for t_tier in sorted(thresholds):
+        if deposit >= thresholds[t_tier]:
+            tier = t_tier
+    return tier
 
 
 async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
@@ -101,8 +106,9 @@ async def _apply_one(bot: Bot, item: dict[str, Any]) -> None:
         return
     po_id = str(po_id)
     deposit = float(item.get("totalDeposit") or 0.0)
+    has_po = bool(po_id)
     # Compute tier from deposit locally, don't blindly trust API tier
-    computed_tier = _compute_tier_from_deposit(deposit)
+    computed_tier = _compute_tier_from_deposit(deposit, has_po_account=has_po)
     # Admin override acts as a floor — tier never drops below it
     tier_override = item.get("tierOverride")
     tier_floor = int(tier_override) if tier_override is not None else 0
@@ -190,7 +196,11 @@ async def try_sync_user(telegram_id: int) -> bool:
             continue
         po_id = str(po_id)
         deposit = float(item.get("totalDeposit") or 0.0)
-        new_tier = _compute_tier_from_deposit(deposit)
+        computed_tier = _compute_tier_from_deposit(deposit, has_po_account=bool(po_id))
+        # Respect admin tier override as floor
+        tier_override = item.get("tierOverride")
+        tier_floor = int(tier_override) if tier_override is not None else 0
+        new_tier = max(computed_tier, tier_floor)
         web_signals = int(item.get("signalsCount") or 0)
         from database.db import get_user, set_po_trader_id
         user = await get_user(telegram_id)

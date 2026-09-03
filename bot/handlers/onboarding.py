@@ -23,6 +23,7 @@ from aiogram.types import (
 from aiogram.enums import ParseMode
 
 from config import settings
+from database.db import get_user_web_id
 from handlers.link import LinkPo
 from i18n import t
 from i18n_helpers import get_locale
@@ -30,15 +31,13 @@ from i18n_helpers import get_locale
 logger = logging.getLogger(__name__)
 router = Router()
 
-SITE_URL = "https://spacesignal.net"
 
-
-async def trigger_for_new_user(message: Message) -> None:
+async def trigger_for_new_user(message: Message, *, po_url: str | None = None) -> None:
     """Launch onboarding for a freshly-registered or PO-unlinked user."""
-    await _send_welcome(message)
+    await _send_welcome(message, po_url=po_url)
 
 
-async def _send_welcome(message: Message) -> None:
+async def _send_welcome(message: Message, *, po_url: str | None = None) -> None:
     locale = get_locale(message.from_user)
     first_name = message.from_user.first_name or t("common.trader", locale)
     text = t("onboarding.welcome", locale, first_name=first_name)
@@ -63,15 +62,20 @@ async def cmd_onboard(message: Message) -> None:
 async def cb_no_account(query: CallbackQuery) -> None:
     """User has no account — send to website + PocketOption registration."""
     locale = get_locale(query.from_user)
-    text = t("onboarding.no_account", locale, site_url=SITE_URL)
+    # Personalize PO URL with user's web ID for postback matching
+    from handlers.start import _personalize_po_url
+    web_id = await get_user_web_id(query.from_user.id)
+    po_url = _personalize_po_url(settings.pocket_option_url, web_id) if web_id else settings.pocket_option_url
+
+    text = t("onboarding.no_account", locale, site_url=settings.site_url)
     if query.message:
         await query.message.edit_text(
             text,
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=True,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text=t("keyboard.register_on_site", locale), url=f"{SITE_URL}/register")],
-                [InlineKeyboardButton(text=t("keyboard.open_pocket_option_diamond", locale), url=settings.pocket_option_url)],
+                [InlineKeyboardButton(text=t("keyboard.register_on_site", locale), url=f"{settings.site_url}/register")],
+                [InlineKeyboardButton(text=t("keyboard.open_pocket_option_diamond", locale), url=po_url)],
                 [InlineKeyboardButton(text=t("keyboard.done_enter_id", locale), callback_data="onb:enter_id")],
             ]),
         )
@@ -82,14 +86,19 @@ async def cb_no_account(query: CallbackQuery) -> None:
 async def cb_has_account(query: CallbackQuery) -> None:
     """User has an existing account but needs a NEW PocketOption via our referral."""
     locale = get_locale(query.from_user)
+    # Personalize PO URL with user's web ID for postback matching
+    from handlers.start import _personalize_po_url
+    web_id = await get_user_web_id(query.from_user.id)
+    po_url = _personalize_po_url(settings.pocket_option_url, web_id) if web_id else settings.pocket_option_url
+
     text = t("onboarding.has_account", locale)
     if query.message:
         await query.message.edit_text(
             text,
             parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text=t("keyboard.register_on_site", locale), url=f"{SITE_URL}/register")],
-                [InlineKeyboardButton(text=t("keyboard.create_new_po", locale), url=settings.pocket_option_url)],
+                [InlineKeyboardButton(text=t("keyboard.register_on_site", locale), url=f"{settings.site_url}/register")],
+                [InlineKeyboardButton(text=t("keyboard.create_new_po", locale), url=po_url)],
                 [InlineKeyboardButton(text=t("keyboard.done_enter_id", locale), callback_data="onb:enter_id")],
             ]),
         )

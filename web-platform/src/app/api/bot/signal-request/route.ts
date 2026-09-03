@@ -41,15 +41,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Find user by telegram ID
+  // Find user by telegram ID, include PO account check
   const user = await prisma.user.findUnique({
     where: { telegramId: BigInt(body.telegramId) },
-    select: { id: true },
+    select: { id: true, poAccount: { select: { id: true } } },
   });
   if (!user) {
     return NextResponse.json(
       { ok: false, error: "user_not_found", code: "no_user" },
       { status: 404 },
+    );
+  }
+  if (!user.poAccount) {
+    return NextResponse.json(
+      { ok: false, error: "no_po_account", code: "no_po_account" },
+      { status: 403 },
     );
   }
 

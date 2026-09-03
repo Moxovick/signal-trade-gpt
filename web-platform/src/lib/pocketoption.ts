@@ -245,7 +245,6 @@ export function parsePostbackQuery(params: PostbackParamsLike): ParsedPostback |
     event === "withdrawal" ? parseWithdrawalStatus(readParam(params, "status")) : null;
 
   const now = new Date();
-  const minuteBucket = Math.floor(now.getTime() / 60_000);
 
   const raw = paramsToRecord(params);
   // Don't persist the URL secret in raw payload.
@@ -268,7 +267,10 @@ export function parsePostbackQuery(params: PostbackParamsLike): ParsedPostback |
       // For withdrawal events, status is part of identity (a wd can move
       // new → processed → ... and each transition is its own postback).
       withdrawalStatus,
-      minuteBucket,
+      // PO sends date_time for each event — two separate redeposits of
+      // the same amount will have different timestamps. Retries of the
+      // same postback will have the same date_time.
+      nonEmpty(readParam(params, "date_time", "datetime")),
     ]),
     receivedAt: now,
     raw,
@@ -302,13 +304,11 @@ export function parsePostbackQuery(params: PostbackParamsLike): ParsedPostback |
 export async function verifyPostbackSecret(provided: string | null): Promise<boolean> {
   const expected = await getPostbackSecret();
   if (!expected) {
-    if (process.env["NODE_ENV"] === "production") {
-      console.warn(
-        "[postback] po_postback_secret not configured; rejecting requests in production.",
-      );
-      return false;
-    }
-    return true;
+    // Never fail-open — require secret in all environments.
+    // Staging/preview on Vercel defaults to NODE_ENV=development, so
+    // fail-open there would allow fake postbacks on shared databases.
+    console.warn("[postback] po_postback_secret not configured; rejecting request.");
+    return false;
   }
   if (!provided) return false;
   const a = Buffer.from(expected);
@@ -527,6 +527,24 @@ export async function applyPostback(parsed: ParsedPostback): Promise<{
   }
 
   await prisma.pocketOptionAccount.update({ where: { id: poAccountId }, data: updates });
+
+  // Sync User.depositTotal from PO account on deposit/withdrawal events
+  if (
+    (parsed.event === "ftd" || parsed.event === "redeposit" || parsed.event === "withdrawal") &&
+    parsed.amount &&
+    userId
+  ) {
+    const updatedAcc = await prisma.pocketOptionAccount.findUnique({
+      where: { id: poAccountId },
+      select: { totalDeposit: true },
+    });
+    if (updatedAcc) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { depositTotal: Number(updatedAcc.totalDeposit) },
+      });
+    }
+  }
 
   // Mirror deposit events to Deposit table.
   if ((parsed.event === "ftd" || parsed.event === "redeposit") && parsed.amount && userId) {

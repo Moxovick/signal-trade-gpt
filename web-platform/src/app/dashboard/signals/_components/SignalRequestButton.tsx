@@ -585,6 +585,7 @@ export function SignalRequestButton({
   const [lastSignal, setLastSignal] = useState<GeneratedSignal | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<PairBand>("otc");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Analysis animation state
   const [analysisStep, setAnalysisStep] = useState(0);
@@ -735,6 +736,7 @@ export function SignalRequestButton({
     const tabs: PairBand[] = ["otc", "exchange", "elite"];
     const activePairs = ALL_PAIRS
       .filter((p) => p.band === activeTab)
+      .filter((p) => !searchQuery || p.display.toLowerCase().includes(searchQuery.toLowerCase()))
       .sort((a, b) => (PAIR_PAYOUTS[b.name] ?? 0) - (PAIR_PAYOUTS[a.name] ?? 0));
     const groups = groupByFlag(activePairs, FLAG_LABELS);
 
@@ -766,7 +768,7 @@ export function SignalRequestButton({
             return (
               <button
                 key={band}
-                onClick={() => !locked && setActiveTab(band)}
+                onClick={() => { if (!locked) { setActiveTab(band); setSearchQuery(""); } }}
                 disabled={locked}
                 style={{
                   flex: 1,
@@ -792,6 +794,50 @@ export function SignalRequestButton({
               </button>
             );
           })}
+        </div>
+
+        {/* Search input */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "8px 8px",
+            borderBottom: "1px solid var(--b-soft)",
+          }}
+        >
+          <Search size={14} style={{ color: "var(--t-3)", flexShrink: 0 }} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t.signalRequest.searchPlaceholder}
+            style={{
+              flex: 1,
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              color: "var(--t-1)",
+              fontSize: 13,
+              fontFamily: "var(--font-jetbrains)",
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--t-3)",
+                cursor: "pointer",
+                padding: 2,
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Column header row */}

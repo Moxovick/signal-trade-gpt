@@ -17,11 +17,8 @@ export const dynamic = "force-dynamic";
 function authorise(req: NextRequest): boolean {
   const expected = process.env["CRON_SECRET"];
   if (!expected) {
-    if (process.env["NODE_ENV"] === "production") {
-      console.warn("[cron/cleanup] CRON_SECRET is not set — rejecting request in production.");
-      return false;
-    }
-    return true;
+    console.warn("[cron/cleanup] CRON_SECRET is not set — rejecting request.");
+    return false;
   }
   const header =
     req.headers.get("authorization") ??

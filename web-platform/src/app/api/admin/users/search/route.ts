@@ -45,5 +45,10 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
     take: 10,
   });
-  return NextResponse.json({ ok: true, users });
+  // BigInt fields (telegramId) must be serialized to string for JSON
+  const serialized = users.map((u) => ({
+    ...u,
+    telegramId: u.telegramId != null ? u.telegramId.toString() : null,
+  }));
+  return NextResponse.json({ ok: true, users: serialized });
 }

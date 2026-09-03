@@ -86,7 +86,11 @@ async def receive_id(message: Message, state: FSMContext) -> None:
         if _credentials() is None:
             # API not configured — save without verification, warn in logs
             logger.warning("PO API credentials missing — saving ID %s without verification", candidate)
-            await set_po_trader_id(message.from_user.id, candidate)
+            ok = await set_po_trader_id(message.from_user.id, candidate, verified=False)
+            if not ok:
+                await message.answer(t("link.already_taken", locale), parse_mode=ParseMode.HTML)
+                await state.clear()
+                return
             await _send_success(message, state, candidate, verified=False, deposit=0.0)
             return
 
@@ -106,8 +110,17 @@ async def receive_id(message: Message, state: FSMContext) -> None:
             await state.clear()
             return
 
-        # Verified! Save ID and deposit
-        await set_po_trader_id(message.from_user.id, candidate)
+        # Verified! Save ID, deposit, and status in po_accounts
+        ok = await set_po_trader_id(
+            message.from_user.id,
+            candidate,
+            verified=True,
+            deposit_total=info.deposit_total,
+        )
+        if not ok:
+            await message.answer(t("link.already_taken", locale), parse_mode=ParseMode.HTML)
+            await state.clear()
+            return
         try:
             from database.db import set_deposit_total
             await set_deposit_total(message.from_user.id, info.deposit_total)
@@ -115,6 +128,13 @@ async def receive_id(message: Message, state: FSMContext) -> None:
             logger.warning("Could not store deposit_total", exc_info=True)
 
         await _send_success(message, state, candidate, verified=True, deposit=info.deposit_total)
+
+        # Trigger immediate tier sync so user gets correct tier right away
+        try:
+            from services.tier_sync import try_sync_user
+            await try_sync_user(message.from_user.id)
+        except Exception:
+            logger.debug("Post-link tier sync failed, will catch up later", exc_info=True)
 
     except Exception as exc:
         logger.warning("PO verification error: %s", exc)
