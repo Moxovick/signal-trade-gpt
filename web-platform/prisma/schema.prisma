@@ -702,8 +702,6 @@ model Asset {
   displaySymbol   String
   category        AssetCategory
   isOtc           Boolean       @default(false)
-  /// Payout percent at PocketOption (e.g. 92 for "+92%"). Shown to users.
-  payoutPct       Int           @default(0)
   /// Which Signal.tier this asset belongs to. Drives access control.
   signalTier      SignalTier    @default(otc)
   /// For NON-OTC assets only. "twelvedata" | "binance" | "yahoo" | "none".

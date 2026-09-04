@@ -47,7 +47,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid category" }, { status: 400 });
   }
   const isOtc = Boolean(body["isOtc"]);
-  const payoutPct = Math.max(0, Math.min(200, Number(body["payoutPct"] ?? 0)));
   const signalTier = TIERS.includes(body["signalTier"] as SignalTier)
     ? (body["signalTier"] as SignalTier)
     : ("otc" as SignalTier);
@@ -64,7 +63,6 @@ export async function POST(req: NextRequest) {
         displaySymbol,
         category: category as AssetCategory,
         isOtc,
-        payoutPct,
         signalTier,
         provider,
         providerSymbol,

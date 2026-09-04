@@ -2,7 +2,7 @@
  * GET /api/assets — list active assets (public to authenticated users).
  *
  * Used by the live signal feed, signal cards, and the Telegram Mini App
- * to look up payout %, OTC flag, and provider for a given symbol.
+ * to look up OTC flag and provider for a given symbol.
  */
 import { NextResponse } from "next/server";
 import { listActiveAssets } from "@/lib/assets";
@@ -19,7 +19,6 @@ export async function GET() {
       displaySymbol: a.displaySymbol,
       category: a.category,
       isOtc: a.isOtc,
-      payoutPct: a.payoutPct,
       signalTier: a.signalTier,
       provider: a.provider,
       providerSymbol: a.providerSymbol,

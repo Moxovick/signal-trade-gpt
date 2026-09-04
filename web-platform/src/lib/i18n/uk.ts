@@ -763,7 +763,6 @@ const dict = {
     groupIndices: "Індекси",
     groupForexPairs: "Валютні пари",
     colAsset: "Актив",
-    colPayout: "Виплата",
     searchPlaceholder: "Пошук пари...",
     remaining: "залишилось",
     selectExpiration: "Оберіть час експірації",
@@ -1846,7 +1845,6 @@ const dict = {
         name: "Назва",
         category: "Кат.",
         otc: "OTC",
-        payout: "Виплата",
         sigTier: "Sig.tier",
         provider: "Провайдер",
         actions: "Дії",
@@ -1864,7 +1862,6 @@ const dict = {
         editTitle: "Редагувати актив",
         newTitle: "Новий актив",
         category: "Категорія",
-        payout: "Виплата %",
         chartProvider: "Провайдер графіка",
         noChart: "none (немає графіка)",
         isOtc: "Це OTC (синтетика, без графіка)",
@@ -1966,7 +1963,6 @@ const dict = {
       result: {
         accuracy: "Точність",
         expiration: "Експірація",
-        payout: "Виплата",
         entryAt: "Вхід:",
         entryTime: "Час входу:",
         analysis: "Аналітика",
@@ -2007,7 +2003,6 @@ const dict = {
       stats: {
         expiration: "Експірація",
         confidence: "Впевненість",
-        payout: "Виплата",
         status: "Статус",
       },
       otcNotice: {

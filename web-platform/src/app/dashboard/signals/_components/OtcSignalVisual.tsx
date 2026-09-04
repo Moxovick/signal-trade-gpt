@@ -8,7 +8,6 @@ type Props = {
   direction: "CALL" | "PUT";
   confidence: number;
   expiration: string;
-  payout?: number;
   entryTime?: string | null;
 };
 
@@ -16,7 +15,7 @@ type Props = {
  * Clean OTC signal card — direction circle + stats grid, NO chart.
  * Matches Signals.dc.html "Результат ОТС" reference.
  */
-export function OtcSignalVisual({ pair, direction, confidence, expiration, payout, entryTime }: Props) {
+export function OtcSignalVisual({ pair, direction, confidence, expiration, entryTime }: Props) {
   const { t } = useI18n();
   const isCall = direction === "CALL";
   const dirColor = isCall ? "#4CC38A" : "#E8623A";
@@ -160,7 +159,7 @@ export function OtcSignalVisual({ pair, direction, confidence, expiration, payou
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
+              gridTemplateColumns: "repeat(2, 1fr)",
               gap: 1,
               background: "rgba(245,236,217,0.06)",
               border: "1px solid rgba(245,236,217,0.06)",
@@ -168,29 +167,6 @@ export function OtcSignalVisual({ pair, direction, confidence, expiration, payou
               overflow: "hidden",
             }}
           >
-            <div style={{ background: "#100d0b", padding: "13px 15px" }}>
-              <div
-                style={{
-                  fontSize: 10,
-                  color: "#6F6353",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                }}
-              >
-                {t.signalRequest?.payout ?? "Выплата"}
-              </div>
-              <div
-                style={{
-                  fontFamily: "var(--font-jetbrains)",
-                  fontWeight: 700,
-                  fontSize: 17,
-                  color: "#4CC38A",
-                  marginTop: 3,
-                }}
-              >
-                {payout != null ? `+${payout}%` : "—"}
-              </div>
-            </div>
             <div style={{ background: "#100d0b", padding: "13px 15px" }}>
               <div
                 style={{

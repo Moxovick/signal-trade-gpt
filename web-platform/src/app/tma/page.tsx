@@ -10,7 +10,6 @@ import { useI18n } from "@/lib/i18n/context";
 type Asset = {
   symbol: string;
   isOtc: boolean;
-  payoutPct: number;
   provider: string;
   providerSymbol: string | null;
 };
@@ -172,12 +171,6 @@ function SignalRow({ signal, asset }: { signal: Signal; asset: Asset | undefined
           </div>
           <div className="text-xs text-[var(--t-3)] flex items-center gap-2 mt-0.5">
             <span>{signal.expiration}</span>
-            {asset && asset.payoutPct > 0 && (
-              <>
-                <span>·</span>
-                <span className="text-[var(--brand-gold)]">+{asset.payoutPct}%</span>
-              </>
-            )}
             <span>·</span>
             <span>{signal.confidence}%</span>
           </div>

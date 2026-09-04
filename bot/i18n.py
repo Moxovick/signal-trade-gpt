@@ -248,7 +248,6 @@ _RU: dict[str, str] = {
     "signal.choose_category": "📂 <b>Выбери категорию:</b>",
     "signal.choose_pair": "🎯 <b>Выбери пару:</b>",
     "signal.choose_expiration": "⏱ <b>Выбери экспирацию:</b>",
-    "signal.pair_payout": "🎯 <b>{pair_name}</b>  ·  Выплата: <b>+{payout}%</b>",
     "signal.no_pairs_in_category": "Нет доступных пар в этой категории.",
     "signal.search_pair": "🔍 Поиск пары",
     "signal.search_prompt": "Введите название пары (например: EUR, BTC, Gold):",
@@ -294,7 +293,6 @@ _RU: dict[str, str] = {
     "formatter.exchange_header": "<b>БИРЖЕВОЙ СИГНАЛ</b>",
     "formatter.elite_header": "<b>ELITE СИГНАЛ</b>",
     "formatter.accuracy": "Точность: <b>{confidence}%</b>  {bar}",
-    "formatter.payout": "Выплата: <b>+{pct}%</b>",
     "formatter.entry_time": "Время входа: <b>{entry_time}</b>",
     "formatter.analysis": "<b>Анализ:</b>\n<i>{analysis}</i>",
     "formatter.analysis_inline": "<b>Анализ:</b> <i>{analysis}</i>",
@@ -400,7 +398,6 @@ _RU: dict[str, str] = {
     "signal.confidence": "Точность",
     "signal.entry_time": "Время входа",
     "signal.volume": "Объём: 1–3% депозита",
-    "signal.payout": "Выплата",
 
     # ── tier_label aliases ────────────────────────────────────────────────────
     "tier_label.otc": "🎲 OTC",
@@ -1002,7 +999,6 @@ _UK: dict[str, str] = {
     "signal.choose_category": "📂 <b>Обери категорію:</b>",
     "signal.choose_pair": "🎯 <b>Обери пару:</b>",
     "signal.choose_expiration": "⏱ <b>Обери експірацію:</b>",
-    "signal.pair_payout": "🎯 <b>{pair_name}</b>  ·  Виплата: <b>+{payout}%</b>",
     "signal.no_pairs_in_category": "Немає доступних пар у цій категорії.",
     "signal.search_pair": "🔍 Пошук пари",
     "signal.search_prompt": "Введіть назву пари (наприклад: EUR, BTC, Gold):",
@@ -1048,7 +1044,6 @@ _UK: dict[str, str] = {
     "formatter.exchange_header": "<b>БІРЖОВИЙ СИГНАЛ</b>",
     "formatter.elite_header": "<b>ELITE СИГНАЛ</b>",
     "formatter.accuracy": "Точність: <b>{confidence}%</b>  {bar}",
-    "formatter.payout": "Виплата: <b>+{pct}%</b>",
     "formatter.entry_time": "Час входу: <b>{entry_time}</b>",
     "formatter.analysis": "<b>Аналіз:</b>\n<i>{analysis}</i>",
     "formatter.analysis_inline": "<b>Аналіз:</b> <i>{analysis}</i>",
@@ -1153,7 +1148,6 @@ _UK: dict[str, str] = {
     "signal.confidence": "Точність",
     "signal.entry_time": "Час входу",
     "signal.volume": "Об'єм: 1–3% депозиту",
-    "signal.payout": "Виплата",
 
     # ── tier_label aliases ────────────────────────────────────────────────────
     "tier_label.otc": "🎲 OTC",

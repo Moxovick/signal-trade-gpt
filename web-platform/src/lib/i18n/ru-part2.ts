@@ -140,7 +140,6 @@ const dict = {
     groupForexPairs: "Валютные пары",
     // Column headers
     colAsset: "Актив",
-    colPayout: "Выплата",
     remaining: "осталось",
     // Expiration step
     selectExpiration: "Выберите время экспирации",

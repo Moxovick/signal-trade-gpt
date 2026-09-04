@@ -18,7 +18,6 @@ type Asset = {
   displaySymbol: string;
   category: "currency" | "crypto" | "commodity" | "stock" | "index";
   isOtc: boolean;
-  payoutPct: number;
   signalTier: "otc" | "exchange" | "elite";
   provider: "none" | "twelvedata" | "binance" | "yahoo";
   providerSymbol: string | null;
@@ -32,7 +31,6 @@ type Draft = {
   displaySymbol: string;
   category: Asset["category"];
   isOtc: boolean;
-  payoutPct: number;
   signalTier: Asset["signalTier"];
   provider: Asset["provider"];
   providerSymbol: string;
@@ -46,7 +44,6 @@ const EMPTY: Draft = {
   displaySymbol: "",
   category: "currency",
   isOtc: true,
-  payoutPct: 80,
   signalTier: "otc",
   provider: "none",
   providerSymbol: "",
@@ -135,7 +132,6 @@ export default function AdminAssetsPage() {
       displaySymbol: a.displaySymbol,
       category: a.category,
       isOtc: a.isOtc,
-      payoutPct: a.payoutPct,
       signalTier: a.signalTier,
       provider: a.provider,
       providerSymbol: a.providerSymbol ?? "",
@@ -154,7 +150,6 @@ export default function AdminAssetsPage() {
       displaySymbol: draft.displaySymbol.trim(),
       category: draft.category,
       isOtc: draft.isOtc,
-      payoutPct: draft.payoutPct,
       signalTier: draft.signalTier,
       provider: draft.provider,
       providerSymbol: draft.providerSymbol.trim() || null,
@@ -274,7 +269,6 @@ export default function AdminAssetsPage() {
                   <th className="px-2 py-2">{asTable.name ?? "Имя"}</th>
                   <th className="px-2 py-2">{asTable.category ?? "Кат."}</th>
                   <th className="px-2 py-2">{asTable.otc ?? "OTC"}</th>
-                  <th className="px-2 py-2">{asTable.payout ?? "Выплата"}</th>
                   <th className="px-2 py-2">{asTable.sigTier ?? "Sig.tier"}</th>
                   <th className="px-2 py-2">{asTable.provider ?? "Провайдер"}</th>
                   <th className="px-2 py-2 text-right">{asTable.actions ?? "Действия"}</th>
@@ -299,9 +293,6 @@ export default function AdminAssetsPage() {
                           {(as_ as Record<string, string>).real ?? "Реал"}
                         </span>
                       )}
-                    </td>
-                    <td className="px-2 py-2 tabular-nums font-semibold text-[var(--brand-gold)]">
-                      +{a.payoutPct}%
                     </td>
                     <td className="px-2 py-2 text-[var(--t-3)] text-[12px]">{TIER_LABEL[a.signalTier]}</td>
                     <td className="px-2 py-2 text-[var(--t-3)] text-[12px]">
@@ -336,7 +327,7 @@ export default function AdminAssetsPage() {
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="text-center text-[var(--t-3)] py-6">
+                    <td colSpan={7} className="text-center text-[var(--t-3)] py-6">
                       {(as_ as Record<string, string>).empty ?? "Ничего не найдено."}
                     </td>
                   </tr>
@@ -401,15 +392,6 @@ export default function AdminAssetsPage() {
                     <option key={k} value={k}>{v}</option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label className="text-[12px] text-[var(--t-3)]">{asModal.payout ?? "Выплата %"}</label>
-                <input
-                  type="number"
-                  value={draft.payoutPct}
-                  onChange={(e) => setDraft({ ...draft, payoutPct: Number(e.target.value) })}
-                  className="w-full mt-1 px-3 py-2 rounded-xl border border-[var(--b-soft)] bg-[var(--bg-2)] text-sm"
-                />
               </div>
               <div>
                 <label className="text-[12px] text-[var(--t-3)]">Position (sort)</label>

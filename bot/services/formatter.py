@@ -67,78 +67,6 @@ def _pair_emoji(pair: str) -> str:
     clean = pair.replace(" (OTC)", "")
     return PAIR_EMOJI.get(pair, PAIR_EMOJI.get(clean, ""))
 
-# Payout percentages per pair (from PocketOption — synced with constants.py)
-PAIR_PAYOUTS: dict[str, int] = {
-    # OTC Forex
-    "AED/CNY (OTC)": 92, "AUD/CAD (OTC)": 92, "CAD/JPY (OTC)": 92,
-    "EUR/GBP (OTC)": 92, "EUR/JPY (OTC)": 92, "GBP/JPY (OTC)": 92,
-    "NZD/USD (OTC)": 92, "OMR/CNY (OTC)": 92, "USD/CNH (OTC)": 92,
-    "USD/MYR (OTC)": 92, "USD/PHP (OTC)": 92, "USD/SGD (OTC)": 92,
-    "YER/USD (OTC)": 92, "USD/ARS (OTC)": 91, "USD/PKR (OTC)": 91,
-    "EUR/NZD (OTC)": 90, "AUD/NZD (OTC)": 89, "USD/CLP (OTC)": 88,
-    "CHF/JPY (OTC)": 87, "LBP/USD (OTC)": 86, "USD/THB (OTC)": 86,
-    "AUD/USD (OTC)": 83, "AUD/JPY (OTC)": 82, "NGN/USD (OTC)": 81,
-    "QAR/CNY (OTC)": 74, "BHD/CNY (OTC)": 71, "USD/JPY (OTC)": 70,
-    "NZD/JPY (OTC)": 68, "USD/INR (OTC)": 67, "EUR/HUF (OTC)": 65,
-    "MAD/USD (OTC)": 65, "CAD/CHF (OTC)": 64, "USD/EGP (OTC)": 63,
-    "ZAR/USD (OTC)": 63, "EUR/USD (OTC)": 61, "GBP/USD (OTC)": 59,
-    "AUD/CHF (OTC)": 58, "USD/BRL (OTC)": 58, "USD/BDT (OTC)": 57,
-    "EUR/CHF (OTC)": 52, "KES/USD (OTC)": 52, "USD/COP (OTC)": 51,
-    "CHF/NOK (OTC)": 50, "USD/VND (OTC)": 50, "JOD/CNY (OTC)": 46,
-    "TND/USD (OTC)": 45, "USD/IDR (OTC)": 43, "USD/DZD (OTC)": 36,
-    "UAH/USD (OTC)": 33, "USD/MXN (OTC)": 32, "GBP/AUD (OTC)": 30,
-    "USD/CHF (OTC)": 30, "EUR/TRY (OTC)": 29, "USD/CAD (OTC)": 24,
-    "SAR/CNY (OTC)": 20,
-    # OTC Crypto
-    "Bitcoin ETF (OTC)": 92, "BNB (OTC)": 92, "Polkadot (OTC)": 92,
-    "Litecoin (OTC)": 92, "Toncoin (OTC)": 92,
-    "Ethereum (OTC)": 86, "Avalanche (OTC)": 80,
-    "Chainlink (OTC)": 77, "Polygon (OTC)": 73,
-    "Bitcoin (OTC)": 68, "Cardano (OTC)": 67,
-    "TRON (OTC)": 50, "Solana (OTC)": 48, "Dogecoin (OTC)": 38,
-    # OTC Commodities
-    "Gold (OTC)": 80, "Silver (OTC)": 80, "Brent Oil (OTC)": 80, "WTI Oil (OTC)": 80,
-    "Natural Gas (OTC)": 45, "Palladium (OTC)": 45, "Platinum (OTC)": 45,
-    # OTC Stocks
-    "Apple (OTC)": 92, "GameStop (OTC)": 92, "VISA (OTC)": 92,
-    "American Express (OTC)": 90, "VIX (OTC)": 90, "Pfizer (OTC)": 87,
-    "AMD (OTC)": 83, "Johnson & Johnson (OTC)": 81,
-    "Marathon Digital (OTC)": 73, "Amazon (OTC)": 69,
-    "Netflix (OTC)": 63, "ExxonMobil (OTC)": 60,
-    "Coinbase (OTC)": 59, "Cisco (OTC)": 57,
-    "Alibaba (OTC)": 52, "Citigroup (OTC)": 50, "FedEx (OTC)": 50,
-    "Meta (OTC)": 45, "Intel (OTC)": 36, "Palantir (OTC)": 34,
-    "McDonald's (OTC)": 33, "Tesla (OTC)": 33, "Microsoft (OTC)": 31,
-    # OTC Indices
-    "S&P 500 (OTC)": 45, "NASDAQ 100 (OTC)": 45, "Dow Jones (OTC)": 45,
-    "AUS 200 (OTC)": 67, "FTSE 100 (OTC)": 45, "DAX 30 (OTC)": 45,
-    "E35EUR (OTC)": 45, "E50EUR (OTC)": 45, "CAC 40 (OTC)": 45,
-    "Nikkei 225 (OTC)": 45,
-    # Exchange Forex
-    "CHF/JPY": 88, "EUR/CAD": 88, "AUD/JPY": 86, "CAD/JPY": 80,
-    "AUD/CHF": 78, "EUR/USD": 78, "EUR/CHF": 75, "AUD/CAD": 74,
-    "EUR/AUD": 73, "GBP/JPY": 72, "USD/JPY": 68, "EUR/JPY": 61,
-    "EUR/GBP": 60, "GBP/USD": 55, "GBP/CAD": 48, "USD/CAD": 44,
-    "GBP/CHF": 42, "AUD/USD": 40, "USD/CHF": 35, "CAD/CHF": 26,
-    "GBP/AUD": 24,
-    # Exchange Crypto
-    "BTC/USD": 15,
-    # Ticker aliases
-    "AAPL": 92, "TSLA": 33, "AMZN": 69, "MSFT": 31, "META": 45,
-    "NFLX": 63, "NVDA": 80, "GOLD": 80, "SILVER": 80,
-    "ETH/USD": 80, "SOL/USD": 80, "SP500": 45, "US100": 45,
-}
-
-
-def _payout_line(pair: str, locale: str = "ru") -> str:
-    """Return payout line if we have data for this pair."""
-    pct = PAIR_PAYOUTS.get(pair)
-    if pct is None:
-        return ""
-    label = t("signal.payout", locale)
-    return f"{label}: <b>+{pct}%</b>\n"
-
-
 def _render_admin_template(template: str, signal: Signal, entry_price: float | None) -> str:
     """Substitute {placeholders} in admin-defined signal template."""
     arrow = DIRECTION_ARROW.get(signal.direction, "")
@@ -149,9 +77,6 @@ def _render_admin_template(template: str, signal: Signal, entry_price: float | N
     analysis_line = (
         f"<b>Анализ:</b> <i>{signal.analysis}</i>\n" if signal.analysis else ""
     )
-    pct = PAIR_PAYOUTS.get(signal.pair)
-    payout_str = f"+{pct}%" if pct else "—"
-    payout_line = f"Выплата: <b>+{pct}%</b>\n" if pct else ""
     pair_emoji = _pair_emoji(signal.pair)
     return (
         template
@@ -165,8 +90,8 @@ def _render_admin_template(template: str, signal: Signal, entry_price: float | N
         .replace("{entry_price}", f"{entry_price:.5f}" if entry_price is not None else "—")
         .replace("{entry_line}", entry_line)
         .replace("{analysis_line}", analysis_line)
-        .replace("{payout}", payout_str)
-        .replace("{payout_line}", payout_line)
+        .replace("{payout}", "")
+        .replace("{payout_line}", "")
         .replace("{tier}", (signal.tier or "otc").upper())
         .replace("{entry_time}", signal.entry_time or "—")
     )
@@ -205,7 +130,6 @@ def format_otc_minimal(signal: Signal, locale: str = "ru") -> str:
     arrow = DIRECTION_ARROW[signal.direction]
     conf_bar_full = round(signal.confidence / 10)
     conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
-    payout = _payout_line(signal.pair, locale)
 
     lines = [
         tier_header("otc", locale),
@@ -214,8 +138,6 @@ def format_otc_minimal(signal: Signal, locale: str = "ru") -> str:
         "",
         f"{t('signal.confidence', locale)}: <b>{signal.confidence}%</b>  {conf_bar}",
     ]
-    if payout:
-        lines.append(payout.rstrip("\n"))
     if signal.entry_time:
         lines.append(f"{t('signal.entry_time', locale)}: <b>{signal.entry_time}</b>")
     if signal.analysis:
@@ -252,7 +174,6 @@ def format_pro_signal_caption(
     conf_bar_full = round(signal.confidence / 10)
     conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
 
-    payout = _payout_line(signal.pair, locale)
     lines = [
         f"{header}",
         "",
@@ -262,8 +183,6 @@ def format_pro_signal_caption(
     ]
     if entry_price is not None:
         lines.append(f"Вход: <code>{entry_price:.5f}</code>")
-    if payout:
-        lines.append(payout.rstrip("\n"))
     if signal.entry_time:
         lines.append(f"{t('signal.entry_time', locale)}: <b>{signal.entry_time}</b>")
     if signal.analysis:
@@ -303,7 +222,6 @@ def format_signal(signal: Signal, pocket_option_url: str) -> str:
     conf_bar_full = round(signal.confidence / 10)
     conf_bar = "▰" * conf_bar_full + "▱" * (10 - conf_bar_full)
 
-    payout = _payout_line(signal.pair)
     lines = [
         f"{header}",
         "━━━━━━━━━━━━━━━",
@@ -313,8 +231,6 @@ def format_signal(signal: Signal, pocket_option_url: str) -> str:
         f"<b>Экспирация:</b> {signal.expiration}",
         f"<b>Точность:</b> {signal.confidence}%  {conf_bar}",
     ]
-    if payout:
-        lines.append(payout.rstrip("\n"))
     if signal.entry_time:
         lines.append(f"<b>Время входа:</b> {signal.entry_time}")
     lines.append(f"<b>Тип:</b> {badge}")

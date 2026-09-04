@@ -12,7 +12,6 @@ import { useI18n } from "@/lib/i18n/context";
 type Asset = {
   symbol: string;
   isOtc: boolean;
-  payoutPct: number;
   provider: string;
   providerSymbol: string | null;
 };
@@ -144,10 +143,7 @@ function SignalView({ id }: { id: string }) {
         <div className="grid grid-cols-3 gap-2 mb-4">
           <Stat label={t.tma.signalDetail.stats.expiration} value={signal.expiration} />
           <Stat label={t.tma.signalDetail.stats.confidence} value={`${signal.confidence}%`} accent />
-          {asset && asset.payoutPct > 0 && <Stat label={t.tma.signalDetail.stats.payout} value={`+${asset.payoutPct}%`} accent />}
-          {(!asset || asset.payoutPct === 0) && (
-            <Stat label={t.tma.signalDetail.stats.status} value={signal.result.toUpperCase()} />
-          )}
+          <Stat label={t.tma.signalDetail.stats.status} value={signal.result.toUpperCase()} />
         </div>
 
         {isOtc ? (

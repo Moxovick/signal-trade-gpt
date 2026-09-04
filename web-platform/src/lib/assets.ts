@@ -28,7 +28,6 @@ export async function seedAssetsIfMissing(): Promise<{ inserted: number }> {
         displaySymbol: a.displaySymbol,
         category: a.category,
         isOtc: a.isOtc,
-        payoutPct: a.payoutPct,
         signalTier: a.signalTier,
         provider: a.provider,
         providerSymbol: a.providerSymbol ?? null,

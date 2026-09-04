@@ -328,10 +328,8 @@ async def cb_signal_subcategory(query: CallbackQuery) -> None:
         callback_data=f"sig_search:{sig_tier}:{subcategory}",
     )
     for p in pairs:
-        payout = p["payout"]
-        btn_text = f"{p['name']}  ({payout}%)"
         builder.button(
-            text=btn_text,
+            text=p['name'],
             callback_data=f"sig_pair:{sig_tier}:{p['symbol']}",
         )
     builder.button(text=t("keyboard.back", locale), callback_data=f"sig_cat:{sig_tier}")
@@ -417,10 +415,8 @@ async def handle_search_query(message: Message, state: FSMContext) -> None:
 
     builder = InlineKeyboardBuilder()
     for p in matches[:20]:
-        payout = p["payout"]
-        btn_text = f"{p['name']}  ({payout}%)"
         builder.button(
-            text=btn_text,
+            text=p['name'],
             callback_data=f"sig_pair:{sig_tier}:{p['symbol']}",
         )
     builder.button(text=t("keyboard.back", locale), callback_data=f"sig_sub:{sig_tier}:{subcategory}")
@@ -470,18 +466,17 @@ async def cb_signal_pair(query: CallbackQuery) -> None:
     )
     builder.adjust(3)
 
-    pair_payout = t("signal.pair_payout", locale,
-                    pair_name=pair_info["name"], payout=pair_info["payout"])
     choose_exp = t("signal.choose_expiration", locale)
+    pair_header = f"🎯 <b>{pair_info['name']}</b>"
     try:
         await query.message.edit_text(
-            f"{pair_payout}\n\n{choose_exp}",
+            f"{pair_header}\n\n{choose_exp}",
             parse_mode=ParseMode.HTML,
             reply_markup=builder.as_markup(),
         )
     except Exception:  # noqa: BLE001
         await query.message.answer(
-            f"{pair_payout}\n\n{choose_exp}",
+            f"{pair_header}\n\n{choose_exp}",
             parse_mode=ParseMode.HTML,
             reply_markup=builder.as_markup(),
         )

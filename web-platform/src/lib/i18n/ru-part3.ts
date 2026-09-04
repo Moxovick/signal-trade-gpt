@@ -676,7 +676,6 @@ const dict = {
         name: "Имя",
         category: "Кат.",
         otc: "OTC",
-        payout: "Выплата",
         sigTier: "Sig.tier",
         provider: "Провайдер",
         actions: "Действия",
@@ -694,7 +693,6 @@ const dict = {
         editTitle: "Редактировать актив",
         newTitle: "Новый актив",
         category: "Категория",
-        payout: "Выплата %",
         chartProvider: "Провайдер графика",
         noChart: "none (нет графика)",
         isOtc: "Это OTC (синтетика, без графика)",
@@ -787,7 +785,6 @@ const dict = {
       result: {
         accuracy: "Точность",
         expiration: "Экспирация",
-        payout: "Выплата",
         entryAt: "Вход:",
         entryTime: "Время входа:",
         analysis: "Аналитика",
@@ -822,7 +819,6 @@ const dict = {
       stats: {
         expiration: "Экспирация",
         confidence: "Уверенность",
-        payout: "Выплата",
         status: "Статус",
       },
       otcNotice: {

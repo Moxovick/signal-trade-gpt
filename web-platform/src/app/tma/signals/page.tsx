@@ -24,7 +24,6 @@ type PairInfo = {
   display: string;
   category: PairCategory;
   band: PairBand;
-  payout: number;
   minTier: number;
 };
 
@@ -35,7 +34,6 @@ type SignalResult = {
   direction: "CALL" | "PUT";
   confidence: number;
   expiration: string;
-  payout: number;
   entryPrice: number;
   entryTime: string | null;
   analysis: string | null;
@@ -45,145 +43,145 @@ type SignalResult = {
 
 const ALL_PAIRS: PairInfo[] = [
   // OTC Forex
-  { name: "AED/CNY (OTC)", display: "AED/CNY", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "AUD/CAD (OTC)", display: "AUD/CAD", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "CAD/JPY (OTC)", display: "CAD/JPY", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "EUR/GBP (OTC)", display: "EUR/GBP", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "EUR/JPY (OTC)", display: "EUR/JPY", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "GBP/JPY (OTC)", display: "GBP/JPY", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "NZD/USD (OTC)", display: "NZD/USD", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "OMR/CNY (OTC)", display: "OMR/CNY", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "USD/CNH (OTC)", display: "USD/CNH", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "USD/MYR (OTC)", display: "USD/MYR", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "USD/PHP (OTC)", display: "USD/PHP", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "USD/SGD (OTC)", display: "USD/SGD", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "YER/USD (OTC)", display: "YER/USD", category: "forex", band: "otc", payout: 92, minTier: 0 },
-  { name: "USD/ARS (OTC)", display: "USD/ARS", category: "forex", band: "otc", payout: 91, minTier: 0 },
-  { name: "USD/PKR (OTC)", display: "USD/PKR", category: "forex", band: "otc", payout: 91, minTier: 0 },
-  { name: "EUR/NZD (OTC)", display: "EUR/NZD", category: "forex", band: "otc", payout: 90, minTier: 0 },
-  { name: "AUD/NZD (OTC)", display: "AUD/NZD", category: "forex", band: "otc", payout: 89, minTier: 0 },
-  { name: "USD/CLP (OTC)", display: "USD/CLP", category: "forex", band: "otc", payout: 88, minTier: 0 },
-  { name: "CHF/JPY (OTC)", display: "CHF/JPY", category: "forex", band: "otc", payout: 87, minTier: 0 },
-  { name: "LBP/USD (OTC)", display: "LBP/USD", category: "forex", band: "otc", payout: 86, minTier: 0 },
-  { name: "USD/THB (OTC)", display: "USD/THB", category: "forex", band: "otc", payout: 86, minTier: 0 },
-  { name: "AUD/USD (OTC)", display: "AUD/USD", category: "forex", band: "otc", payout: 83, minTier: 0 },
-  { name: "AUD/JPY (OTC)", display: "AUD/JPY", category: "forex", band: "otc", payout: 82, minTier: 0 },
-  { name: "NGN/USD (OTC)", display: "NGN/USD", category: "forex", band: "otc", payout: 81, minTier: 0 },
-  { name: "QAR/CNY (OTC)", display: "QAR/CNY", category: "forex", band: "otc", payout: 74, minTier: 0 },
-  { name: "BHD/CNY (OTC)", display: "BHD/CNY", category: "forex", band: "otc", payout: 71, minTier: 0 },
-  { name: "USD/JPY (OTC)", display: "USD/JPY", category: "forex", band: "otc", payout: 70, minTier: 0 },
-  { name: "NZD/JPY (OTC)", display: "NZD/JPY", category: "forex", band: "otc", payout: 68, minTier: 0 },
-  { name: "USD/INR (OTC)", display: "USD/INR", category: "forex", band: "otc", payout: 67, minTier: 0 },
-  { name: "EUR/HUF (OTC)", display: "EUR/HUF", category: "forex", band: "otc", payout: 65, minTier: 0 },
-  { name: "MAD/USD (OTC)", display: "MAD/USD", category: "forex", band: "otc", payout: 65, minTier: 0 },
-  { name: "CAD/CHF (OTC)", display: "CAD/CHF", category: "forex", band: "otc", payout: 64, minTier: 0 },
-  { name: "USD/EGP (OTC)", display: "USD/EGP", category: "forex", band: "otc", payout: 63, minTier: 0 },
-  { name: "ZAR/USD (OTC)", display: "ZAR/USD", category: "forex", band: "otc", payout: 63, minTier: 0 },
-  { name: "EUR/USD (OTC)", display: "EUR/USD", category: "forex", band: "otc", payout: 61, minTier: 0 },
-  { name: "GBP/USD (OTC)", display: "GBP/USD", category: "forex", band: "otc", payout: 59, minTier: 0 },
-  { name: "AUD/CHF (OTC)", display: "AUD/CHF", category: "forex", band: "otc", payout: 58, minTier: 0 },
-  { name: "USD/BRL (OTC)", display: "USD/BRL", category: "forex", band: "otc", payout: 58, minTier: 0 },
-  { name: "USD/BDT (OTC)", display: "USD/BDT", category: "forex", band: "otc", payout: 57, minTier: 0 },
-  { name: "EUR/CHF (OTC)", display: "EUR/CHF", category: "forex", band: "otc", payout: 52, minTier: 0 },
-  { name: "KES/USD (OTC)", display: "KES/USD", category: "forex", band: "otc", payout: 52, minTier: 0 },
-  { name: "USD/COP (OTC)", display: "USD/COP", category: "forex", band: "otc", payout: 51, minTier: 0 },
-  { name: "CHF/NOK (OTC)", display: "CHF/NOK", category: "forex", band: "otc", payout: 50, minTier: 0 },
-  { name: "USD/VND (OTC)", display: "USD/VND", category: "forex", band: "otc", payout: 50, minTier: 0 },
-  { name: "JOD/CNY (OTC)", display: "JOD/CNY", category: "forex", band: "otc", payout: 46, minTier: 0 },
-  { name: "TND/USD (OTC)", display: "TND/USD", category: "forex", band: "otc", payout: 45, minTier: 0 },
-  { name: "USD/IDR (OTC)", display: "USD/IDR", category: "forex", band: "otc", payout: 43, minTier: 0 },
-  { name: "USD/DZD (OTC)", display: "USD/DZD", category: "forex", band: "otc", payout: 36, minTier: 0 },
-  { name: "UAH/USD (OTC)", display: "UAH/USD", category: "forex", band: "otc", payout: 33, minTier: 0 },
-  { name: "USD/MXN (OTC)", display: "USD/MXN", category: "forex", band: "otc", payout: 32, minTier: 0 },
-  { name: "GBP/AUD (OTC)", display: "GBP/AUD", category: "forex", band: "otc", payout: 30, minTier: 0 },
-  { name: "USD/CHF (OTC)", display: "USD/CHF", category: "forex", band: "otc", payout: 30, minTier: 0 },
-  { name: "EUR/TRY (OTC)", display: "EUR/TRY", category: "forex", band: "otc", payout: 29, minTier: 0 },
-  { name: "USD/CAD (OTC)", display: "USD/CAD", category: "forex", band: "otc", payout: 24, minTier: 0 },
-  { name: "SAR/CNY (OTC)", display: "SAR/CNY", category: "forex", band: "otc", payout: 20, minTier: 0 },
+  { name: "AED/CNY (OTC)", display: "AED/CNY", category: "forex", band: "otc", minTier: 0 },
+  { name: "AUD/CAD (OTC)", display: "AUD/CAD", category: "forex", band: "otc", minTier: 0 },
+  { name: "CAD/JPY (OTC)", display: "CAD/JPY", category: "forex", band: "otc", minTier: 0 },
+  { name: "EUR/GBP (OTC)", display: "EUR/GBP", category: "forex", band: "otc", minTier: 0 },
+  { name: "EUR/JPY (OTC)", display: "EUR/JPY", category: "forex", band: "otc", minTier: 0 },
+  { name: "GBP/JPY (OTC)", display: "GBP/JPY", category: "forex", band: "otc", minTier: 0 },
+  { name: "NZD/USD (OTC)", display: "NZD/USD", category: "forex", band: "otc", minTier: 0 },
+  { name: "OMR/CNY (OTC)", display: "OMR/CNY", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/CNH (OTC)", display: "USD/CNH", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/MYR (OTC)", display: "USD/MYR", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/PHP (OTC)", display: "USD/PHP", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/SGD (OTC)", display: "USD/SGD", category: "forex", band: "otc", minTier: 0 },
+  { name: "YER/USD (OTC)", display: "YER/USD", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/ARS (OTC)", display: "USD/ARS", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/PKR (OTC)", display: "USD/PKR", category: "forex", band: "otc", minTier: 0 },
+  { name: "EUR/NZD (OTC)", display: "EUR/NZD", category: "forex", band: "otc", minTier: 0 },
+  { name: "AUD/NZD (OTC)", display: "AUD/NZD", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/CLP (OTC)", display: "USD/CLP", category: "forex", band: "otc", minTier: 0 },
+  { name: "CHF/JPY (OTC)", display: "CHF/JPY", category: "forex", band: "otc", minTier: 0 },
+  { name: "LBP/USD (OTC)", display: "LBP/USD", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/THB (OTC)", display: "USD/THB", category: "forex", band: "otc", minTier: 0 },
+  { name: "AUD/USD (OTC)", display: "AUD/USD", category: "forex", band: "otc", minTier: 0 },
+  { name: "AUD/JPY (OTC)", display: "AUD/JPY", category: "forex", band: "otc", minTier: 0 },
+  { name: "NGN/USD (OTC)", display: "NGN/USD", category: "forex", band: "otc", minTier: 0 },
+  { name: "QAR/CNY (OTC)", display: "QAR/CNY", category: "forex", band: "otc", minTier: 0 },
+  { name: "BHD/CNY (OTC)", display: "BHD/CNY", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/JPY (OTC)", display: "USD/JPY", category: "forex", band: "otc", minTier: 0 },
+  { name: "NZD/JPY (OTC)", display: "NZD/JPY", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/INR (OTC)", display: "USD/INR", category: "forex", band: "otc", minTier: 0 },
+  { name: "EUR/HUF (OTC)", display: "EUR/HUF", category: "forex", band: "otc", minTier: 0 },
+  { name: "MAD/USD (OTC)", display: "MAD/USD", category: "forex", band: "otc", minTier: 0 },
+  { name: "CAD/CHF (OTC)", display: "CAD/CHF", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/EGP (OTC)", display: "USD/EGP", category: "forex", band: "otc", minTier: 0 },
+  { name: "ZAR/USD (OTC)", display: "ZAR/USD", category: "forex", band: "otc", minTier: 0 },
+  { name: "EUR/USD (OTC)", display: "EUR/USD", category: "forex", band: "otc", minTier: 0 },
+  { name: "GBP/USD (OTC)", display: "GBP/USD", category: "forex", band: "otc", minTier: 0 },
+  { name: "AUD/CHF (OTC)", display: "AUD/CHF", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/BRL (OTC)", display: "USD/BRL", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/BDT (OTC)", display: "USD/BDT", category: "forex", band: "otc", minTier: 0 },
+  { name: "EUR/CHF (OTC)", display: "EUR/CHF", category: "forex", band: "otc", minTier: 0 },
+  { name: "KES/USD (OTC)", display: "KES/USD", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/COP (OTC)", display: "USD/COP", category: "forex", band: "otc", minTier: 0 },
+  { name: "CHF/NOK (OTC)", display: "CHF/NOK", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/VND (OTC)", display: "USD/VND", category: "forex", band: "otc", minTier: 0 },
+  { name: "JOD/CNY (OTC)", display: "JOD/CNY", category: "forex", band: "otc", minTier: 0 },
+  { name: "TND/USD (OTC)", display: "TND/USD", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/IDR (OTC)", display: "USD/IDR", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/DZD (OTC)", display: "USD/DZD", category: "forex", band: "otc", minTier: 0 },
+  { name: "UAH/USD (OTC)", display: "UAH/USD", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/MXN (OTC)", display: "USD/MXN", category: "forex", band: "otc", minTier: 0 },
+  { name: "GBP/AUD (OTC)", display: "GBP/AUD", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/CHF (OTC)", display: "USD/CHF", category: "forex", band: "otc", minTier: 0 },
+  { name: "EUR/TRY (OTC)", display: "EUR/TRY", category: "forex", band: "otc", minTier: 0 },
+  { name: "USD/CAD (OTC)", display: "USD/CAD", category: "forex", band: "otc", minTier: 0 },
+  { name: "SAR/CNY (OTC)", display: "SAR/CNY", category: "forex", band: "otc", minTier: 0 },
   // OTC Crypto
-  { name: "Bitcoin ETF (OTC)", display: "Bitcoin ETF", category: "crypto", band: "otc", payout: 92, minTier: 0 },
-  { name: "BNB (OTC)", display: "BNB", category: "crypto", band: "otc", payout: 92, minTier: 0 },
-  { name: "Polkadot (OTC)", display: "DOT", category: "crypto", band: "otc", payout: 92, minTier: 0 },
-  { name: "Litecoin (OTC)", display: "LTC", category: "crypto", band: "otc", payout: 92, minTier: 0 },
-  { name: "Toncoin (OTC)", display: "TON", category: "crypto", band: "otc", payout: 92, minTier: 0 },
-  { name: "Ethereum (OTC)", display: "ETH", category: "crypto", band: "otc", payout: 86, minTier: 0 },
-  { name: "Avalanche (OTC)", display: "AVAX", category: "crypto", band: "otc", payout: 80, minTier: 0 },
-  { name: "Chainlink (OTC)", display: "LINK", category: "crypto", band: "otc", payout: 77, minTier: 0 },
-  { name: "Polygon (OTC)", display: "MATIC", category: "crypto", band: "otc", payout: 73, minTier: 0 },
-  { name: "Bitcoin (OTC)", display: "BTC", category: "crypto", band: "otc", payout: 68, minTier: 0 },
-  { name: "Cardano (OTC)", display: "ADA", category: "crypto", band: "otc", payout: 67, minTier: 0 },
-  { name: "TRON (OTC)", display: "TRX", category: "crypto", band: "otc", payout: 50, minTier: 0 },
-  { name: "Solana (OTC)", display: "SOL", category: "crypto", band: "otc", payout: 48, minTier: 0 },
-  { name: "Dogecoin (OTC)", display: "DOGE", category: "crypto", band: "otc", payout: 38, minTier: 0 },
+  { name: "Bitcoin ETF (OTC)", display: "Bitcoin ETF", category: "crypto", band: "otc", minTier: 0 },
+  { name: "BNB (OTC)", display: "BNB", category: "crypto", band: "otc", minTier: 0 },
+  { name: "Polkadot (OTC)", display: "DOT", category: "crypto", band: "otc", minTier: 0 },
+  { name: "Litecoin (OTC)", display: "LTC", category: "crypto", band: "otc", minTier: 0 },
+  { name: "Toncoin (OTC)", display: "TON", category: "crypto", band: "otc", minTier: 0 },
+  { name: "Ethereum (OTC)", display: "ETH", category: "crypto", band: "otc", minTier: 0 },
+  { name: "Avalanche (OTC)", display: "AVAX", category: "crypto", band: "otc", minTier: 0 },
+  { name: "Chainlink (OTC)", display: "LINK", category: "crypto", band: "otc", minTier: 0 },
+  { name: "Polygon (OTC)", display: "MATIC", category: "crypto", band: "otc", minTier: 0 },
+  { name: "Bitcoin (OTC)", display: "BTC", category: "crypto", band: "otc", minTier: 0 },
+  { name: "Cardano (OTC)", display: "ADA", category: "crypto", band: "otc", minTier: 0 },
+  { name: "TRON (OTC)", display: "TRX", category: "crypto", band: "otc", minTier: 0 },
+  { name: "Solana (OTC)", display: "SOL", category: "crypto", band: "otc", minTier: 0 },
+  { name: "Dogecoin (OTC)", display: "DOGE", category: "crypto", band: "otc", minTier: 0 },
   // OTC Commodities
-  { name: "Brent Oil (OTC)", display: "Brent Oil", category: "commodities", band: "otc", payout: 80, minTier: 0 },
-  { name: "WTI Oil (OTC)", display: "WTI Oil", category: "commodities", band: "otc", payout: 80, minTier: 0 },
-  { name: "Silver (OTC)", display: "Silver", category: "commodities", band: "otc", payout: 80, minTier: 0 },
-  { name: "Gold (OTC)", display: "Gold", category: "commodities", band: "otc", payout: 80, minTier: 0 },
-  { name: "Natural Gas (OTC)", display: "Natural Gas", category: "commodities", band: "otc", payout: 45, minTier: 0 },
-  { name: "Palladium (OTC)", display: "Palladium", category: "commodities", band: "otc", payout: 45, minTier: 0 },
-  { name: "Platinum (OTC)", display: "Platinum", category: "commodities", band: "otc", payout: 45, minTier: 0 },
+  { name: "Brent Oil (OTC)", display: "Brent Oil", category: "commodities", band: "otc", minTier: 0 },
+  { name: "WTI Oil (OTC)", display: "WTI Oil", category: "commodities", band: "otc", minTier: 0 },
+  { name: "Silver (OTC)", display: "Silver", category: "commodities", band: "otc", minTier: 0 },
+  { name: "Gold (OTC)", display: "Gold", category: "commodities", band: "otc", minTier: 0 },
+  { name: "Natural Gas (OTC)", display: "Natural Gas", category: "commodities", band: "otc", minTier: 0 },
+  { name: "Palladium (OTC)", display: "Palladium", category: "commodities", band: "otc", minTier: 0 },
+  { name: "Platinum (OTC)", display: "Platinum", category: "commodities", band: "otc", minTier: 0 },
   // OTC Stocks
-  { name: "Apple (OTC)", display: "Apple", category: "stocks", band: "otc", payout: 92, minTier: 0 },
-  { name: "GameStop (OTC)", display: "GameStop", category: "stocks", band: "otc", payout: 92, minTier: 0 },
-  { name: "VISA (OTC)", display: "Visa", category: "stocks", band: "otc", payout: 92, minTier: 0 },
-  { name: "American Express (OTC)", display: "AmEx", category: "stocks", band: "otc", payout: 90, minTier: 0 },
-  { name: "VIX (OTC)", display: "VIX", category: "stocks", band: "otc", payout: 90, minTier: 0 },
-  { name: "Pfizer (OTC)", display: "Pfizer", category: "stocks", band: "otc", payout: 87, minTier: 0 },
-  { name: "AMD (OTC)", display: "AMD", category: "stocks", band: "otc", payout: 83, minTier: 0 },
-  { name: "Johnson & Johnson (OTC)", display: "J&J", category: "stocks", band: "otc", payout: 81, minTier: 0 },
-  { name: "Marathon Digital (OTC)", display: "MARA", category: "stocks", band: "otc", payout: 73, minTier: 0 },
-  { name: "Amazon (OTC)", display: "Amazon", category: "stocks", band: "otc", payout: 69, minTier: 0 },
-  { name: "Netflix (OTC)", display: "Netflix", category: "stocks", band: "otc", payout: 63, minTier: 0 },
-  { name: "ExxonMobil (OTC)", display: "Exxon", category: "stocks", band: "otc", payout: 60, minTier: 0 },
-  { name: "Coinbase (OTC)", display: "Coinbase", category: "stocks", band: "otc", payout: 59, minTier: 0 },
-  { name: "Cisco (OTC)", display: "Cisco", category: "stocks", band: "otc", payout: 57, minTier: 0 },
-  { name: "Alibaba (OTC)", display: "Alibaba", category: "stocks", band: "otc", payout: 52, minTier: 0 },
-  { name: "Citigroup (OTC)", display: "Citigroup", category: "stocks", band: "otc", payout: 50, minTier: 0 },
-  { name: "FedEx (OTC)", display: "FedEx", category: "stocks", band: "otc", payout: 50, minTier: 0 },
-  { name: "Meta (OTC)", display: "Meta", category: "stocks", band: "otc", payout: 45, minTier: 0 },
-  { name: "Intel (OTC)", display: "Intel", category: "stocks", band: "otc", payout: 36, minTier: 0 },
-  { name: "Palantir (OTC)", display: "Palantir", category: "stocks", band: "otc", payout: 34, minTier: 0 },
-  { name: "McDonald's (OTC)", display: "McDonald's", category: "stocks", band: "otc", payout: 33, minTier: 0 },
-  { name: "Tesla (OTC)", display: "Tesla", category: "stocks", band: "otc", payout: 33, minTier: 0 },
-  { name: "Microsoft (OTC)", display: "Microsoft", category: "stocks", band: "otc", payout: 31, minTier: 0 },
+  { name: "Apple (OTC)", display: "Apple", category: "stocks", band: "otc", minTier: 0 },
+  { name: "GameStop (OTC)", display: "GameStop", category: "stocks", band: "otc", minTier: 0 },
+  { name: "VISA (OTC)", display: "Visa", category: "stocks", band: "otc", minTier: 0 },
+  { name: "American Express (OTC)", display: "AmEx", category: "stocks", band: "otc", minTier: 0 },
+  { name: "VIX (OTC)", display: "VIX", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Pfizer (OTC)", display: "Pfizer", category: "stocks", band: "otc", minTier: 0 },
+  { name: "AMD (OTC)", display: "AMD", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Johnson & Johnson (OTC)", display: "J&J", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Marathon Digital (OTC)", display: "MARA", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Amazon (OTC)", display: "Amazon", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Netflix (OTC)", display: "Netflix", category: "stocks", band: "otc", minTier: 0 },
+  { name: "ExxonMobil (OTC)", display: "Exxon", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Coinbase (OTC)", display: "Coinbase", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Cisco (OTC)", display: "Cisco", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Alibaba (OTC)", display: "Alibaba", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Citigroup (OTC)", display: "Citigroup", category: "stocks", band: "otc", minTier: 0 },
+  { name: "FedEx (OTC)", display: "FedEx", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Meta (OTC)", display: "Meta", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Intel (OTC)", display: "Intel", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Palantir (OTC)", display: "Palantir", category: "stocks", band: "otc", minTier: 0 },
+  { name: "McDonald's (OTC)", display: "McDonald's", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Tesla (OTC)", display: "Tesla", category: "stocks", band: "otc", minTier: 0 },
+  { name: "Microsoft (OTC)", display: "Microsoft", category: "stocks", band: "otc", minTier: 0 },
   // OTC Indices
-  { name: "AUS 200 (OTC)", display: "AUS 200", category: "indices", band: "otc", payout: 67, minTier: 0 },
-  { name: "FTSE 100 (OTC)", display: "FTSE 100", category: "indices", band: "otc", payout: 45, minTier: 0 },
-  { name: "DAX 30 (OTC)", display: "DAX 30", category: "indices", band: "otc", payout: 45, minTier: 0 },
-  { name: "Dow Jones (OTC)", display: "Dow Jones", category: "indices", band: "otc", payout: 45, minTier: 0 },
-  { name: "E35EUR (OTC)", display: "Euro Stoxx 35", category: "indices", band: "otc", payout: 45, minTier: 0 },
-  { name: "E50EUR (OTC)", display: "Euro Stoxx 50", category: "indices", band: "otc", payout: 45, minTier: 0 },
-  { name: "CAC 40 (OTC)", display: "CAC 40", category: "indices", band: "otc", payout: 45, minTier: 0 },
-  { name: "Nikkei 225 (OTC)", display: "Nikkei 225", category: "indices", band: "otc", payout: 45, minTier: 0 },
-  { name: "NASDAQ 100 (OTC)", display: "NASDAQ", category: "indices", band: "otc", payout: 45, minTier: 0 },
-  { name: "S&P 500 (OTC)", display: "S&P 500", category: "indices", band: "otc", payout: 45, minTier: 0 },
+  { name: "AUS 200 (OTC)", display: "AUS 200", category: "indices", band: "otc", minTier: 0 },
+  { name: "FTSE 100 (OTC)", display: "FTSE 100", category: "indices", band: "otc", minTier: 0 },
+  { name: "DAX 30 (OTC)", display: "DAX 30", category: "indices", band: "otc", minTier: 0 },
+  { name: "Dow Jones (OTC)", display: "Dow Jones", category: "indices", band: "otc", minTier: 0 },
+  { name: "E35EUR (OTC)", display: "Euro Stoxx 35", category: "indices", band: "otc", minTier: 0 },
+  { name: "E50EUR (OTC)", display: "Euro Stoxx 50", category: "indices", band: "otc", minTier: 0 },
+  { name: "CAC 40 (OTC)", display: "CAC 40", category: "indices", band: "otc", minTier: 0 },
+  { name: "Nikkei 225 (OTC)", display: "Nikkei 225", category: "indices", band: "otc", minTier: 0 },
+  { name: "NASDAQ 100 (OTC)", display: "NASDAQ", category: "indices", band: "otc", minTier: 0 },
+  { name: "S&P 500 (OTC)", display: "S&P 500", category: "indices", band: "otc", minTier: 0 },
 
   // Exchange Forex
-  { name: "CHF/JPY", display: "CHF/JPY", category: "forex", band: "exchange", payout: 88, minTier: 1 },
-  { name: "EUR/CAD", display: "EUR/CAD", category: "forex", band: "exchange", payout: 88, minTier: 1 },
-  { name: "AUD/JPY", display: "AUD/JPY", category: "forex", band: "exchange", payout: 86, minTier: 1 },
-  { name: "CAD/JPY", display: "CAD/JPY", category: "forex", band: "exchange", payout: 80, minTier: 1 },
-  { name: "AUD/CHF", display: "AUD/CHF", category: "forex", band: "exchange", payout: 78, minTier: 1 },
-  { name: "EUR/USD", display: "EUR/USD", category: "forex", band: "exchange", payout: 78, minTier: 1 },
-  { name: "EUR/CHF", display: "EUR/CHF", category: "forex", band: "exchange", payout: 75, minTier: 1 },
-  { name: "AUD/CAD", display: "AUD/CAD", category: "forex", band: "exchange", payout: 74, minTier: 1 },
-  { name: "EUR/AUD", display: "EUR/AUD", category: "forex", band: "exchange", payout: 73, minTier: 1 },
-  { name: "GBP/JPY", display: "GBP/JPY", category: "forex", band: "exchange", payout: 72, minTier: 1 },
-  { name: "USD/JPY", display: "USD/JPY", category: "forex", band: "exchange", payout: 68, minTier: 1 },
-  { name: "EUR/JPY", display: "EUR/JPY", category: "forex", band: "exchange", payout: 61, minTier: 1 },
-  { name: "EUR/GBP", display: "EUR/GBP", category: "forex", band: "exchange", payout: 60, minTier: 1 },
-  { name: "GBP/USD", display: "GBP/USD", category: "forex", band: "exchange", payout: 55, minTier: 1 },
-  { name: "GBP/CAD", display: "GBP/CAD", category: "forex", band: "exchange", payout: 48, minTier: 1 },
-  { name: "USD/CAD", display: "USD/CAD", category: "forex", band: "exchange", payout: 44, minTier: 1 },
-  { name: "GBP/CHF", display: "GBP/CHF", category: "forex", band: "exchange", payout: 42, minTier: 1 },
-  { name: "AUD/USD", display: "AUD/USD", category: "forex", band: "exchange", payout: 40, minTier: 1 },
-  { name: "USD/CHF", display: "USD/CHF", category: "forex", band: "exchange", payout: 35, minTier: 1 },
-  { name: "CAD/CHF", display: "CAD/CHF", category: "forex", band: "exchange", payout: 26, minTier: 1 },
-  { name: "GBP/AUD", display: "GBP/AUD", category: "forex", band: "exchange", payout: 24, minTier: 1 },
+  { name: "CHF/JPY", display: "CHF/JPY", category: "forex", band: "exchange", minTier: 1 },
+  { name: "EUR/CAD", display: "EUR/CAD", category: "forex", band: "exchange", minTier: 1 },
+  { name: "AUD/JPY", display: "AUD/JPY", category: "forex", band: "exchange", minTier: 1 },
+  { name: "CAD/JPY", display: "CAD/JPY", category: "forex", band: "exchange", minTier: 1 },
+  { name: "AUD/CHF", display: "AUD/CHF", category: "forex", band: "exchange", minTier: 1 },
+  { name: "EUR/USD", display: "EUR/USD", category: "forex", band: "exchange", minTier: 1 },
+  { name: "EUR/CHF", display: "EUR/CHF", category: "forex", band: "exchange", minTier: 1 },
+  { name: "AUD/CAD", display: "AUD/CAD", category: "forex", band: "exchange", minTier: 1 },
+  { name: "EUR/AUD", display: "EUR/AUD", category: "forex", band: "exchange", minTier: 1 },
+  { name: "GBP/JPY", display: "GBP/JPY", category: "forex", band: "exchange", minTier: 1 },
+  { name: "USD/JPY", display: "USD/JPY", category: "forex", band: "exchange", minTier: 1 },
+  { name: "EUR/JPY", display: "EUR/JPY", category: "forex", band: "exchange", minTier: 1 },
+  { name: "EUR/GBP", display: "EUR/GBP", category: "forex", band: "exchange", minTier: 1 },
+  { name: "GBP/USD", display: "GBP/USD", category: "forex", band: "exchange", minTier: 1 },
+  { name: "GBP/CAD", display: "GBP/CAD", category: "forex", band: "exchange", minTier: 1 },
+  { name: "USD/CAD", display: "USD/CAD", category: "forex", band: "exchange", minTier: 1 },
+  { name: "GBP/CHF", display: "GBP/CHF", category: "forex", band: "exchange", minTier: 1 },
+  { name: "AUD/USD", display: "AUD/USD", category: "forex", band: "exchange", minTier: 1 },
+  { name: "USD/CHF", display: "USD/CHF", category: "forex", band: "exchange", minTier: 1 },
+  { name: "CAD/CHF", display: "CAD/CHF", category: "forex", band: "exchange", minTier: 1 },
+  { name: "GBP/AUD", display: "GBP/AUD", category: "forex", band: "exchange", minTier: 1 },
 
   // Exchange Crypto
-  { name: "BTC/USD", display: "Bitcoin", category: "crypto", band: "exchange", payout: 15, minTier: 1 },
+  { name: "BTC/USD", display: "Bitcoin", category: "crypto", band: "exchange", minTier: 1 },
 ];
 
 const EXPIRATIONS: Record<PairBand, { value: string; labelKey: keyof { sec30: string; min1: string; min2: string; min3: string; min5: string; min30: string } }[]> = {
@@ -364,15 +362,6 @@ function PairIconSmall({ display, size = 32 }: { display: string; size?: number 
   );
 }
 
-// ─── Helpers ───
-
-function getPayoutColor(pct: number): string {
-  if (pct >= 80) return "var(--green)";
-  if (pct >= 60) return "#e6b840";
-  if (pct >= 40) return "#c4b496";
-  return "var(--red)";
-}
-
 // ─── Page ───
 
 export default function TmaSignalsPage() {
@@ -409,8 +398,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
     return ALL_PAIRS
       .filter((p) => p.band === activeTab)
       .filter((p) => categoryFilter === "all" || p.category === categoryFilter)
-      .filter((p) => !searchQuery || p.display.toLowerCase().includes(searchQuery.toLowerCase()))
-      .sort((a, b) => b.payout - a.payout);
+      .filter((p) => !searchQuery || p.display.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [activeTab, categoryFilter, searchQuery]);
 
   const availableCategories = useMemo(() => {
@@ -500,7 +488,6 @@ function SignalsPicker({ user }: { user: TmaUser }) {
         direction: data.signal.direction === "PUT" ? "PUT" : "CALL",
         confidence: data.signal.confidence,
         expiration: data.signal.expiration,
-        payout: selectedPair.payout,
         entryPrice: data.signal.entryPrice ?? 0,
         entryTime: (data.signal as Record<string, unknown>).entryTime as string | null ?? null,
         analysis: (data.signal as Record<string, unknown>).analysis as string | null ?? null,
@@ -575,7 +562,7 @@ function SignalsPicker({ user }: { user: TmaUser }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="rounded-xl bg-[var(--bg-2)] p-3 text-center">
               <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">{t.tma.signals.result.accuracy}</div>
               <div className="text-xl font-bold text-[var(--brand-gold)]">{result.confidence}%</div>
@@ -583,12 +570,6 @@ function SignalsPicker({ user }: { user: TmaUser }) {
             <div className="rounded-xl bg-[var(--bg-2)] p-3 text-center">
               <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">{t.tma.signals.result.expiration}</div>
               <div className="text-sm font-semibold text-[var(--t-1)]">{result.expiration}</div>
-            </div>
-            <div className="rounded-xl bg-[var(--bg-2)] p-3 text-center">
-              <div className="text-[10px] uppercase tracking-wider text-[var(--t-3)] mb-1">{t.tma.signals.result.payout}</div>
-              <div className="text-sm font-semibold" style={{ color: getPayoutColor(result.payout) }}>
-                +{result.payout}%
-              </div>
             </div>
           </div>
 
@@ -745,12 +726,6 @@ function SignalsPicker({ user }: { user: TmaUser }) {
                     {p.display}
                   </span>
                 </div>
-                <span
-                  className="text-xs font-bold shrink-0"
-                  style={{ color: getPayoutColor(p.payout) }}
-                >
-                  +{p.payout}%
-                </span>
               </button>
 
               {isSelected && (

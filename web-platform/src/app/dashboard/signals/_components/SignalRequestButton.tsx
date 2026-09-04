@@ -206,66 +206,6 @@ const ALL_PAIRS: PairInfo[] = [
   { name: "BTC/USD", display: "Bitcoin", flag: "Crypto", band: "exchange", minTier: 1 },
 ];
 
-// ─── Payout percentages ───
-
-const PAIR_PAYOUTS: Record<string, number> = {
-  // OTC Currencies
-  "AED/CNY (OTC)": 92, "AUD/CAD (OTC)": 92, "CAD/JPY (OTC)": 92,
-  "EUR/GBP (OTC)": 92, "EUR/JPY (OTC)": 92, "GBP/JPY (OTC)": 92,
-  "NZD/USD (OTC)": 92, "OMR/CNY (OTC)": 92, "USD/CNH (OTC)": 92,
-  "USD/MYR (OTC)": 92, "USD/PHP (OTC)": 92, "USD/SGD (OTC)": 92,
-  "YER/USD (OTC)": 92, "USD/ARS (OTC)": 91, "USD/PKR (OTC)": 91,
-  "EUR/NZD (OTC)": 90, "AUD/NZD (OTC)": 89, "USD/CLP (OTC)": 88,
-  "CHF/JPY (OTC)": 87, "LBP/USD (OTC)": 86, "USD/THB (OTC)": 86,
-  "AUD/USD (OTC)": 83, "AUD/JPY (OTC)": 82, "NGN/USD (OTC)": 81,
-  "QAR/CNY (OTC)": 74, "BHD/CNY (OTC)": 71, "USD/JPY (OTC)": 70,
-  "NZD/JPY (OTC)": 68, "USD/INR (OTC)": 67, "EUR/HUF (OTC)": 65,
-  "MAD/USD (OTC)": 65, "CAD/CHF (OTC)": 64, "USD/EGP (OTC)": 63,
-  "ZAR/USD (OTC)": 63, "EUR/USD (OTC)": 61, "GBP/USD (OTC)": 59,
-  "AUD/CHF (OTC)": 58, "USD/BRL (OTC)": 58, "USD/BDT (OTC)": 57,
-  "EUR/CHF (OTC)": 52, "KES/USD (OTC)": 52, "USD/COP (OTC)": 51,
-  "CHF/NOK (OTC)": 50, "USD/VND (OTC)": 50, "JOD/CNY (OTC)": 46,
-  "TND/USD (OTC)": 45, "USD/IDR (OTC)": 43, "USD/DZD (OTC)": 36,
-  "UAH/USD (OTC)": 33, "USD/MXN (OTC)": 32, "GBP/AUD (OTC)": 30,
-  "USD/CHF (OTC)": 30, "EUR/TRY (OTC)": 29, "USD/CAD (OTC)": 24,
-  "SAR/CNY (OTC)": 20,
-  // OTC Crypto
-  "Bitcoin ETF (OTC)": 92, "Bitcoin (OTC)": 68, "Litecoin (OTC)": 92,
-  "Dogecoin (OTC)": 38, "Polygon (OTC)": 73,
-  "Cardano (OTC)": 67, "Polkadot (OTC)": 92,
-  "Chainlink (OTC)": 77, "BNB (OTC)": 92,
-  "Avalanche (OTC)": 80, "Solana (OTC)": 48,
-  "TRON (OTC)": 50, "Ethereum (OTC)": 86, "Toncoin (OTC)": 92,
-  // OTC Commodities
-  "Gold (OTC)": 80, "Silver (OTC)": 80, "Brent Oil (OTC)": 80, "WTI Oil (OTC)": 80,
-  "Natural Gas (OTC)": 45, "Palladium (OTC)": 45, "Platinum (OTC)": 45,
-  // OTC Stocks
-  "Apple (OTC)": 92, "Tesla (OTC)": 33, "Amazon (OTC)": 69,
-  "Microsoft (OTC)": 31, "Meta (OTC)": 45, "Netflix (OTC)": 63,
-  "GameStop (OTC)": 92, "VISA (OTC)": 92, "American Express (OTC)": 90,
-  "VIX (OTC)": 90, "Pfizer (OTC)": 87, "AMD (OTC)": 83,
-  "Johnson & Johnson (OTC)": 81, "Marathon Digital (OTC)": 73,
-  "ExxonMobil (OTC)": 60, "Coinbase (OTC)": 59, "Cisco (OTC)": 57,
-  "Alibaba (OTC)": 52, "Citigroup (OTC)": 50, "FedEx (OTC)": 50,
-  "Intel (OTC)": 36, "Palantir (OTC)": 34, "McDonald's (OTC)": 33,
-  // OTC Indices
-  "S&P 500 (OTC)": 45, "NASDAQ 100 (OTC)": 45, "Dow Jones (OTC)": 45,
-  "AUS 200 (OTC)": 67, "FTSE 100 (OTC)": 45, "DAX 30 (OTC)": 45,
-  "E35EUR (OTC)": 45, "E50EUR (OTC)": 45, "CAC 40 (OTC)": 45,
-  "Nikkei 225 (OTC)": 45,
-  // Exchange currencies
-  "CHF/JPY": 88, "EUR/CAD": 88, "AUD/JPY": 86, "CAD/JPY": 80,
-  "AUD/CHF": 78, "EUR/USD": 78, "EUR/CHF": 75, "AUD/CAD": 74,
-  "EUR/AUD": 73, "GBP/JPY": 72, "USD/JPY": 68, "EUR/JPY": 61,
-  "EUR/GBP": 60, "GBP/USD": 55, "GBP/CAD": 48, "USD/CAD": 44,
-  "GBP/CHF": 42, "AUD/USD": 40, "USD/CHF": 35, "CAD/CHF": 26,
-  "GBP/AUD": 24,
-  // Exchange crypto
-  "BTC/USD": 15,
-  // Indices
-  "SP500": 45, "US100": 45,
-};
-
 // ─── Pair icons ───
 
 const CURRENCY_FLAG: Record<string, string> = {
@@ -486,13 +426,6 @@ function PairIcon({ pair, size = 28 }: { pair: PairInfo; size?: number }) {
       {pair.display.slice(0, 3)}
     </div>
   );
-}
-
-function getPayoutColor(pct: number): string {
-  if (pct >= 80) return "#8ee06b";
-  if (pct >= 60) return "#e6b840";
-  if (pct >= 40) return "#c4b496";
-  return "#ff6b3d";
 }
 
 // EXPIRATIONS labels are computed inside component using t
@@ -736,8 +669,7 @@ export function SignalRequestButton({
     const tabs: PairBand[] = ["otc", "exchange", "elite"];
     const activePairs = ALL_PAIRS
       .filter((p) => p.band === activeTab)
-      .filter((p) => !searchQuery || p.display.toLowerCase().includes(searchQuery.toLowerCase()))
-      .sort((a, b) => (PAIR_PAYOUTS[b.name] ?? 0) - (PAIR_PAYOUTS[a.name] ?? 0));
+      .filter((p) => !searchQuery || p.display.toLowerCase().includes(searchQuery.toLowerCase()));
     const groups = groupByFlag(activePairs, FLAG_LABELS);
 
     return (
@@ -855,7 +787,6 @@ export function SignalRequestButton({
           }}
         >
           <span style={{ flex: 1 }}>{t.signalRequest.colAsset}</span>
-          <span style={{ width: 56, textAlign: "right" }}>{t.signalRequest.colPayout}</span>
           {remaining != null && (
             <span style={{ marginLeft: 12, fontSize: 10, color: "var(--t-3)" }}>
               {remaining} {t.signalRequest.remaining}
@@ -891,8 +822,6 @@ export function SignalRequestButton({
             >
               {group.items.map((p) => {
                 const locked = p.minTier > tier;
-                const payout = PAIR_PAYOUTS[p.name];
-                const payoutColor = payout ? getPayoutColor(payout) : "var(--t-3)";
 
                 return (
                   <button
@@ -936,19 +865,6 @@ export function SignalRequestButton({
                     >
                       {p.display}
                     </span>
-                    {payout != null && (
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: payoutColor,
-                          fontFamily: "var(--font-jetbrains)",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        +{payout}%
-                      </span>
-                    )}
                     {locked && (
                       <div
                         style={{

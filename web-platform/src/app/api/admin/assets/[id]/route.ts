@@ -32,9 +32,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     data["category"] = c;
   }
   if (body["isOtc"] !== undefined) data["isOtc"] = Boolean(body["isOtc"]);
-  if (body["payoutPct"] !== undefined) {
-    data["payoutPct"] = Math.max(0, Math.min(200, Number(body["payoutPct"])));
-  }
   if (body["signalTier"] !== undefined) {
     const t = String(body["signalTier"]);
     if (!TIERS.includes(t as SignalTier)) {
