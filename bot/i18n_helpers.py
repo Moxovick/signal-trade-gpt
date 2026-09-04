@@ -19,17 +19,10 @@ _SUPPORTED: set[Locale] = {"ru", "uk"}
 
 def get_locale(tg_user: TgUser | None) -> Locale:
     """
-    Derive the bot locale from Telegram's language_code (sync, no DB).
-    Use get_user_locale() when you have access to the DB for saved preference.
+    Return default locale (ru).  Telegram language_code auto-detection is
+    disabled — locale is only changed when explicitly saved via /lang command
+    (resolved by get_user_locale which checks the DB).
     """
-    if tg_user is None:
-        return DEFAULT_LOCALE
-    code = (tg_user.language_code or "").lower()
-    if code in _SUPPORTED:
-        return code  # type: ignore[return-value]
-    prefix = code[:2]
-    if prefix in _SUPPORTED:
-        return prefix  # type: ignore[return-value]
     return DEFAULT_LOCALE
 
 
